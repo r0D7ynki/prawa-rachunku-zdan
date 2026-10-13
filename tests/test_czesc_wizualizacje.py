@@ -1,4 +1,4 @@
-"""Testy wizualizacji: schemat bramek i diagramy zbiorów (karta PRZ-012).
+"""Testy wizualizacji: schemat bramek i diagramy zbiorów (karty PRZ-012 i PRZ-074).
 
 Rysunki powstają w przeglądarce z drzewa ``ast``, więc testy nie mogą narysować SVG.
 Sprawdzają więc dwie rzeczy, które da się sprawdzić bez przeglądarki:
@@ -92,6 +92,25 @@ def test_bramki_escapuja_formule_w_atrybucie(aplikacja):
     assert 'onmouseover="' not in html, "cudzysłów we wzorze nie może wyjść z atrybutu"
     assert "&#34;" in html
     assert 'data-rola="bramki-logiczne">' in html, "znacznik kontenera musi się domykać"
+
+
+def test_bramki_pokazuja_wzor_bez_javascriptu(aplikacja):
+    """Kryterium PRZ-074: bez JavaScriptu zostaje wzór i komunikat, nie pusty kontener."""
+    html = _renderuj(aplikacja, "partials/_gates.html", formula=FORMULA_BRAMKI)
+
+    assert "Wzór:" in html
+    assert FORMULA_BRAMKI in html
+
+
+def test_bramki_pokazuja_opis_slowny_gdy_strona_go_podaje(aplikacja):
+    """Strona prawa (PRZ-010) wstawia partial z obiektem ``prawo`` w kontekście."""
+    prawo = SimpleNamespace(
+        formula=FORMULA_BRAMKI, po_ludzku="Zdanie jest prawdziwe albo fałszywe."
+    )
+
+    html = _renderuj(aplikacja, "partials/_gates.html", formula=FORMULA_BRAMKI, prawo=prawo)
+
+    assert "Zdanie jest prawdziwe albo fałszywe." in html
 
 
 # ---------------------------------------------------------------------------
@@ -255,6 +274,92 @@ def test_bramki_maja_legende_z_symbolami(skrypt_bramek):
 
 
 # ---------------------------------------------------------------------------
+# gates.js — kroki, strzałki i wartości na przewodach (PRZ-074)
+# ---------------------------------------------------------------------------
+
+
+def test_bramki_uzywaja_wspolnego_komponentu_krokow(skrypt_bramek):
+    """Kryterium PRZ-074: kroki prowadzi ``createStepper``, a nie własny pasek."""
+    assert 'from "/static/js/stepper.js"' in skrypt_bramek
+    assert "createStepper({" in skrypt_bramek
+    assert "onStep:" in skrypt_bramek
+
+
+def test_bramki_maja_przelaczniki_wejsc(skrypt_bramek):
+    """Kryterium PRZ-074: nad rysunkiem są przyciski ``0``/``1`` z ``aria-pressed``."""
+    assert "[1, 0]" in skrypt_bramek, "przyciski powstają dla obu wartości"
+    assert "wiz-przelacznik" in skrypt_bramek
+    assert 'setAttribute("aria-pressed"' in skrypt_bramek
+    assert "Wartości wejść układu" in skrypt_bramek
+
+
+def test_bramki_zmieniaja_wartosci_bez_przerysowania_montazu(skrypt_bramek):
+    """Zmiana wejścia przelicza kroki, ale pasek i rysunek zostają na miejscu."""
+    assert "znajdzWiersz(" in skrypt_bramek, "wiersz tablicy wybieramy po wartościowaniu"
+    assert "odswiez(" in skrypt_bramek
+    assert "stepper.destroy()" in skrypt_bramek, "stary pasek musi zniknąć przed nowym"
+
+
+def test_bramki_znak_zapytania_dla_nieznanych_przewodow(skrypt_bramek):
+    """Kryterium PRZ-074: nieznana wartość przewodu to ``?``, nie pusty napis."""
+    assert 'znakNieznany: "?"' in skrypt_bramek
+    assert "wiz-nieznane" in skrypt_bramek
+
+
+def test_bramki_rysuja_strzalki_na_przewodach(skrypt_bramek):
+    """Kryterium PRZ-074: każdy przewód kończy się grotem (``marker-end``)."""
+    assert '"marker-end"' in skrypt_bramek
+    assert 'nowyElement("marker"' in skrypt_bramek
+    assert 'setAttribute("orient", "auto")' in skrypt_bramek
+
+
+def test_bramki_oznaczaja_biezaca_bramke(skrypt_bramek):
+    """Kryterium PRZ-074: bieżąca bramka ma ``aria-current="true"``."""
+    assert 'setAttribute("aria-current", "true")' in skrypt_bramek
+    assert 'removeAttribute("aria-current")' in skrypt_bramek
+
+
+def test_bramki_opisuja_wartosci_slowami(skrypt_bramek):
+    """Kryterium PRZ-074: wartość przewodu niesie słowo, nie tylko kolor."""
+    assert 'prawda: "PRAWDA"' in skrypt_bramek
+    assert 'falsz: "FAŁSZ"' in skrypt_bramek
+    assert "wiz-prawda" in skrypt_bramek
+    assert "wiz-falsz" in skrypt_bramek
+
+
+def test_bramki_krok_opisuje_bramke_po_polsku(skrypt_bramek):
+    """Kryterium PRZ-074: krok mówi np. „Bramka AND: 1 i 0 daje 0”."""
+    assert "Bramka ${node.typ}: ${lewy} i ${prawy} daje ${wynik}" in skrypt_bramek
+    assert "Bramka NOT: z ${" in skrypt_bramek
+
+
+def test_bramki_ostatni_krok_mowi_o_calej_formule(skrypt_bramek):
+    """Kryterium PRZ-074: ostatni krok opisuje wynik całej formuły słowami."""
+    assert 'wynikCalkowity: "Cała formuła ma wartość"' in skrypt_bramek
+
+
+def test_bramki_biora_wartosci_z_tablicy_podformul(skrypt_bramek):
+    """Kryterium PRZ-074: wartości podformuł są gotowe z API, bez liczenia logiki w JS."""
+    assert "/api/formula/table" in skrypt_bramek
+    assert "podformuly: true" in skrypt_bramek
+    assert '"values"' in skrypt_bramek, "pole z wynikami kolumn tablicy"
+    assert "evaluate" not in skrypt_bramek, "logikę liczy serwer, nie przeglądarka"
+
+
+def test_bramki_sprawdzaja_zgodnosc_kolumn_z_podformulami(skrypt_bramek):
+    """Wartość bierzemy z kolumny o tym samym indeksie — rozjazd to komunikat, nie błąd."""
+    assert "kolumny.length !== kolejnosc.length" in skrypt_bramek
+
+
+def test_bramki_nie_wstawiaja_danych_z_api_przez_innerhtml(skrypt_bramek):
+    """Kryterium PRZ-074: drzewo i wartości z API trafiają do DOM tylko przez tekst."""
+    assert "innerHTML" not in skrypt_bramek
+    assert "insertAdjacentHTML" not in skrypt_bramek
+    assert ".textContent = opis;" in skrypt_bramek
+    assert ".textContent = TEKSTY.znakNieznany;" in skrypt_bramek
+
+
+# ---------------------------------------------------------------------------
 # sets.js — obszary liczone z drzewa
 # ---------------------------------------------------------------------------
 
@@ -389,6 +494,29 @@ def test_przerysowanie_montazu_zostawia_status_w_dom(sciezka):
 def test_style_maja_klasy_uzywane_przez_skrypty(style):
     for klasa in (".wiz-svg", ".wiz-przewod", ".wiz-obszar", ".wiz-obrys", ".wiz-diagramy"):
         assert klasa in style, f"brak stylu {klasa}"
+
+
+def test_style_maja_kroki_bramek(style):
+    """Klasy kroków z PRZ-074: grot strzałki, wartości przewodów i przełączniki wejść."""
+    for klasa in (
+        ".wiz-grot",
+        ".wiz-prawda",
+        ".wiz-falsz",
+        ".wiz-nieznane",
+        ".wiz-biezaca",
+        ".wiz-wartosc",
+        ".wiz-przelacznik",
+    ):
+        assert klasa in style, f"brak stylu {klasa}"
+
+
+def test_style_grubosc_przewodu_niesie_wartosc(style):
+    """Przewód z wartością 1 jest grubszy od tego z 0 — grubość widać bez koloru."""
+    gruby = re.search(r"\.wiz-przewod\.wiz-prawda\s*\{[^}]*stroke-width:\s*([\d.]+)", style)
+    cienki = re.search(r"\.wiz-przewod\.wiz-falsz\s*\{[^}]*stroke-width:\s*([\d.]+)", style)
+
+    assert gruby and cienki, "brak grubości przewodów PRAWDA/FAŁSZ"
+    assert float(gruby.group(1)) > float(cienki.group(1))
 
 
 # ---------------------------------------------------------------------------

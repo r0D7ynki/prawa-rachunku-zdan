@@ -93,6 +93,87 @@
   font-weight: 600;
 }
 
+/* --- wartości na przewodach, strzałki i kroki (PRZ-074) ---------------- */
+
+/* Grot pokazuje kierunek przepływu sygnału na każdym przewodzie. */
+.wiz-grot {
+  fill: var(--wiz-linia);
+}
+
+.wiz-przewod.wiz-nieznane {
+  stroke-dasharray: 4 3;
+  opacity: 0.6;
+}
+
+/* Wartość 1 niesie gruby przewód, 0 cienki. Grubość wspiera słowo PRAWDA/FAŁSZ. */
+.wiz-przewod.wiz-prawda {
+  stroke-width: 3.5;
+}
+
+.wiz-przewod.wiz-falsz {
+  stroke-width: 1.2;
+}
+
+/* Bramka zapala się po swoim kroku: wcześniej jest tylko obrysem. */
+.wiz-bramka .wiz-kształt {
+  fill: #ffffff;
+}
+
+.wiz-bramka.wiz-znana .wiz-kształt {
+  fill: var(--wiz-tlo-kształtu);
+}
+
+/* Bieżąca bramka ma grubszą krawędź — widać ją także bez koloru. */
+.wiz-bramka.wiz-biezaca .wiz-kształt {
+  stroke-width: 3.5;
+}
+
+.wiz-wartosc {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 10px;
+  fill: var(--wiz-tekst);
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.wiz-wartosc-prawda {
+  fill: var(--wiz-akcent);
+  font-weight: 700;
+}
+
+/* Przełączniki wartości wejść. Wciśnięta wartość różni się nie tylko kolorem —
+   widać też obramowanie i pogrubienie, a stan niesie atrybut aria-pressed. */
+.wiz-wejscia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+}
+
+.wiz-wejscie {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.wiz-wejscie-nazwa {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-style: italic;
+  min-width: 1.25rem;
+}
+
+.wiz-przelacznik[aria-pressed="true"] {
+  background: var(--wiz-akcent);
+  border-color: var(--wiz-akcent);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.wiz-kroki {
+  margin-top: 0.25rem;
+}
+
 /* --- diagramy zbiorów -------------------------------------------------- */
 
 .wiz-diagramy {
