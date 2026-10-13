@@ -6,7 +6,7 @@ zaczyna logikę na studiach.
 
 ## 14 praw
 
-Numeracja i wzory z wykładu. Główny zapis to `∼` (negacja) i `≡` (równoważność).
+Numeracja i wzory z wykładu (T1–T14). Główny zapis to `∼` (negacja) i `≡` (równoważność).
 
 | # | Prawo | Formuła |
 |---|---|---|
@@ -27,14 +27,31 @@ Numeracja i wzory z wykładu. Główny zapis to `∼` (negacja) i `≡` (równow
 
 W innych książkach spotkasz `¬p` i `p ↔ q` — to ten sam spójnik.
 
+## Ścieżka kursu
+
+Materiał idzie w kolejności wykładu. Każda lekcja kończy się odnośnikiem „następna lekcja”:
+
+`/wstep` → `/formuly` → `/tautologie` → `/przeksztalcanie` → `/kpn` → `/prawa` →
+`/plac-zabaw` → `/quiz`
+
 ## Funkcje strony
 
+- ścieżka kursu — osiem lekcji od wstępu do quizu, w kolejności wykładu,
 - interaktywne tablice prawdy — klikasz wartość zmiennej i widzisz wynik,
 - krokowe przekształcenia — każdy krok z nazwą użytego prawa,
+- strona KPN — klauzule i koniunkcyjna postać normalna krok po kroku,
 - wizualizacje — bramki logiczne oraz diagramy zbiorów dla de Morgana,
 - plac zabaw — wpisujesz formułę, dostajesz uproszczenie i tablicę prawdy,
 - quiz z podpowiedziami,
 - słowniczek pojęć.
+
+## Jak korzystać ze strony
+
+1. Przejdź lekcje po kolei — od `/wstep` do `/kpn`. Każda tłumaczy jeden temat wykładu.
+2. Na stronie prawa znajdziesz wyjaśnienie, przykład, kroki, tablicę prawdy i częste błędy.
+3. W tablicy prawdy klikasz wartości zmiennych, a wynik widzisz jako słowo i liczbę.
+4. W plac zabaw wpisz formułę i sprawdź jej uproszczenie oraz tablicę prawdy.
+5. Quiz sprawdza odpowiedzi i pokazuje wyjaśnienie po polsku.
 
 ## Uruchomienie
 

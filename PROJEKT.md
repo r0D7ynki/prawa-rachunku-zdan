@@ -28,10 +28,14 @@ w tablicy prawdy i wiedzieć, kiedy go użyć w przekształceniach.
 | Data | Stan |
 |---|---|
 | 2026-10-13 | Fundament: fabryka Flask, auto-rejestracja widoków, bramka, kontrakty, tablica Kanban i rój. |
+| 2026-10-13 | Zamknięcie: 14 praw T1–T14 z pełną treścią, ścieżka kursu `/wstep`…`/kpn`, plac zabaw, quiz. Bramka `./scripts/gate.sh` zielona, tę samą bramkę uruchamia CI na GitHubie. |
 
 ## Rejestr długu
 
-| # | Dług | Kiedy spłacamy |
-|---|---|---|
-| 1 | Brak skanera sekretów `gitleaks` w bramce QA (D9) | gdy właściciel zdecyduje o instalacji |
-| 2 | Brak publikacji publicznej (GitHub Pages nie obsługuje Flask) | osobna karta po zielonym roju |
+| # | Dług | Status | Kiedy spłacamy |
+|---|---|---|---|
+| 1 | Brak skanera sekretów `gitleaks` w bramce QA (D9) | **otwarty** — `./scripts/gate.sh` nadal go nie uruchamia | gdy właściciel zdecyduje o instalacji |
+| 2 | Brak publikacji publicznej (GitHub Pages nie obsługuje Flask) | **spłacony w części** — CI publikuje wynik bramki (`.github/workflows/gate.yml`); publikacja samej strony zostaje otwarta | publikacja strony: osobna karta po zielonym roju |
+
+Żadna pozycja nie jest spłacona w całości — obie czekają na decyzję właściciela.
+Długi zebrane z przeglądów czekają jako karty `Uwaga z PRZ-…` w kolumnie `backlog`.
