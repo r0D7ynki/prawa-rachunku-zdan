@@ -285,11 +285,33 @@ async function porownaj() {
   rysujRownowaznosc(wynikRownowaznosc, dane);
 }
 
-/* Klawiatura symboli: przyciski są prawdziwymi <button>, więc działają
-   z klawiatury (Enter i spacja) bez dodatkowego kodu. */
-document.querySelectorAll("[data-symbol]").forEach((przycisk) => {
-  przycisk.addEventListener("click", () => wstawSymbol(poleFormuly, przycisk.dataset.symbol));
-});
+/** Czyści pole i zostawia w nim kursor. */
+function wyczyscPole(pole) {
+  pole.value = "";
+  pole.focus();
+}
+
+/** Podłącza jeden panel znaków do pola wskazanego w jego atrybucie `data-pole`. */
+function podepnijKlawiature(panel) {
+  const pole = document.getElementById(panel.dataset.pole);
+  if (!pole) {
+    return;
+  }
+
+  panel.querySelectorAll("[data-symbol]").forEach((przycisk) => {
+    przycisk.addEventListener("click", () => wstawSymbol(pole, przycisk.dataset.symbol));
+  });
+
+  const przyciskCzysc = panel.querySelector("[data-czysc]");
+  if (przyciskCzysc) {
+    przyciskCzysc.addEventListener("click", () => wyczyscPole(pole));
+  }
+}
+
+/* Każdy panel znaków mówi w `data-pole`, do którego pola wstawia znaki — dzięki temu
+   ten sam kod obsługuje pole pierwszej i drugiej formuły. Przyciski to prawdziwe
+   <button>, więc działają z klawiatury (Enter i spacja) bez dodatkowego kodu. */
+document.querySelectorAll(".klawiatura-symboli[data-pole]").forEach(podepnijKlawiature);
 
 /* Przykłady: kliknięcie wypełnia pole i od razu liczy wynik.
    Bez JavaScriptu ten sam odnośnik prowadzi do /plac-zabaw?formula=... . */

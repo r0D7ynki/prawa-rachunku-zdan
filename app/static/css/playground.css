@@ -10,6 +10,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  margin-top: 0.5rem;
 }
 
 .btn-symbol {
@@ -17,6 +18,11 @@
   font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
   font-size: 1.2rem;
   line-height: 1.2;
+}
+
+/* „Wyczyść” to zwykłe słowo, nie symbol — mniejsza czcionka, żeby nie konkurowało ze znakami. */
+.btn-czysc {
+  font-size: 0.9rem;
 }
 
 .lista-przykladow {

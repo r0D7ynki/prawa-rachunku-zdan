@@ -7,6 +7,41 @@
 {% endblock %}
 
 {% block tresc %}
+  {#
+    Znaki panelu w kolejności od negacji do nawiasów. Najpierw znaki z wykładu
+    (∼, ≡), zaraz za nimi popularne odpowiedniki (¬, ↔) — tak jak w decyzji D15.
+  #}
+  {% set znaki_panelu = ["∼", "¬", "∧", "∨", "→", "≡", "↔", "(", ")"] %}
+
+  {#
+    Panel znaków stoi przy każdym polu formuły. Atrybut `data-pole` mówi skryptowi,
+    do którego pola panel wstawia znaki, a `aria-label` mówi czytnikowi ekranu,
+    przy którym polu stoi.
+  #}
+  {% macro klawiatura(id_pola, opis_pola, znaki) %}
+    <div
+      class="klawiatura-symboli"
+      role="group"
+      aria-label="Znaki do {{ opis_pola }}"
+      data-pole="{{ id_pola }}"
+    >
+      {% for symbol in znaki %}
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-symbol"
+          data-symbol="{{ symbol }}"
+          aria-label="Wstaw {{ symbol }} do {{ opis_pola }}"
+        >{{ symbol }}</button>
+      {% endfor %}
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-czysc"
+        data-czysc
+        aria-label="Wyczyść pole {{ opis_pola }}"
+      >Wyczyść</button>
+    </div>
+  {% endmacro %}
+
   <header class="naglowek-strony">
     <h1>Plac zabaw</h1>
     <p class="lead">
@@ -36,21 +71,11 @@
         aria-describedby="podpowiedz-formula"
       />
       <p id="podpowiedz-formula" class="text-muted small mb-2">
-        Używaj symboli ¬, ∧, ∨, →, ↔ oraz nawiasów. Litery to zmienne, np. p i q.
+        Używaj symboli ∼, ∧, ∨, →, ≡ oraz nawiasów. Litery to zmienne, np. p i q.
+        Przyjmujemy też zapis z innych książek: ¬ zamiast ∼ albo ↔ zamiast ≡.
       </p>
 
-      <div class="klawiatura-symboli" role="group" aria-label="Klawiatura symboli">
-        {% for symbol in symbole %}
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-symbol"
-            data-symbol="{{ symbol }}"
-            aria-label="Wstaw symbol {{ symbol }}"
-          >
-            {{ symbol }}
-          </button>
-        {% endfor %}
-      </div>
+      {{ klawiatura("pole-formula", "pierwszej formuły", znaki_panelu) }}
 
       <p class="mb-1 mt-3">Przykłady na start:</p>
       <ul class="lista-przykladow list-inline mb-3">
@@ -125,6 +150,8 @@
         autocomplete="off"
         spellcheck="false"
       />
+
+      {{ klawiatura("pole-druga", "drugiej formuły", znaki_panelu) }}
 
       <button type="submit" id="przycisk-porownaj" class="btn btn-primary mt-3">
         Porównaj
