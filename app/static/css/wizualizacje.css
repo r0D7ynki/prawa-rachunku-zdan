@@ -1,18 +1,25 @@
 /* Style rysunków na stronie prawa: schemat bramek i diagram zbiorów (karta PRZ-012,
    przeniesione na serwer kartą PRZ-123).
 
-   Kolor nigdy nie jest jedynym nośnikiem informacji: każdy kształt ma napis, każde
-   pole ma `<title>` i `aria-label`, a opis kroku stoi tekstem pod rysunkiem. */
+   Kolejne kroki rysunku różnią się widocznie (karta PRZ-141): w diagramie zbiorów
+   obszar nowy niesie mocny akcent, a obszar z poprzedniego kroku — słaby; w schemacie
+   bramek zapala się bramka bieżącego kroku i jej przewody wejściowe. Kolor nigdy nie
+   jest jedynym nośnikiem informacji: każdy kształt ma napis, każde pole ma `<title>`
+   i `aria-label`, a opis kroku stoi tekstem pod rysunkiem. */
 
 /* Kolory rysunku pochodzą wyłącznie z tokenów motywu (`app.css`), więc oba
    motywy obsługuje jeden zestaw reguł — nie ma tu drugiego bloku trybu ciemnego. */
 .wiz-figura {
   --wiz-akcent: var(--akcent);
-  --wiz-obszar-2: var(--prawda-tlo);
   --wiz-tlo-ksztaltu: var(--formula-tlo);
   --wiz-linia: var(--ramka);
   --wiz-tekst: var(--tekst);
   --wiz-tlo: var(--komorka-tlo);
+
+  /* „Słaby akcent” dla obszaru z poprzedniego kroku rysunku (karta PRZ-141):
+     ten sam fiolet co akcent, tylko rozjaśniony — token tła wzoru jest
+     dokładnie takim odcieniem i zmienia się razem z motywem. */
+  --akcent-slabo: var(--formula-tlo);
 
   margin-bottom: 1.5rem;
 }
@@ -127,6 +134,11 @@
   stroke-width: 1.2;
 }
 
+/* Przewód wejściowy bramki bieżącego kroku (karta PRZ-141) — pełny kolor akcentu. */
+.wiz-przewod.przewod-aktywny {
+  stroke: var(--wiz-akcent);
+}
+
 /* Przewód, którego jeszcze nie policzyliśmy, jest przecięty i opisany znakiem zapytania. */
 .wiz-przewod.wiz-nieznane {
   stroke-dasharray: 4 3;
@@ -161,6 +173,15 @@
   stroke-width: 3.5;
 }
 
+/* Krok rysunku bramek (karta PRZ-141): bramka bieżącego kroku dostaje kolor
+   akcentu i grubszą krawędź, więc wyróżnia się bez czytania opisu. Bramki
+   z poprzednich kroków niosą klasę `bramka-policzona` i opis w <title>. */
+.bramka-aktywna .wiz-ksztalt {
+  fill: var(--akcent);
+  fill-opacity: 0.2;
+  stroke-width: 3.5;
+}
+
 .wiz-symbol,
 .wiz-napis {
   font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
@@ -183,11 +204,26 @@
   stroke-linejoin: round;
 }
 
+/* Wartość na przewodzie bieżącej bramki piszemy słowem (PRAWDA/FAŁSZ), więc
+   napis jest dłuższy i musi zmieścić się między bramkami (karta PRZ-141). */
+.wiz-wartosc-slownie {
+  font-size: 9px;
+  font-weight: 600;
+}
+
 .wiz-legenda-svg {
   font-size: 12px;
 }
 
 /* --- diagram zbiorów --------------------------------------------------- */
+
+/* Etykieta operacji w pasie nad rysunkiem: „Dopełnienie — wszystko poza…”. */
+.wiz-etykieta-kroku {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  fill: var(--wiz-akcent);
+  font-size: 14px;
+  font-weight: 600;
+}
 
 .wiz-przestrzen {
   fill: var(--wiz-tlo);
@@ -201,21 +237,25 @@
   stroke-width: 2;
 }
 
-.wiz-probka {
-  fill: none;
-}
+/* Prostokąt próbki nie ma własnego koloru — bierze go z warstwy obszaru
+   (`<g class="obszar-…">`). Własne `fill` na prostokącie przesłaniałoby kolor
+   grupy, więc obszar zostałby niewidoczny (błąd naprawiony kartą PRZ-141). */
 
 /* Dwa obszary mają różne kolory i własne opisy, więc kolor tylko wspiera treść.
-   Bierzemy je z tokenów tła, dzięki czemu w trybie ciemnym są ciemnymi
-   odcieniami, a nie jasnymi plamami na ciemnym panelu (karta PRZ-139). */
-.obszar-1 {
-  fill: var(--formula-tlo);
-  opacity: 0.75;
+   Krok rysunku dzieli obszar na „nowy” (mocny akcent) i „z poprzedniego kroku”
+   (słaby akcent), żeby kolejne kroki różniły się na pierwszy rzut oka
+   (karta PRZ-141). Oba kolory pochodzą z tokenów motywu, więc tryb ciemny
+   zmienia je razem z paletą (karta PRZ-139). */
+.obszar-1,
+.obszar-nowy {
+  fill: var(--akcent);
+  opacity: 0.5;
 }
 
-.obszar-2 {
-  fill: var(--wiz-obszar-2);
-  opacity: 0.75;
+.obszar-2,
+.obszar-poprzedni {
+  fill: var(--akcent-slabo);
+  opacity: 0.85;
 }
 
 .wiz-blad {

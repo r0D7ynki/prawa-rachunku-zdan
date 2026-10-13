@@ -16,6 +16,13 @@ Dwie listy kroków prowadzą czytelnika przez wzór:
 Krok ``i`` (liczony od zera) pokazuje stan po ``i``-tej operacji, a ``krok=None``
 znaczy „cała formuła”. Numer spoza listy jest przycinany do jej końców, tak jak
 w komponencie kroków ``stepper.js``.
+
+Od karty PRZ-141 każdy krok rysunku zbiorów jest **widocznie inny** od poprzedniego:
+obszar bieżącego kroku dzielimy na dwa kolory. Mocnym akcentem (``obszar-nowy``)
+malujemy to, co dokłada bieżąca operacja, a słabym (``obszar-poprzedni``) — część,
+która przyszła z kroku wcześniej. Suma obu warstw to zawsze obszar bieżącego kroku.
+Nad rysunkiem stoi etykieta operacji („Suma — obszar, który pokrywa p albo q.”),
+a schemat bramek zapala bramkę bieżącego kroku klasą ``bramka-aktywna``.
 """
 
 from __future__ import annotations
@@ -50,6 +57,9 @@ BOK_PROBKI = 10
 #: Rozmiar rysunku zbiorów: cała przestrzeń to ten prostokąt.
 SZEROKOSC_ZBIOROW = KOLUMNY_SIATKI * BOK_PROBKI
 WYSOKOSC_ZBIOROW = WIERSZE_SIATKI * BOK_PROBKI
+
+#: Wysokość pasa nad rysunkiem zbiorów: mieści etykietę operacji (karta PRZ-141).
+WYSOKOSC_ETYKIETY = 34
 
 #: Układy kół dla jednego, dwóch i trzech zbiorów: ``(środek x, środek y, promień)``.
 UKLADY: dict[int, tuple[tuple[float, float, float], ...]] = {
@@ -144,10 +154,15 @@ def _srodek(kolumna: int, rzad: float) -> tuple[float, float]:
     return x, y
 
 
-def _prostokat(x: float, y: float, klasa: str, napis: str) -> str:
-    """Prostokąt bramki albo zmiennej razem z jej napisem."""
+def _prostokat(x: float, y: float, klasa: str, napis: str, tytul: str) -> str:
+    """Prostokąt bramki albo zmiennej razem z jej napisem i opisem słownym.
+
+    ``<title>`` niesie wartość słowami, więc kolor i grubość krawędzi nigdy nie
+    są jedynym nośnikiem informacji (karta PRZ-141).
+    """
     return (
         f'      <g class="{klasa}">\n'
+        f"        <title>{tytul}</title>\n"
         f'        <rect class="wiz-ksztalt" x="{x - BRAMKA_SZEROKOSC / 2:g}" '
         f'y="{y - BRAMKA_WYSOKOSC / 2:g}" width="{BRAMKA_SZEROKOSC}" '
         f'height="{BRAMKA_WYSOKOSC}" rx="6" />\n'
@@ -157,14 +172,32 @@ def _prostokat(x: float, y: float, klasa: str, napis: str) -> str:
     )
 
 
+def _opis_prostokata(czesc: Node, wartosc: bool | None) -> str:
+    """Opis bramki słowami: co to za bramka i jaką ma wartość."""
+    nazwa = (
+        f"Zmienna {czesc.name}"
+        if isinstance(czesc, Var)
+        else f"Bramka {SYMBOLE[type(czesc)]} dla {to_text(czesc)}"
+    )
+    if wartosc is None:
+        return f"{nazwa}: wartość jeszcze nieznana."
+    return f"{nazwa}: {_slowo(wartosc)} ({_cyfra(wartosc)})."
+
+
 def _przewod(
     od: tuple[float, float],
     do: tuple[float, float],
     wartosc: bool | None,
     opis: str,
     krok: int,
+    aktywny: bool = False,
 ) -> str:
-    """Przewód ze strzałką na końcu i wartością w ``<title>`` (słowami)."""
+    """Przewód ze strzałką na końcu i wartością w ``<title>`` (słowami).
+
+    ``aktywny`` znaczy „to przewód wejściowy bramki bieżącego kroku”: taki
+    przewód dostaje klasę ``przewod-aktywny``, a jego wartość piszemy słowami,
+    nie cyfrą — widać, co zasila bramkę, którą właśnie liczymy (karta PRZ-141).
+    """
     x1 = od[0] + BRAMKA_SZEROKOSC / 2
     y1 = od[1]
     x2 = do[0] - BRAMKA_SZEROKOSC / 2
@@ -178,12 +211,15 @@ def _przewod(
     else:
         klasa = "wiz-przewod " + ("wiz-prawda" if wartosc else "wiz-falsz")
         tytul = f"Przewód z {opis}: {_slowo(wartosc)} ({_cyfra(wartosc)})."
-        znaczek = _cyfra(wartosc)
+        znaczek = _slowo(wartosc) if aktywny else _cyfra(wartosc)
+    if aktywny:
+        klasa += " przewod-aktywny"
+    klasa_znaczka = "wiz-wartosc" + (" wiz-wartosc-slownie" if aktywny else "")
     return (
         f"      <g>\n"
         f'        <path class="{klasa}" d="{sciezka}" '
         f'marker-end="url(#{_id_grota(wartosc, krok)})"><title>{tytul}</title></path>\n'
-        f'        <text class="wiz-wartosc" x="{srodek:g}" y="{(y1 + y2) / 2 - 6:g}" '
+        f'        <text class="{klasa_znaczka}" x="{srodek:g}" y="{(y1 + y2) / 2 - 6:g}" '
         f'text-anchor="middle">{znaczek}</text>\n'
         f"      </g>"
     )
@@ -248,6 +284,11 @@ def gates_svg(node: Node, wartosci: dict[str, bool], krok: int | None = None) ->
     Wartości podformuł liczy :func:`app.logic.formula.evaluate`. Gdy podano ``krok``
     (indeks w :func:`kroki_gates`), bramki policzone później pokazują ``?`` i mają
     przecięty przewód — widać, że wynik jeszcze nie zapadł.
+
+    Krok ``i`` zapala dokładnie jedną bramkę: jej prostokąt ma klasę
+    ``bramka-aktywna``, a przewody wejściowe ``przewod-aktywny``. Bramki
+    policzone wcześniej mają ``bramka-policzona``, więc różnica między krokami
+    jest widoczna bez czytania opisu (karta PRZ-141).
     """
     _sprawdz_wartosci(node, wartosci)
     kolumny, rzedy = _uklad(node)
@@ -269,19 +310,24 @@ def gates_svg(node: Node, wartosci: dict[str, bool], krok: int | None = None) ->
                 wartosc,
                 to_text(dziecko),
                 numer_kroku,
+                aktywny=rodzic == biezaca,
             )
         )
 
     for czesc in _wezly(node):
         x, y = _srodek(kolumny[czesc], rzedy[czesc])
+        klasa = "wiz-bramka"
         if isinstance(czesc, Var):
-            klasa, napis = "wiz-bramka wiz-zmienna", escape(czesc.name)
+            klasa += " wiz-zmienna"
+            napis = escape(czesc.name)
         else:
-            klasa = "wiz-bramka"
-            klasa += " wiz-biezaca" if czesc == biezaca else ""
-            klasa += " wiz-znana" if czesc in znane else ""
             napis = SYMBOLE[type(czesc)]
-        elementy.append(_prostokat(x, y, klasa.strip(), napis))
+        if czesc == biezaca:
+            klasa += " wiz-biezaca bramka-aktywna"
+        elif czesc in znane:
+            klasa += " wiz-znana bramka-policzona"
+        wartosc = evaluate(czesc, wartosci) if czesc in znane else None
+        elementy.append(_prostokat(x, y, klasa, napis, _opis_prostokata(czesc, wartosc)))
 
     tytul = f"Schemat bramek dla wzoru {to_text(node)}. Krok {numer_kroku + 1}: {to_text(biezaca)}."
     return Markup(
@@ -400,10 +446,17 @@ def _prostokaty(siatka: list[list[bool]]) -> list[str]:
 
 
 def _warstwa(siatka: list[list[bool]], klasa: str, tytul: str) -> str:
-    """Warstwa obszaru: prostokąty próbek razem z opisem słownym."""
-    wnetrze = "\n".join(_prostokaty(siatka))
+    """Warstwa obszaru: prostokąty próbek razem z opisem słownym.
+
+    Pusta warstwa zostaje bez ``role="img"`` — nie ma czego pokazywać, a czytnik
+    ekranu nie powinien zapowiadać obrazka bez treści. Klasa i ``<title>``
+    zostają, żeby krok zawsze miał obie warstwy (karta PRZ-141).
+    """
+    prostokaty = _prostokaty(siatka)
+    atrybuty = ' role="img"' if prostokaty else ""
+    wnetrze = "\n".join(prostokaty)
     return (
-        f'      <g class="{klasa}" role="img" aria-label="{escape(tytul)}">\n'
+        f'      <g class="{klasa}"{atrybuty} aria-label="{escape(tytul)}">\n'
         f"        <title>{tytul}</title>\n{wnetrze}\n      </g>"
     )
 
@@ -431,19 +484,88 @@ def _rysunek_zbiorow(
     return "\n".join(czesci)
 
 
-def _warstwy_kroku(node: Node, krok: int) -> list[tuple[Node, str]]:
-    """Formuły zamalowywane w danym kroku: ``(węzeł, klasa obszaru)``.
+def _etykieta_zbioru(czesc: Node) -> str:
+    """Etykieta operacji nad rysunkiem: nazwa operacji i obszar, którego dotyczy.
 
-    Krok rysuje operandy bieżącej operacji — dwa koła dla sumy, części wspólnej
-    i równoważności, a dla dopełnienia zbiór i wszystko poza nim. Dzięki temu
-    widać, z czego powstaje wynik, a nie tylko sam gotowy obszar.
+    Nazwy są te same co w ``kroki_sets`` („suma”, „dopełnienie”, „część wspólna”),
+    więc etykieta i opis kroku mówią o tym samym (karta PRZ-141).
     """
-    czesc = subformulas(node)[krok]
+    if isinstance(czesc, Var):
+        return f"Zbiór {czesc.name} — całe koło tej zmiennej."
     if isinstance(czesc, Not):
-        return [(czesc.child, "obszar-1"), (czesc, "obszar-2")]
-    if isinstance(czesc, (And, Or, Imp, Iff)):
-        return [(czesc.left, "obszar-1"), (czesc.right, "obszar-2")]
-    return [(czesc, "obszar-1")]
+        return f"Dopełnienie — wszystko poza zbiorem {to_text(czesc.child)}."
+    if isinstance(czesc, And):
+        return (
+            f"Część wspólna — obszar wspólny zbiorów "
+            f"{to_text(czesc.left)} i {to_text(czesc.right)}."
+        )
+    if isinstance(czesc, Or):
+        return f"Suma — obszar, który pokrywa {to_text(czesc.left)} albo {to_text(czesc.right)}."
+    if isinstance(czesc, Imp):
+        return (
+            f"Implikacja — obszar {to_text(czesc.left)} mieści się "
+            f"w obszarze {to_text(czesc.right)}."
+        )
+    if isinstance(czesc, Iff):
+        return f"Równoważność — obie strony wzoru {to_text(czesc)} wskazują ten sam obszar."
+    return f"Obszar wzoru {to_text(czesc)}."
+
+
+def _etykieta_svg(tekst: str) -> str:
+    """Etykieta operacji w pasie nad rysunkiem zbiorów (karta PRZ-141)."""
+    return (
+        f'      <text class="wiz-etykieta-kroku" x="{SZEROKOSC_ZBIOROW / 2:g}" '
+        f'y="{-WYSOKOSC_ETYKIETY / 2:g}" text-anchor="middle" dominant-baseline="central">'
+        f"{escape(tekst)}</text>"
+    )
+
+
+def _roznica(siatka: list[list[bool]], odjac: list[list[bool]]) -> list[list[bool]]:
+    """Próbki prawdziwe w pierwszej siatce, a fałszywe w drugiej."""
+    return [
+        [wartosc and not odjeta for wartosc, odjeta in zip(linia, odjac_linia, strict=True)]
+        for linia, odjac_linia in zip(siatka, odjac, strict=True)
+    ]
+
+
+def _czesc_wspolna(a: list[list[bool]], b: list[list[bool]]) -> list[list[bool]]:
+    """Próbki prawdziwe w obu siatkach."""
+    return [
+        [x and y for x, y in zip(linia_a, linia_b, strict=True)]
+        for linia_a, linia_b in zip(a, b, strict=True)
+    ]
+
+
+def _warstwy_kroku(
+    node: Node, krok: int, zmienne: list[str], uklad: tuple[tuple[float, float, float], ...]
+) -> list[tuple[list[list[bool]], str, str]]:
+    """Warstwy jednego kroku: ``(siatka próbek, klasy CSS, opis słowny)``.
+
+    Obszar bieżącego kroku dzielimy na dwie rozłączne części: mocny akcent
+    (``obszar-nowy``) to to, co dokłada bieżąca operacja, a słaby
+    (``obszar-poprzedni``) — część, która przyszła z poprzedniego kroku.
+    Ich suma to zawsze cały obszar kroku, więc widać, co się właśnie zmieniło.
+    """
+    czesci = subformulas(node)
+    biezaca = czesci[krok]
+    siatka = _obszar(biezaca, zmienne, uklad)
+    nowy = (siatka, "obszar-1 obszar-nowy", f"Nowy obszar: {_etykieta_zbioru(biezaca)}")
+    if krok == 0:
+        return [
+            ([], "obszar-2 obszar-poprzedni", "Pierwszy krok — nie ma poprzedniego obszaru."),
+            nowy,
+        ]
+    poprzednia = _obszar(czesci[krok - 1], zmienne, uklad)
+    wspolna = _czesc_wspolna(siatka, poprzednia)
+    tytul = (
+        f"Obszar z poprzedniego kroku: {_etykieta_zbioru(czesci[krok - 1])}"
+        if any(any(linia) for linia in wspolna)
+        else "Obszar z poprzedniego kroku: brak części wspólnej z bieżącym."
+    )
+    return [
+        (wspolna, "obszar-2 obszar-poprzedni", tytul),
+        (_roznica(siatka, poprzednia), "obszar-1 obszar-nowy", nowy[2]),
+    ]
 
 
 def sets_svg(node: Node, krok: int | None = None) -> Markup:
@@ -451,7 +573,9 @@ def sets_svg(node: Node, krok: int | None = None) -> Markup:
 
     Prostokąt to cała przestrzeń, a koła — zbiory zmiennych (najwyżej trzy).
     Obszar zamalowany to próbki siatki, w których formuła jest prawdziwa.
-    Bez ``krok`` rysujemy całą formułę, z ``krok`` — stan po tej operacji.
+    Bez ``krok`` rysujemy całą formułę, z ``krok`` — stan po tej operacji:
+    mocnym akcentem to, co dokłada operacja, słabym — część z poprzedniego
+    kroku, a nad rysunkiem stoi etykieta operacji (karta PRZ-141).
     """
     zmienne = variables(node)
     if len(zmienne) > MAX_ZBIOROW:
@@ -461,19 +585,27 @@ def sets_svg(node: Node, krok: int | None = None) -> Markup:
         )
 
     uklad = UKLADY[len(zmienne)]
-    numer_kroku = _przytnij(krok, len(subformulas(node)))
-    warstwy = [(node, "obszar-1")] if krok is None else _warstwy_kroku(node, numer_kroku)
+    czesci = subformulas(node)
+    numer_kroku = _przytnij(krok, len(czesci))
+    if krok is None:
+        warstwy = [(_obszar(node, zmienne, uklad), "obszar-1 obszar-nowy", "Obszar całej formuły.")]
+        opis_kroku, etykieta = "Cała formuła.", None
+    else:
+        warstwy = _warstwy_kroku(node, numer_kroku, zmienne, uklad)
+        czesc = czesci[numer_kroku]
+        opis_kroku, etykieta = _opis_zbioru(czesc), _etykieta_zbioru(czesc)
 
-    opis_kroku = "Cała formuła." if krok is None else _opis_zbioru(subformulas(node)[numer_kroku])
     elementy = [_rysunek_zbiorow(node, zmienne, uklad)]
-    for czesc, klasa in warstwy:
-        numer_obszaru = "pierwszy" if klasa.endswith("1") else "drugi"
-        tytul = f"Obszar {numer_obszaru}: {_opis_zbioru(czesc)}"
-        elementy.append(_warstwa(_obszar(czesc, zmienne, uklad), klasa, tytul))
+    for siatka, klasa, tytul_warstwy in warstwy:
+        elementy.append(_warstwa(siatka, klasa, tytul_warstwy))
     tytul = f"Diagram zbiorów dla wzoru {to_text(node)}. {opis_kroku}"
+    gora = -WYSOKOSC_ETYKIETY if etykieta else 0
+    wysokosc = WYSOKOSC_ZBIOROW - gora
     return Markup(
-        f'<svg class="wiz-svg wiz-svg-zbiory" viewBox="0 0 {SZEROKOSC_ZBIOROW} '
-        f'{WYSOKOSC_ZBIOROW}" preserveAspectRatio="xMidYMid meet" role="img" '
+        f'<svg class="wiz-svg wiz-svg-zbiory" viewBox="0 {gora} {SZEROKOSC_ZBIOROW} '
+        f'{wysokosc}" preserveAspectRatio="xMidYMid meet" role="img" '
         f'aria-label="{escape(tytul)}">\n'
-        f"    <title>{tytul}</title>\n" + "\n".join(elementy) + "\n</svg>"
+        f"    <title>{tytul}</title>\n"
+        + ("\n".join([_etykieta_svg(etykieta)] + elementy) if etykieta else "\n".join(elementy))
+        + "\n</svg>"
     )
