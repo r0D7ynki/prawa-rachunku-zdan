@@ -1,7 +1,9 @@
 {# Partial: krokowe przekształcenia. Wypełniają karty PRZ-013 i PRZ-077.
    Wejście: `formula` (tekst formuły w Unicode), opcjonalnie `cel` ("auto"|"nnf"|"dnf"|"cnf").
    Skrypt `steps.js` dorysowuje kroki, pasek prowadzenia (komponent `createStepper`)
-   i podsumowanie. Na stronie prawa partial dostaje też `prawo`, którego tu nie używamy. #}
+   i podsumowanie. Na stronie prawa partial dostaje też `prawo`, którego tu nie używamy.
+   Od PRZ-123 pod krokami stoją oba rysunki prawa (schemat bramek i diagram zbiorów):
+   prawo z wizualizacją „chain” pokazuje je tak samo jak pozostałe. #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/steps.css') }}" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
 <div class="steps-mount" data-formula="{{ formula }}" data-cel="{{ cel|default('auto') }}"
@@ -17,3 +19,10 @@
   </p>
 </div>
 <script type="module" src="{{ url_for('static', filename='js/steps.js') }}"></script>
+
+{% from "partials/_diagramy.html" import figura, stopka, zasoby %}
+
+{{ zasoby() }}
+{{ figura(formula, bramki, "gates-mount", "bramki-logiczne", "Schemat bramek", "rysunek-bramek") }}
+{{ figura(formula, zbiory, "sets-mount", "diagramy-zbiorow", "Diagram zbiorów", "rysunek-zbiorow") }}
+{{ stopka() }}

@@ -1,13 +1,15 @@
-"""Testy wizualizacji: schemat bramek i diagramy zbiorów (karty PRZ-012, PRZ-074, PRZ-075).
+"""Testy wizualizacji: schemat bramek i diagram zbiorów (karty PRZ-012, PRZ-074, PRZ-075, PRZ-123).
 
-Rysunki powstają w przeglądarce z drzewa ``ast``, więc testy nie mogą narysować SVG.
-Sprawdzają więc dwie rzeczy, które da się sprawdzić bez przeglądarki:
+Od PRZ-123 rysunki liczy serwer (``app/logic/diagrams.py``), więc testy sprawdzają:
 
-* co partial oddaje serwerowi (atrybuty kontenera, pliki statyczne, ``<noscript>``,
-  kroki prawa wpisane w ``[data-kroki]``),
-* jak zbudowany jest skrypt — czy drzewo z API trafia do DOM wyłącznie przez
-  ``textContent`` i ``document.createElementNS``, czy każdy element dostaje ``<title>``,
-  czy kroki prowadzi ``createStepper`` i czy każdy błąd ma komunikat po polsku.
+* co partial oddaje serwerowi — gotowy ``<svg>``, dwie strzałki, listę opisów kroków,
+* jak zbudowany jest ``wizualizacje.js``: podmienia krok z ``<template>``, nie pisze
+  przez ``innerHTML`` i nic nie pobiera z API,
+* że strona prawa nie wraca już do rysowania w przeglądarce.
+
+Sekcje o ``gates.js`` i ``sets.js`` opisują pliki, które zostały w repozytorium jako
+nieużywane („Do zgłoszenia” w karcie PRZ-123). Testy pilnują, że nie zmieniły się
+przypadkiem, dopóki ktoś ich nie usunie razem z tymi testami.
 
 Wzorzec testu źródłowego jest ten sam, co w ``tests/test_czesc_kroki.py``.
 """
@@ -16,13 +18,15 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from flask import render_template
-from markupsafe import escape
+from markupsafe import Markup, escape
 
 from app import create_app
+from app.blueprints import laws as widoki
+from app.logic.diagrams import kroki_sets
+from app.logic.formula import parse
 from app.logic.laws import all_laws
 
 KATALOG_STATYCZNY = Path(__file__).resolve().parents[1] / "app" / "static"
@@ -38,6 +42,10 @@ FORMULA_ZBIORY = "∼(p ∨ q) ≡ (∼p ∧ ∼q)"
 
 #: Slugi praw rysowanych diagramami zbiorów — dla testów kroków (PRZ-075).
 PRAWA_ZBIOROW = [law.slug for law in all_laws() if law.wizualizacja == "sets"]
+
+#: Prawa używane w testach partiali: jedno z bramkami, jedno ze zbiorami.
+PRAWO_BRAMKI = next(law for law in all_laws() if law.wizualizacja == "gates")
+PRAWO_ZBIOROW = next(law for law in all_laws() if law.wizualizacja == "sets")
 
 
 @pytest.fixture
@@ -55,144 +63,156 @@ def _renderuj(aplikacja, partial: str, **zmienne):
         return render_template(partial, **zmienne)
 
 
-# ---------------------------------------------------------------------------
-# Partial _gates.html
-# ---------------------------------------------------------------------------
+def _rysunki(prawo) -> dict:
+    """Kontekst rysunków taki, jaki do szablonu podaje ``strona_prawa``."""
+    return {"formula": prawo.formula, **widoki.diagramy(prawo)}
 
 
-def test_bramki_renderuja_kontener_z_formula(aplikacja):
-    html = _renderuj(aplikacja, "partials/_gates.html", formula=FORMULA_BRAMKI)
+# ---------------------------------------------------------------------------
+# Partiale rysunków — rysunek powstaje na serwerze (karta PRZ-123)
+# ---------------------------------------------------------------------------
+
+#: Partial rysunków razem z klasą montażu, rolą, rolą rysunku i tytułem figury.
+PARTIALE = (
+    ("partials/_gates.html", PRAWO_BRAMKI, "gates-mount", "bramki-logiczne", "rysunek-bramek"),
+    ("partials/_sets.html", PRAWO_ZBIOROW, "sets-mount", "diagramy-zbiorow", "rysunek-zbiorow"),
+)
+
+#: Partial rysunków razem ze słownikiem kroków, z którego korzysta ``diagramy()``.
+PARTIALE_Z_KROKAMI = (
+    ("partials/_gates.html", PRAWO_BRAMKI, "bramki"),
+    ("partials/_sets.html", PRAWO_ZBIOROW, "zbiory"),
+)
+
+
+@pytest.mark.parametrize(
+    ("partial", "prawo", "klasa", "rola", "rola_rysunku"), PARTIALE, ids=["bramki", "zbiory"]
+)
+def test_partial_wstawia_gotowy_svg_z_serwera(aplikacja, partial, prawo, klasa, rola, rola_rysunku):
+    """Kryterium PRZ-123: rysunek liczy Python, a partial wstawia gotowy ``<svg>``."""
+    html = _renderuj(aplikacja, partial, **_rysunki(prawo))
+
+    poczatek = html.index(f'data-rola="{rola_rysunku}"')
+    koniec = html.index("</svg>", poczatek)
+
+    assert f'class="{klasa}"' in html
+    assert f'data-rola="{rola}"' in html
+    assert f'data-formula="{escape(prawo.formula)}"' in html, "komponent nie zna wzoru prawa"
+    assert "<svg" in html[poczatek:koniec], "rysunek musi stać w kontenerze, nie w szablonie"
+
+
+def test_partial_bramek_pokazuje_oba_rysunki(aplikacja):
+    """Kryterium PRZ-123: strona prawa ma schemat bramek i diagram zbiorów."""
+    html = _renderuj(aplikacja, "partials/_gates.html", **_rysunki(PRAWO_BRAMKI))
 
     assert 'class="gates-mount"' in html
-    assert f'data-formula="{FORMULA_BRAMKI}"' in html
-    assert 'data-rola="bramki-logiczne"' in html
+    assert 'class="sets-mount"' in html
+    assert "Schemat bramek" in html
+    assert "Diagram zbiorów" in html
 
 
-def test_bramki_dolaczaja_skrypt_i_style(aplikacja):
-    html = _renderuj(aplikacja, "partials/_gates.html", formula=FORMULA_BRAMKI)
+def test_partial_zbiorow_stawia_zbior_pierwszy(aplikacja):
+    html = _renderuj(aplikacja, "partials/_sets.html", **_rysunki(PRAWO_ZBIOROW))
 
-    assert "/static/js/gates.js" in html
-    assert "/static/css/wizualizacje.css" in html
+    assert html.index('class="sets-mount"') < html.index('class="gates-mount"')
+
+
+def test_partial_dolacza_skrypt_strzalek_i_arkusz(aplikacja):
+    html = _renderuj(aplikacja, "partials/_gates.html", **_rysunki(PRAWO_BRAMKI))
+
+    assert "/static/js/wizualizacje.js" in html
     assert 'type="module"' in html, "skrypt musi być modułem ES"
+    assert html.count("/static/css/wizualizacje.css") == 1
+    assert "url_for" not in html, "adresy plików statycznych rozwiązuje url_for"
 
 
-def test_bramki_obsluguja_brak_javascriptu(aplikacja):
-    html = _renderuj(aplikacja, "partials/_gates.html", formula=FORMULA_BRAMKI)
+def test_partial_nie_rysuje_juz_w_przegladarce(aplikacja):
+    """Kryterium PRZ-123: stare skrypty i API zniknęły z partialu."""
+    html = _renderuj(aplikacja, "partials/_sets.html", **_rysunki(PRAWO_ZBIOROW))
+
+    assert "/static/js/gates.js" not in html
+    assert "/static/js/sets.js" not in html
+    assert "/api/formula" not in html, "rysunek nie potrzebuje API"
+
+
+@pytest.mark.parametrize(
+    ("partial", "prawo", "zbior"), PARTIALE_Z_KROKAMI, ids=["bramki", "zbiory"]
+)
+def test_partial_ma_dwie_strzalki_i_tyle_szablonow_co_krokow(aplikacja, partial, prawo, zbior):
+    """Bez numerków kroków: dwie strzałki na rysunek i gotowe kroki w ``<template>``.
+
+    Partial pokazuje oba rysunki (kryterium PRZ-123), więc kroków i strzałek jest
+    dwa razy tyle, ile ma jeden rysunek.
+    """
+    kroki = widoki.diagramy(prawo)[zbior]["kroki"]
+    drugi = "bramki" if zbior == "bramki" else "zbiory"
+    assert len(widoki.diagramy(prawo)[drugi]["kroki"]) == len(kroki), (
+        "oba rysunki mają te same kroki"
+    )
+
+    html = _renderuj(aplikacja, partial, **_rysunki(prawo))
+
+    assert html.count("<button") == 4, "dwie strzałki na każdy z dwóch rysunków"
+    assert 'aria-label="Poprzedni krok"' in html
+    assert 'aria-label="Następny krok"' in html
+    assert html.count("<template") == 2 * len(kroki)
+    assert html.count("</li>") == 2 * len(kroki), "lista opisów ma po jednym punkcie na krok"
+    assert kroki[0]["opis"] in html
+
+
+def test_partial_ma_noscript(aplikacja):
+    html = _renderuj(aplikacja, "partials/_gates.html", **_rysunki(PRAWO_BRAMKI))
 
     assert "<noscript>" in html
     assert "JavaScript" in html
 
 
-def test_bramki_nie_zostawiaja_nieuzupelnionych_szablonow(aplikacja):
-    html = _renderuj(aplikacja, "partials/_gates.html", formula=FORMULA_BRAMKI)
+@pytest.mark.parametrize("partial", ["partials/_gates.html", "partials/_sets.html"])
+def test_partial_nie_zostawia_nieuzupelnionych_szablonow(aplikacja, partial):
+    prawo = PRAWO_BRAMKI if "gates" in partial else PRAWO_ZBIOROW
+    html = _renderuj(aplikacja, partial, **_rysunki(prawo))
 
     assert "{{" not in html
     assert "{%" not in html
 
 
-def test_bramki_escapuja_formule_w_atrybucie(aplikacja):
-    html = _renderuj(aplikacja, "partials/_gates.html", formula='" onmouseover="alert(1)')
+@pytest.mark.parametrize("partial", ["partials/_gates.html", "partials/_sets.html"])
+def test_partial_bez_danych_rysunkow_pokazuje_komunikat(aplikacja, partial):
+    """``_steps.html`` renderuje się także bez kontekstu rysunków — nie może się wywrócić."""
+    html = _renderuj(aplikacja, partial, formula=FORMULA_BRAMKI)
 
-    assert 'onmouseover="' not in html, "cudzysłów we wzorze nie może wyjść z atrybutu"
+    assert "Rysunek pojawi się" in html
+    assert "{{" not in html
+
+
+def test_partial_escapuja_wzor_w_atrybucie(aplikacja):
+    """Wzór idzie do atrybutu, więc cudzysłów nie może wyjść z atrybutu."""
+    kroki = [
+        {
+            "opis": "Opis kroku.",
+            "wzor": Markup("<i>p</i>"),
+            "svg": Markup('<svg class="wiz-svg"><title>Rysunek</title></svg>'),
+        }
+    ]
+
+    html = _renderuj(
+        aplikacja,
+        "partials/_gates.html",
+        formula='" onmouseover="alert(1)',
+        bramki={"kroki": kroki},
+        zbiory=None,
+    )
+
+    assert 'onmouseover="alert(1)"' not in html, "cudzysłów we wzorze nie może wyjść z atrybutu"
     assert "&#34;" in html
     assert 'data-rola="bramki-logiczne">' in html, "znacznik kontenera musi się domykać"
 
 
-def test_bramki_pokazuja_wzor_bez_javascriptu(aplikacja):
-    """Kryterium PRZ-074: bez JavaScriptu zostaje wzór i komunikat, nie pusty kontener."""
-    html = _renderuj(aplikacja, "partials/_gates.html", formula=FORMULA_BRAMKI)
+def test_partial_mowi_o_limicie_zbiorow(aplikacja):
+    """Kryterium PRZ-075: partial mówi po polsku, ile zbiorów zmieści rysunek."""
+    html = _renderuj(aplikacja, "partials/_sets.html", formula="p ∧ q")
 
-    assert "Wzór:" in html
-    assert FORMULA_BRAMKI in html
-
-
-def test_bramki_pokazuja_opis_slowny_gdy_strona_go_podaje(aplikacja):
-    """Strona prawa (PRZ-010) wstawia partial z obiektem ``prawo`` w kontekście."""
-    prawo = SimpleNamespace(
-        formula=FORMULA_BRAMKI, po_ludzku="Zdanie jest prawdziwe albo fałszywe."
-    )
-
-    html = _renderuj(aplikacja, "partials/_gates.html", formula=FORMULA_BRAMKI, prawo=prawo)
-
-    assert "Zdanie jest prawdziwe albo fałszywe." in html
-
-
-# ---------------------------------------------------------------------------
-# Partial _sets.html
-# ---------------------------------------------------------------------------
-
-
-def test_zbiory_renderuja_kontener_z_formula(aplikacja):
-    html = _renderuj(aplikacja, "partials/_sets.html", formula=FORMULA_ZBIORY)
-
-    assert 'class="sets-mount"' in html
-    assert f'data-formula="{FORMULA_ZBIORY}"' in html
-    assert 'data-rola="diagramy-zbiorow"' in html
-
-
-def test_zbiory_biora_obie_strony_z_zmiennych(aplikacja):
-    html = _renderuj(
-        aplikacja,
-        "partials/_sets.html",
-        formula=FORMULA_ZBIORY,
-        lewa="∼(p ∨ q)",
-        prawa="∼p ∧ ∼q",
-    )
-
-    assert 'data-lewa="∼(p ∨ q)"' in html
-    assert 'data-prawa="∼p ∧ ∼q"' in html
-
-
-def test_zbiory_biora_obie_strony_z_prawa(aplikacja):
-    """Strona prawa (PRZ-010) wstawia partial z obiektem ``prawo`` w kontekście."""
-    prawo = SimpleNamespace(lewa="(p ∨ q) ∧ r", prawa="(p ∧ r) ∨ (q ∧ r)")
-
-    html = _renderuj(aplikacja, "partials/_sets.html", formula=FORMULA_ZBIORY, prawo=prawo)
-
-    assert 'data-lewa="(p ∨ q) ∧ r"' in html
-    assert 'data-prawa="(p ∧ r) ∨ (q ∧ r)"' in html
-    assert f'data-formula="{FORMULA_ZBIORY}"' in html
-
-
-def test_zbiory_bez_stron_rysuja_formule_po_obu_stronach(aplikacja):
-    html = _renderuj(aplikacja, "partials/_sets.html", formula=FORMULA_ZBIORY)
-
-    assert f'data-lewa="{FORMULA_ZBIORY}"' in html
-    assert f'data-prawa="{FORMULA_ZBIORY}"' in html
-
-
-def test_zbiory_dolaczaja_skrypt_i_style(aplikacja):
-    html = _renderuj(aplikacja, "partials/_sets.html", formula=FORMULA_ZBIORY)
-
-    assert "/static/js/sets.js" in html
-    assert "/static/css/wizualizacje.css" in html
-    assert 'type="module"' in html, "skrypt musi być modułem ES"
-
-
-def test_zbiory_obsluguja_brak_javascriptu(aplikacja):
-    html = _renderuj(aplikacja, "partials/_sets.html", formula=FORMULA_ZBIORY)
-
-    assert "<noscript>" in html
-    assert "JavaScript" in html
-
-
-def test_zbiory_nie_zostawiaja_nieuzupelnionych_szablonow(aplikacja):
-    html = _renderuj(aplikacja, "partials/_sets.html", formula=FORMULA_ZBIORY)
-
-    assert "{{" not in html
-    assert "{%" not in html
-
-
-@pytest.mark.parametrize(
-    "partial", ["partials/_gates.html", "partials/_sets.html"], ids=["bramki", "zbiory"]
-)
-def test_kazdy_partial_ma_tyle_samo_skryptow_co_stylow(aplikacja, partial):
-    """Partial sam dołącza swój skrypt i arkusz — nie zależy od szablonu strony."""
-    html = _renderuj(aplikacja, partial, formula=FORMULA_BRAMKI)
-
-    assert html.count("<script") == 1
-    assert html.count("/static/css/wizualizacje.css") == 1
-    assert "url_for" not in html, "adresy plików statycznych rozwiązuje url_for"
+    assert "co najwyżej trzy zbiory" in html
 
 
 # ---------------------------------------------------------------------------
@@ -472,27 +492,27 @@ def test_zbiory_uzywaja_wspolnego_komponentu_krokow(skrypt_zbiorow):
 
 
 @pytest.mark.parametrize("slug", PRAWA_ZBIOROW)
-def test_zbiory_biora_kroki_z_prawa(aplikacja, slug):
-    """Kryterium PRZ-075: liczba kroków paska równa się liczbie wpisów ``kroki`` prawa."""
+def test_zbiory_biora_kroki_z_formuly_prawa(aplikacja, slug):
+    """Kryterium PRZ-123: kroki rysunku powstają z wzoru prawa, a nie z pola ``kroki``."""
     prawo = next(law for law in all_laws() if law.slug == slug)
+    kroki = widoki.diagramy(prawo)["zbiory"]["kroki"]
 
-    html = _renderuj(aplikacja, "partials/_sets.html", formula=prawo.formula, prawo=prawo)
+    html = _renderuj(aplikacja, "partials/_sets.html", **_rysunki(prawo))
 
-    assert html.count("<li data-opis=") == len(prawo.kroki), f"zła liczba kroków dla {slug}"
-    assert prawo.kroki[0].opis in html, "partial gubi opisy kroków prawa"
+    assert kroki, f"brak kroków rysunku dla {slug}"
+    assert kroki[0]["opis"] in html, "partial gubi opisy kroków rysunku"
+    assert len(kroki) == len(kroki_sets(parse(prawo.formula))), f"zła liczba kroków dla {slug}"
 
 
 @pytest.mark.parametrize("slug", PRAWA_ZBIOROW)
-def test_zbiory_krok_pierwszy_to_lewa_strona_ostatni_prawa(slug):
-    """Kryterium PRZ-075: krok 0 pokazuje obszar lewej strony, ostatni — prawej.
-
-    ``sets.js`` rysuje na kroku ``i`` obszar formuły ``kroki[i].po``. Test pilnuje więc
-    danych: pierwsza formuła kroków to lewa strona prawa, a ostatnia — prawa.
-    """
+def test_zbiory_kroki_pokrywaja_podformuly_prawa(slug):
+    """Kryterium PRZ-123: każdy krok rysunku to jedna podformuła, ostatni — całe prawo."""
     prawo = next(law for law in all_laws() if law.slug == slug)
+    kroki = widoki.diagramy(prawo)["zbiory"]["kroki"]
+    wzory = [krok["wzor"] for krok in kroki]
 
-    assert prawo.kroki[0].po == prawo.lewa
-    assert prawo.kroki[-1].po == prawo.prawa
+    assert wzory[-1] == widoki.formula_to_html(prawo.formula), "ostatni krok to cały wzór prawa"
+    assert len(wzory) == len(set(wzory)), "ten sam krok nie może wystąpić dwa razy"
 
 
 def test_zbiory_rysuja_strzalke_rownowaznosci(skrypt_zbiorow):
@@ -579,25 +599,55 @@ def test_zbiory_komunikat_o_zbyt_wielu_zbiorach_przed_rysunkiem(skrypt_zbiorow):
     assert "return" in cialo[straznik:rysunek], "strażnik musi przerwać rysowanie"
 
 
-def test_zbiory_partial_mowi_o_limicie_zbiorow(aplikacja):
-    """Kryterium PRZ-075: partial mówi po polsku, ile zbiorów zmieści rysunek."""
-    html = _renderuj(aplikacja, "partials/_sets.html", formula=FORMULA_ZBIORY)
-
-    assert "co najwyżej trzy zbiory" in html
+# ---------------------------------------------------------------------------
+# wizualizacje.js — dwie strzałki i gotowe kroki (karta PRZ-123)
+# ---------------------------------------------------------------------------
 
 
-def test_zbiory_escapuja_opis_kroku_w_atrybucie(aplikacja):
-    """Opis kroku idzie do atrybutu, więc cudzysłów nie może wyjść z atrybutu."""
-    kroki = [
-        SimpleNamespace(opis='" onclick="alert(1)', przed="∼p", po="∼p", regula="założenie"),
-    ]
-    prawo = SimpleNamespace(lewa="∼p", prawa="∼p", kroki=kroki)
+@pytest.fixture(scope="module")
+def skrypt_wizualizacji() -> str:
+    return (KATALOG_STATYCZNY / "js" / "wizualizacje.js").read_text(encoding="utf-8")
 
-    html = _renderuj(aplikacja, "partials/_sets.html", formula="∼p", prawo=prawo)
 
-    assert 'onclick="' not in html
-    assert "&#34;" in html
-    assert 'data-rola="diagramy-zbiorow">' in html, "znacznik kontenera musi się domykać"
+def test_wizualizacje_podmieniaja_gotowy_krok_z_szablonu(skrypt_wizualizacji):
+    """Kryterium PRZ-123: kroki czekają w ``<template>``, a skrypt je tylko podmienia."""
+    assert "template[data-wiz-krok]" in skrypt_wizualizacji
+    assert "cloneNode(true)" in skrypt_wizualizacji
+    assert "replaceWith(" in skrypt_wizualizacji
+
+
+def test_wizualizacje_nie_rysuja_i_nie_pobieraja_nic_z_api(skrypt_wizualizacji):
+    assert "createElementNS" not in skrypt_wizualizacji, "rysunek powstaje na serwerze"
+    assert "fetch(" not in skrypt_wizualizacji
+    assert "/api/" not in skrypt_wizualizacji
+
+
+def test_wizualizacje_nie_pisza_przez_innerhtml(skrypt_wizualizacji):
+    for zakazane in ("innerHTML", "insertAdjacentHTML", "document.write"):
+        assert zakazane not in skrypt_wizualizacji
+
+
+def test_wizualizacje_obsluguja_dwie_strzalki(skrypt_wizualizacji):
+    assert '"[data-wiz-poprzedni]"' in skrypt_wizualizacji
+    assert '"[data-wiz-nastepny]"' in skrypt_wizualizacji
+    assert "disabled" in skrypt_wizualizacji
+    assert 'setAttribute("aria-disabled"' in skrypt_wizualizacji, "stan strzałki słownie"
+
+
+def test_wizualizacje_oglaszaja_biezacy_krok(skrypt_wizualizacji):
+    assert 'setAttribute("aria-current", "step")' in skrypt_wizualizacji
+    assert 'removeAttribute("aria-current")' in skrypt_wizualizacji
+
+
+def test_wizualizacje_obsluguja_klawiature(skrypt_wizualizacji):
+    assert "keydown" in skrypt_wizualizacji
+    assert '"ArrowLeft"' in skrypt_wizualizacji
+    assert '"ArrowRight"' in skrypt_wizualizacji
+
+
+def test_wizualizacje_przycinaja_numer_kroku(skrypt_wizualizacji):
+    """Numer spoza listy jest przycinany — tak samo jak w ``stepper.js``."""
+    assert "Math.max(0, Math.min(" in skrypt_wizualizacji
 
 
 # ---------------------------------------------------------------------------
@@ -665,13 +715,21 @@ def test_przerysowanie_montazu_zostawia_status_w_dom(sciezka):
     )
 
 
-def test_style_maja_klasy_uzywane_przez_skrypty(style):
-    for klasa in (".wiz-svg", ".wiz-przewod", ".wiz-obszar", ".wiz-obrys", ".wiz-diagramy"):
+def test_style_maja_klasy_rysunkow(style):
+    """Klasy, które wypisuje ``app/logic/diagrams.py`` — bez nich rysunek zniknie."""
+    for klasa in (
+        ".wiz-svg",
+        ".wiz-przewod",
+        ".wiz-obrys",
+        ".wiz-przestrzen",
+        ".obszar-1",
+        ".obszar-2",
+    ):
         assert klasa in style, f"brak stylu {klasa}"
 
 
 def test_style_maja_kroki_bramek(style):
-    """Klasy kroków z PRZ-074: grot strzałki, wartości przewodów i przełączniki wejść."""
+    """Klasy kroków z PRZ-074: grot strzałki, wartości przewodów i strzałki paska."""
     for klasa in (
         ".wiz-grot",
         ".wiz-prawda",
@@ -679,7 +737,7 @@ def test_style_maja_kroki_bramek(style):
         ".wiz-nieznane",
         ".wiz-biezaca",
         ".wiz-wartosc",
-        ".wiz-przelacznik",
+        ".wiz-strzalka",
     ):
         assert klasa in style, f"brak stylu {klasa}"
 
@@ -698,29 +756,15 @@ def test_style_grubosc_przewodu_niesie_wartosc(style):
 # ---------------------------------------------------------------------------
 
 
-def _prawa(rodzaj: str):
-    return [law for law in all_laws() if law.wizualizacja == rodzaj]
-
-
-def test_strona_prawa_z_zbiorami_podaje_obie_strony(klient):
-    prawa = _prawa("sets")
-    assert prawa, "rejestr nie ma prawa z wizualizacją „sets”"
+def test_strona_prawa_nie_rysuje_juz_w_przegladarce(klient):
+    """Kryterium PRZ-123: strona prawa nie ładuje starych skryptów ani sięga do API."""
+    prawa = [law for law in all_laws() if law.wizualizacja in ("gates", "switch", "sets")]
+    assert prawa, "rejestr nie ma praw z wizualizacją „gates” ani „sets”"
 
     for law in prawa:
         html = klient.get(f"/prawa/{law.slug}").get_data(as_text=True)
 
-        assert 'class="sets-mount"' in html, f"brak diagramu na stronie {law.slug}"
-        assert f'data-lewa="{escape(law.lewa)}"' in html, f"zła lewa strona dla {law.slug}"
-        assert f'data-prawa="{escape(law.prawa)}"' in html, f"zła prawa strona dla {law.slug}"
-
-
-def test_strona_prawa_z_bramkami_podaje_formule(klient):
-    prawa = [law for law in all_laws() if law.wizualizacja in ("gates", "switch")]
-    assert prawa, "rejestr nie ma prawa z wizualizacją „gates”"
-
-    for law in prawa:
-        html = klient.get(f"/prawa/{law.slug}").get_data(as_text=True)
-
-        assert 'class="gates-mount"' in html, f"brak schematu na stronie {law.slug}"
-        assert f'data-formula="{escape(law.formula)}"' in html
-        assert "/static/js/gates.js" in html
+        assert "/static/js/gates.js" not in html, f"stary skrypt na stronie {law.slug}"
+        assert "/static/js/sets.js" not in html, f"stary skrypt na stronie {law.slug}"
+        assert "/static/js/wizualizacje.js" in html, f"brak skryptu strzałek dla {law.slug}"
+        assert "/static/css/wizualizacje.css" in html, f"brak arkusza rysunków dla {law.slug}"

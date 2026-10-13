@@ -6,14 +6,21 @@ dopisuje i nie zakłada, ile praw jest w zestawie. Wzory rysuje
 tak samo jak ``app/blueprints/wstep.py``. Komponenty interaktywne
 (tablica prawdy, rysunek) są zwykłymi ``{% include %}`` z katalogu
 ``app/templates/partials/`` — wypełniają je karty PRZ-011, PRZ-012 i PRZ-013.
+
+Od karty PRZ-123 oba rysunki prawa (schemat bramek i diagram zbiorów) liczy
+:mod:`app.logic.diagrams` — serwer, nie przeglądarka. Ten moduł przygotowuje
+gotowe kroki rysunków (``bramki`` i ``zbiory``) dla szablonu.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from flask import Blueprint, render_template
 from markupsafe import Markup, escape
 
-from app.logic.formula import FormulaError, parse, to_html
+from app.logic.diagrams import gates_svg, kroki_gates, kroki_sets, sets_svg
+from app.logic.formula import FormulaError, Node, parse, subformulas, to_html, to_text, variables
 from app.logic.law_model import Law
 from app.logic.laws import all_laws, by_category, get
 
@@ -21,7 +28,9 @@ bp = Blueprint("laws", __name__)
 
 #: Partial rysunku dla każdej wartości pola ``Law.wizualizacja``.
 #: ``switch`` (wyłącznik) pokazujemy bramkami, ``chain`` — śladem kroków.
-#: Te same reguły opisuje karta PRZ-010 w sekcji „Context”.
+#: Te same reguły opisuje karta PRZ-010 w sekcji „Context”. Od PRZ-123 strona prawa
+#: pokazuje **oba** diagramy, więc ``_gates.html`` i ``_sets.html`` różni tylko
+#: kolejność figur (patrz ``partials/_diagramy.html``).
 RYSUNKI: dict[str, str] = {
     "gates": "partials/_gates.html",
     "switch": "partials/_gates.html",
@@ -51,6 +60,66 @@ def formula_to_html(text: str, styl: str = "wyklad") -> Markup:
 def drawing(law: Law) -> str:
     """Zwraca ścieżkę partialu z rysunkiem dla tego prawa."""
     return RYSUNKI.get(law.wizualizacja, RYSUNEK_ZAPASOWY)
+
+
+def _wartosciowanie(node: Node) -> dict[str, bool]:
+    """Wartościowanie dla schematu bramek: wszystkie zmienne prawdziwe.
+
+    To pierwszy wiersz tablicy prawdy (``app.logic.truth`` liczy wiersze w tej samej
+    kolejności), więc rysunek pokazuje wartości podformuł z wykładu: same jedynki.
+    """
+    return dict.fromkeys(variables(node), True)
+
+
+def _kroki_rysunku(
+    czesci: list[Node],
+    kroki: list[dict],
+    rysuj: Callable[[int], Markup],
+) -> list[dict]:
+    """Zamienia kroki z ``diagrams`` na dane dla szablonu: wzór i gotowy SVG.
+
+    Krok ``i`` odpowiada podformule ``czesci[i]`` — obie listy powstają w tej samej
+    kolejności (``formula.subformulas``), więc wzór i rysunek opisują ten sam stan.
+    """
+    return [
+        {
+            "opis": krok["opis"],
+            "wzor": formula_to_html(to_text(czesci[numer])),
+            "svg": rysuj(numer),
+        }
+        for numer, krok in enumerate(kroki)
+    ]
+
+
+def diagramy(law: Law) -> dict[str, dict]:
+    """Oba rysunki prawa razem z krokami, gotowe dla szablonu (karta PRZ-123).
+
+    Gdy wzór prawa się nie parsuje, zwracamy puste listy kroków — strona pokaże wzór
+    i komunikat, a nie błąd 500 (tak samo zachowuje się ``formula_to_html``).
+    """
+    try:
+        node = parse(law.formula)
+    except FormulaError:
+        return {"bramki": {"kroki": []}, "zbiory": {"kroki": []}}
+
+    wartosci = _wartosciowanie(node)
+    czesci = subformulas(node)
+    return {
+        "bramki": {
+            "kroki": _kroki_rysunku(
+                czesci,
+                kroki_gates(node),
+                lambda numer: gates_svg(node, wartosci, krok=numer),
+            )
+        },
+        "zbiory": {
+            "kroki": _kroki_rysunku(
+                czesci,
+                kroki_sets(node),
+                lambda numer: sets_svg(node, krok=numer),
+            )
+        },
+    }
 
 
 def neighbours(law: Law) -> tuple[Law | None, Law | None]:
@@ -91,11 +160,14 @@ def strona_prawa(slug: str):
         return render_template("nie_ma_prawa.html", slug=slug), 404
 
     poprzednie, nastepne = neighbours(law)
+    rysunki = diagramy(law)
     return render_template(
         "prawo.html",
         prawo=law,
         poprzednie=poprzednie,
         nastepne=nastepne,
         rysunek=drawing(law),
+        bramki=rysunki["bramki"],
+        zbiory=rysunki["zbiory"],
         formula_to_html=formula_to_html,
     )
