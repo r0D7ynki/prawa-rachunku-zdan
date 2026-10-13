@@ -1,0 +1,253 @@
+{#
+  Szablon lekcji /przeksztalcanie (karta PRZ-021).
+
+  Każdy wzór przechodzi przez `formula_to_html` (czyli `formula.to_html`) i jest
+  wstawiany przez `|safe`. Spójnik `≡` między ogniwami łańcucha to ten sam znak
+  i ta sama klasa, którymi `to_html` spina równoważność — bierzemy go ze zmiennej
+  `spojnik`, żeby nie wpisywać spójnika ręcznie.
+
+  Tabele przychodzą policzone z `app/blueprints/przeksztalcanie.py`. W szablonie
+  nie ma ani jednej wartości logicznej ani nazwy prawa wpisanej ręcznie.
+#}
+{% extends "base.html" %}
+
+{% block tytul %}Przekształcanie formuł{% endblock %}
+
+{# Lista praw jednego kroku: nazwa z rejestru z odnośnikiem do strony prawa. #}
+{% macro prawa_lista(prawa) %}
+  {% for prawo in prawa %}
+    {%- if prawo.slug -%}
+      <a href="/prawa/{{ prawo.slug }}">{{ prawo.nazwa }}</a>
+    {%- else -%}
+      {{ prawo.nazwa }}
+    {%- endif -%}
+    {%- if not loop.last %}, {% endif -%}
+  {% endfor %}
+{% endmacro %}
+
+{# Tabela porównania dwóch wzorów. Kolumna „różnica” opisuje wiersz słowem,
+   więc kolor tła nie jest jedynym nośnikiem informacji. #}
+{% macro tabela_porownania(dane, podpis) %}
+  <div class="table-responsive">
+    <table class="table table-sm tablica-porownania align-middle">
+      <caption>{{ podpis }}</caption>
+      <thead>
+        <tr>
+          {% for zmienna in dane.zmienne %}
+            <th scope="col">{{ formula_to_html(zmienna) |safe }}</th>
+          {% endfor %}
+          <th scope="col">{{ formula_to_html(dane.lewa) |safe }}</th>
+          <th scope="col">{{ formula_to_html(dane.prawa) |safe }}</th>
+          <th scope="col">różnica</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for wiersz in dane.wiersze %}
+          <tr{% if wiersz.rozny %} class="table-warning"{% endif %}>
+            {% for wartosc in wiersz.zmienne %}
+              <td>{{ wartosc }}</td>
+            {% endfor %}
+            <td class="{{ 'prawda' if wiersz.lewa == '1' else 'falsz' }}">{{ wiersz.lewa }}</td>
+            <td class="{{ 'prawda' if wiersz.prawa == '1' else 'falsz' }}">{{ wiersz.prawa }}</td>
+            <td>{{ 'tak' if wiersz.rozny else 'nie' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Przekształcanie formuł</h1>
+    <p class="lead">
+      Ta lekcja pokazuje, kiedy wolno opuścić nawiasy i zmienić kolejność składników.
+      Pokazuje też, jak podstawiać formuły pod zmienne tautologii.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-nawiasy">
+    <h2 id="naglowek-nawiasy">Opuszczanie nawiasów i kolejność</h2>
+    <p>
+      W formule złożonej z samych alternatyw nawiasy można opuszczać. Kolejność
+      składników też można zmieniać. Sprawdźmy to na przykładzie z wykładu.
+    </p>
+    <div class="lancuch-formul">
+      {% for ogniwo in lancuch %}
+        {% if ogniwo.slugi or ogniwo.dzialania %}
+          <p class="lancuch-przejscie">
+            <span class="formula"><span class="op-iff">{{ spojnik }}</span></span>
+            <span class="lancuch-prawa">
+              {{- prawa_lista(prawa_kroku(ogniwo.slugi, ogniwo.dzialania)) -}}
+            </span>
+          </p>
+        {% endif %}
+        <p class="formula formula-wyrozniona">{{ formula_to_html(ogniwo.formula) |safe }}</p>
+        <p class="lancuch-komentarz">{{ ogniwo.komentarz }}</p>
+      {% endfor %}
+    </div>
+    <p>
+      Pierwsza i trzecia linia wyglądają tak samo — i tak ma być. Nawias zewnętrzny
+      w pierwszym wzorze wykładu nic nie zmienia, więc oba zapisy to jedna formuła.
+    </p>
+    <p>
+      <strong>Uwaga.</strong> To działa w łańcuchu samych alternatyw albo samych
+      koniunkcji. Z implikacją jest inaczej — zaraz to sprawdzimy.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-implikacja">
+    <h2 id="naglowek-implikacja">Ostrzeżenie: z implikacją tak nie wolno</h2>
+    <p>
+      Implikacja wiąże w prawo, czyli nawias opuszcza się po prawej stronie. Dlatego
+      <span class="formula">{{ formula_to_html(implikacja_prawa) |safe }}</span>
+      to nie to samo co
+      <span class="formula">{{ formula_to_html(implikacja_lewa) |safe }}</span>.
+    </p>
+    <p>
+      W pierwszym wzorze nawias po prawej stronie jest zbędny — dlatego go nie ma.
+      W drugim nawias z lewej strony zmienia sens i musi zostać.
+    </p>
+    <p>
+      Policzmy oba wzory w całej tablicy prawdy. Trzy zmienne to osiem wierszy.
+      Tabela pokazuje, że wzory nie są równoważne.
+    </p>
+    {{
+      tabela_porownania(
+        porownanie_implikacji,
+        "Porównanie obu wzorów. Wiersz z różnicą to kontrprzykład."
+      )
+    }}
+    <p>{{ wniosek_implikacji }}</p>
+    <h3>Policz sam</h3>
+    <p>
+      Tablica poniżej liczy się w przeglądarce. Wybierz wartości zmiennych i zobacz
+      wynik dla wzoru
+      <span class="formula">{{ formula_to_html(implikacja_lewa) |safe }}</span>.
+    </p>
+    {% include "partials/_truth_table.html" %}
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-podstawianie">
+    <h2 id="naglowek-podstawianie">Reguła podstawiania</h2>
+    <p>
+      Jeżeli formuła jest tautologią, to podstawienie pod jej zmienne dowolnych
+      formuł daje nową tautologię.
+    </p>
+    <ol class="kroki-podstawiania">
+      {% for krok in kroki_podstawiania %}
+        <li>
+          <h3>{{ krok.tytul }}</h3>
+          <p>{{ krok.opis }}</p>
+          {% if krok.wzory %}
+            <p>
+              {% for wzor in krok.wzory %}
+                <span class="formula">{{ formula_to_html(wzor) |safe }}</span>
+                {%- if not loop.last %}, {% endif %}
+              {% endfor %}
+            </p>
+          {% endif %}
+          {% if krok.podstawienia %}
+            <ul class="lista-podstawien">
+              {% for zmienna, wzor in krok.podstawienia %}
+                <li>
+                  pod <span class="formula">{{ formula_to_html(zmienna) |safe }}</span>
+                  wstawiamy
+                  <span class="formula">{{ formula_to_html(wzor) |safe }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          {% if krok.slugi %}
+            <p class="prawa-kroku">{{ prawa_lista(prawa_kroku(krok.slugi)) }}</p>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+    <p>{{ wniosek_podstawienia }}</p>
+    <h3>To nie to samo co prawo zastępowania równych</h3>
+    <p>
+      Podstawiamy <strong>całe formuły pod zmienne</strong>. Nie zamieniamy części
+      formuły na inną formułę. Od zamiany równoważnych części jest prawo zastępowania
+      równych:
+      <a href="/prawa/{{ zastepowanie.slug }}">{{ zastepowanie.nazwa }}</a>,
+      czyli
+      <span class="formula">{{ formula_to_html(zastepowanie.formula) |safe }}</span>.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-upraszczanie">
+    <h2 id="naglowek-upraszczanie">Upraszczanie formuły krok po kroku</h2>
+    <p>
+      Tabela pokazuje kolejne kroki upraszczania wzoru z wykładu. Każdy krok wolno
+      zrobić, bo po nim formuła ma tę samą wartość w każdym wierszu.
+    </p>
+    <div class="table-responsive">
+      <table class="table tablica-uproszczenia align-middle">
+        <caption>Pięć kroków upraszczania: formuła, użyte prawa i wyjaśnienie.</caption>
+        <thead>
+          <tr>
+            <th scope="col">krok</th>
+            <th scope="col">formuła</th>
+            <th scope="col">prawa</th>
+            <th scope="col">wyjaśnienie</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for krok in kroki_uproszczenia %}
+            <tr>
+              <th scope="row">{{ loop.index0 }}</th>
+              <td class="formula">{{ formula_to_html(krok.formula) |safe }}</td>
+              <td>
+                {%- if krok.slugi or krok.dzialania -%}
+                  {{ prawa_lista(prawa_kroku(krok.slugi, krok.dzialania)) }}
+                {%- else -%}
+                  —
+                {%- endif -%}
+                {%- if krok.wzor_prawa %}
+                  <span class="formula">{{ formula_to_html(krok.wzor_prawa) |safe }}</span>
+                {%- endif %}
+              </td>
+              <td>{{ krok.wyjasnienie }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Ostatni krok to prawo dodatkowe — wykład nie nadaje mu numeru T. Nazwa prawa
+      w tabeli prowadzi do jego strony.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-sprawdzenie">
+    <h2 id="naglowek-sprawdzenie">Sprawdzenie wyniku</h2>
+    <p>
+      Wzór wyjściowy i wzór uproszczony mają tę samą wartość w każdym wierszu.
+      Liczymy to tablicą prawdy, żeby nie wierzyć upraszczaniu na słowo.
+    </p>
+    {{
+      tabela_porownania(
+        porownanie_uproszczenia,
+        "Porównanie wzoru wyjściowego z wynikiem upraszczania."
+      )
+    }}
+    <p>{{ wniosek_uproszczenia }}</p>
+    <p>
+      To samo dla dowolnej formuły robi <a href="/plac-zabaw">plac zabaw</a>:
+      wpisujesz dwie formuły i widzisz, czy są równoważne.
+    </p>
+  </section>
+
+  <nav
+    class="d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
+    aria-label="Nawigacja między lekcjami"
+  >
+    <a class="btn btn-outline-secondary" href="/tautologie">
+      ← Poprzednia lekcja: tautologie rachunku zdań
+    </a>
+    <a class="btn btn-primary" href="/kpn">
+      Następna lekcja: klauzule i postać KPN →
+    </a>
+  </nav>
+{% endblock %}
