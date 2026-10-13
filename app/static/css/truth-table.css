@@ -1,6 +1,8 @@
-/* Style komponentu tablicy prawdy (karta PRZ-011).
+/* Style komponentu tablicy prawdy (karty PRZ-011 i PRZ-073).
    Kolor nigdy nie jest jedynym nośnikiem informacji: każda wartość ma obok znaku
-   `1`/`0` także słowo PRAWDA/FAŁSZ, a wybrany wiersz dodatkowo grubszą krawędź. */
+   `1`/`0` także słowo PRAWDA/FAŁSZ, a wybrany wiersz dodatkowo grubszą krawędź.
+   Tablica powstaje krok po kroku, więc nieodkryta komórka pokazuje kropkę, bieżąca
+   ma obramowanie, a bieżąca kolumna — pogrubiony nagłówek. */
 
 .truth-table-mount {
   --tt-akcent: var(--bs-primary, #0d6efd);
@@ -63,6 +65,63 @@
 
 .tt-wynik-0 {
   background-color: var(--tt-falsz);
+}
+
+/* Komórka wyniku, zanim dojdzie do niej prowadzenie krok po kroku (karta PRZ-073).
+   Kropka zastępuje wartość, a tło zostaje neutralne: kolor tła zdradzałby wynik
+   przed odkryciem. Obie rzeczy włączają się razem z klasą `tt-odkryta`. */
+.tt-komorka-wyniku .tt-ukryte {
+  color: var(--bs-secondary-color, #6c757d);
+  font-family: var(--bs-font-monospace, monospace);
+  font-weight: 700;
+}
+
+.tt-komorka-wyniku .tt-wartosc {
+  display: none;
+}
+
+.tt-komorka-wyniku.tt-wynik-1,
+.tt-komorka-wyniku.tt-wynik-0 {
+  background-color: transparent;
+}
+
+.tt-komorka-wyniku.tt-odkryta .tt-ukryte {
+  display: none;
+}
+
+.tt-komorka-wyniku.tt-odkryta .tt-wartosc {
+  display: inline-flex;
+}
+
+.tt-komorka-wyniku.tt-odkryta.tt-wynik-1 {
+  background-color: var(--tt-prawda);
+}
+
+.tt-komorka-wyniku.tt-odkryta.tt-wynik-0 {
+  background-color: var(--tt-falsz);
+}
+
+/* Bieżąca komórka kroku: obramowanie w środku komórki, żeby nie przesuwało tabeli. */
+.tt-komorka-wyniku.tt-biezaca {
+  outline: 3px solid var(--tt-akcent);
+  outline-offset: -3px;
+}
+
+/* Bieżąca kolumna kroku: nagłówek pogrubiony i podkreślony — nie tylko kolor. */
+.tt-naglowek-podformuly.tt-biezaca-kolumna {
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.25em;
+  background-color: var(--tt-wybrany);
+}
+
+/* Pasek kroków pod tabelą. Style samego paska przychodzą z `stepper.css`. */
+.tt-kroki {
+  margin-bottom: 0.75rem;
+}
+
+.tt-kroki-pasek {
+  margin-bottom: 0.5rem;
 }
 
 /* Komórka zmiennej jest przyciskiem: kliknięcie ustawia wartość tej zmiennej. */
