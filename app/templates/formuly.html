@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block tytul %}Formuły logiczne i wartościowanie{% endblock %}
+
+{#
+  Szablon lekcji /formuly (karta PRZ-019). Wszystkie tablice przychodzą policzone
+  z `app/blueprints/formuly.py` — tutaj nie ma ani jednej wartości wpisanej ręcznie.
+
+  Każdy wzór przechodzi przez `formula_to_html` (czyli `formula.to_html`) i jest
+  wstawiany przez `|safe`. Wyjątki, które nie są wzorami:
+
+  - schemat definicji z literami ϕ i ψ — to wzorzec, a nie konkretna formuła,
+  - zapisy w `<code class="zapis-formuly">` — to cytaty notacji; pisownia nawiasów
+    jest tam tematem lekcji, a `to_html` opuszcza nawiasy, które nie zmieniają sensu,
+  - nazwy kolumn α, β, γ — to nazwy pomocnicze z wykładu, a nie zmienne parsera.
+#}
+
+{% macro tablica_html(dane, opis) %}
+  <div class="table-responsive">
+    <table class="table table-sm tablica-prawdy align-middle">
+      <caption>{{ opis }} Wartości to 1 (prawda) i 0 (fałsz).</caption>
+      <thead>
+        <tr>
+          {% for zmienna in dane.zmienne %}
+            <th scope="col">{{ formula_to_html(zmienna) |safe }}</th>
+          {% endfor %}
+          {% for kolumna in dane.kolumny %}
+            <th scope="col">
+              {%- if kolumna.nazwa -%}
+                <span class="nazwa-kolumny">{{ kolumna.nazwa }}</span> =
+              {%- endif %}
+              {{ formula_to_html(kolumna.wzor) |safe }}
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for wiersz in dane.wiersze %}
+          <tr>
+            {% for wartosc in wiersz.zmienne %}
+              <td>{{ wartosc }}</td>
+            {% endfor %}
+            {% for wartosc in wiersz.wyniki %}
+              <td class="{{ 'prawda' if wartosc == '1' else 'falsz' }}">{{ wartosc }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Formuły logiczne i wartościowanie</h1>
+    <p class="lead">
+      Ta lekcja pokazuje język rachunku zdań. Nauczysz się zapisywać zdania wzorem
+      i liczyć wartość tego wzoru.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-zmienne">
+    <h2 id="naglowek-zmienne">Zmienne zdaniowe</h2>
+    <p>
+      Zdania w rachunku zdań zapisujemy literami. Taka litera to zmienna zdaniowa.
+    </p>
+    <p>
+      Zmienne <code>p</code>, <code>q</code>, <code>r</code>, <code>s</code>, …
+      oznaczają dowolne zdania logiczne.
+    </p>
+    <p>
+      Każdej zmiennej przypisujemy wartość: 1, gdy zdanie jest prawdziwe, albo 0, gdy
+      zdanie jest fałszywe.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-spojniki">
+    <h2 id="naglowek-spojniki">Spójniki</h2>
+    <p>
+      Z prostych zdań budujemy zdania złożone. Służy do tego pięć spójników.
+    </p>
+    <div class="table-responsive">
+      <table class="table tablica-symboli tablica-prawdy align-middle">
+        <caption>Tabela spójników: zapis, czytanie po polsku i nazwa</caption>
+        <thead>
+          <tr>
+            <th scope="col">zapis</th>
+            <th scope="col">czytamy</th>
+            <th scope="col">nazwa</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for wzor, czytanie, nazwa in spojniki %}
+            <tr>
+              <td><span class="formula">{{ formula_to_html(wzor) |safe }}</span></td>
+              <td>{{ czytanie }}</td>
+              <td>{{ nazwa }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="podpowiedz-czytanie">
+      Spotkasz też zapis
+      <span class="formula">{{ formula_to_html(inne_zapisy[0], "unicode") |safe }}</span>
+      oraz
+      <span class="formula">{{ formula_to_html(inne_zapisy[1], "unicode") |safe }}</span>.
+      To te same spójniki, tylko z innego podręcznika.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-definicja">
+    <h2 id="naglowek-definicja">Definicja formuły logicznej</h2>
+    <p>
+      Formuła logiczna powstaje ze zmiennych i spójników. Definicja jest indukcyjna,
+      czyli podaje dwa warunki.
+    </p>
+    <ol>
+      <li>Dowolna zmienna zdaniowa jest formułą logiczną.</li>
+      <li>
+        Jeżeli ϕ i ψ są formułami, to ∼(ϕ), (ϕ) ∨ (ψ), (ϕ) ∧ (ψ), (ϕ) → (ψ)
+        i (ϕ) ≡ (ψ) też są formułami.
+      </li>
+    </ol>
+    <p>
+      Litery ϕ i ψ to schemat definicji, a nie konkretne zdanie. W ich miejsce możesz
+      wstawić dowolną formułę.
+    </p>
+    <p>Oto przykłady formuł — od najprostszej do najbardziej złożonej:</p>
+    <ul class="lista-przykladow">
+      {% for wzor in przyklady_formul %}
+        <li class="przyklad-formuly">
+          <span class="formula">{{ formula_to_html(wzor) |safe }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-nawiasy">
+    <h2 id="naglowek-nawiasy">Nawiasy mają znaczenie</h2>
+    <p>
+      Zapis <code class="zapis-formuly">{{ formula_niejednoznaczna }}</code> jest
+      niejednoznaczny. Nie widać z niego, który spójnik liczymy pierwszy.
+    </p>
+    <p>
+      Ten zapis może znaczyć <code class="zapis-formuly">(p ∨ q) → r</code> albo
+      <code class="zapis-formuly">p ∨ (q → r)</code>. Obie wersje mają różne tablice
+      prawdy.
+    </p>
+    <div class="row g-4">
+      {% for wersja in wersje_nawiasow %}
+        <article class="col-12 col-lg-6">
+          <h3>
+            {{ wersja.nazwa }}: <code class="zapis-formuly">{{ wersja.zapis }}</code>
+          </h3>
+          <p class="formula">{{ formula_to_html(wersja.wzor) |safe }}</p>
+          <p>{{ wersja.opis }}</p>
+          {{ tablica_html(
+            wersja.tabela,
+            "Tablica prawdy dla zapisu " ~ wersja.zapis ~ ". Wierszy jest osiem, bo zmienne są trzy."
+          ) }}
+        </article>
+      {% endfor %}
+    </div>
+    {% if rozne_wiersze %}
+      <p>
+        Obie wersje różnią się w {{ rozne_wiersze | length }} z {{ liczba_ukladow }} wierszy.
+        Na przykład dla p = {{ rozne_wiersze[0].p }}, q = {{ rozne_wiersze[0].q }},
+        r = {{ rozne_wiersze[0].r }} wersja A daje {{ rozne_wiersze[0].wersja_a }},
+        a wersja B daje {{ rozne_wiersze[0].wersja_b }}.
+      </p>
+    {% endif %}
+    <p class="podpowiedz-czytanie">
+      W zapisie (∼p) nawias możesz opuścić. Negacja wiąże najsilniej ze wszystkich
+      spójników.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-formalizacja">
+    <h2 id="naglowek-formalizacja">Od zdania do formuły</h2>
+    <p>Formuła opisuje zdanie z języka polskiego. Oto przykład z wykładu:</p>
+    <blockquote class="cytat">
+      <p>{{ zdanie_uczenie }}</p>
+    </blockquote>
+    <p>Podstawiamy pod zmienne krótkie zdania:</p>
+    <dl class="podstawienie">
+      {% for zmienna, zdanie in podstawienie_uczenie %}
+        <dt><span class="formula">{{ formula_to_html(zmienna) |safe }}</span></dt>
+        <dd>{{ zdanie }}</dd>
+      {% endfor %}
+    </dl>
+    <p>Całe zdanie o uczeniu się zapisujemy tak:</p>
+    <p class="formula formula-wyrozniona">{{ formula_to_html(formalizacja) |safe }}</p>
+    <p>
+      Ten wzór jest prawdziwy przy każdym wartościowaniu zmiennych. Taki wzór nazywamy
+      tautologią.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-formula-nie-zdanie">
+    <h2 id="naglowek-formula-nie-zdanie">Formuła to nie zdanie</h2>
+    <p>
+      Formuła sama nie jest zdaniem logicznym. Zdanie dostaniemy po podstawieniu
+      konkretnych zdań pod zmienne.
+    </p>
+    <p>Takie podstawienie nazywamy wartościowaniem, czyli interpretacją.</p>
+    <p class="formula">{{ formula_to_html(formula_podstawienia) |safe }}</p>
+    <p>Podstawmy dwa zdania prawdziwe:</p>
+    <ul class="podstawienie">
+      {% for zmienna, zdanie in podstawienie_liczby %}
+        <li>
+          <span class="formula">{{ formula_to_html(zmienna) |safe }}</span>
+          — {{ zdanie }}
+        </li>
+      {% endfor %}
+    </ul>
+    {% set uklad_podstawienia = tabela_podstawienia.wiersze[0].zmienne %}
+    {{ tablica_html(
+      tabela_podstawienia,
+      "Wartościowanie dla podstawienia p = " ~ uklad_podstawienia[0]
+        ~ ", q = " ~ uklad_podstawienia[1] ~ "."
+    ) }}
+    <p>
+      Wynik to {{ wynik_podstawienia }}, więc zdanie po podstawieniu jest
+      {% if wynik_podstawienia == "1" %}prawdziwe{% else %}fałszywe{% endif %}.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-wartosciowanie">
+    <h2 id="naglowek-wartosciowanie">Wartościowanie krok po kroku</h2>
+    {% set uklad = tabela_wartosciowania.wiersze[0].zmienne %}
+    <p>
+      Policzmy wartość tej formuły dla p = {{ uklad[0] }}, q = {{ uklad[1] }},
+      r = {{ uklad[2] }}.
+    </p>
+    <p class="formula">{{ formula_to_html(wartosciowanie) |safe }}</p>
+    <p>
+      Kolumny α, β i γ to podformuły pomocnicze. Ostatnia kolumna to cała formuła,
+      czyli z α wynika γ.
+    </p>
+    {{ tablica_html(
+      tabela_wartosciowania,
+      "Wartościowanie formuły dla p = " ~ uklad[0] ~ ", q = " ~ uklad[1]
+        ~ ", r = " ~ uklad[2] ~ "."
+    ) }}
+    <p>
+      Wynik to {{ wynik_wartosciowania }}, więc formuła jest
+      {% if wynik_wartosciowania == "1" %}prawdziwa{% else %}fałszywa{% endif %}
+      przy tym wartościowaniu.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-wartosci">
+    <h2 id="naglowek-wartosci">Wartości logiczne: 1 i 0</h2>
+    <p>
+      Prawdę zapisujemy jako 1, a fałsz jako 0. Ta tablica pokazuje wszystkie układy
+      wartości dwóch zmiennych.
+    </p>
+    {{ tablica_html(tabela_spojnikow, "Pełna tablica pięciu spójników dla zmiennych p i q.") }}
+    <p>
+      Dwie zmienne dają cztery wiersze. Każda następna zmienna podwaja liczbę wierszy,
+      więc trzy zmienne dają osiem wierszy.
+    </p>
+    <h3>Tablica pod ręką</h3>
+    <p>
+      Tablica poniżej liczy się w przeglądarce. Kliknij wartość zmiennej, żeby zobaczyć
+      wynik dla wybranego ustawienia.
+    </p>
+    {% include "partials/_truth_table.html" %}
+  </section>
+
+  <nav
+    class="d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
+    aria-label="Nawigacja między lekcjami"
+  >
+    <a class="btn btn-outline-secondary" href="/wstep">← Poprzednia lekcja: wstęp do logiki</a>
+    <a class="btn btn-primary" href="/tautologie">Następna lekcja: tautologie →</a>
+  </nav>
+{% endblock %}
