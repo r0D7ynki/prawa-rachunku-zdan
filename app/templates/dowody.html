@@ -1,0 +1,179 @@
+{#
+  Szablon lekcji /dowody (karta PRZ-091). Dowody A–F przychodzą z rejestru
+  `app.logic.proofs` przez widok `app/blueprints/dowody.py`: każdy wiersz ma gotowy wzór
+  w HTML, uzasadnienie i znacznik, czy zamyka dowód sprzecznością.
+
+  Kroki paska (komponent PRZ-072) lecą do skryptu jako JSON w atrybucie `data-kroki`.
+  `dowody.js` tylko pokazuje: odkrywa wiersze po kolei, rysuje nad tabelą strzałkę od
+  wierszy z listy `z` do nowego wiersza i podświetla parę sprzeczną. Bez JavaScriptu
+  wszystkie wiersze zostają w HTML — tabela wygląda wtedy jak w wykładzie.
+
+  Wzory rysuje `formula_to_html` (czyli `formula.to_html`) i tylko ona idzie przez `|safe`.
+#}
+{% extends "base.html" %}
+
+{% block tytul %}Dowody założeniowe{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dowody.css') }}" />
+{% endblock %}
+
+{#
+  Tabela jednego dowodu: numer, formuła i uzasadnienie — trzy kolumny jak w wykładzie.
+  `wiersz.wciety` to wiersz poddowodu (4.1–5.4), a `wiersz.sprzecznosc` — wiersz, który
+  zamyka dowód nie wprost. Oba znaczniki są w HTML od początku, więc test sprawdza je
+  bez uruchamiania przeglądarki.
+#}
+{% macro tabela_dowodu(dowod) %}
+  <div class="table-responsive">
+    <table class="table tablica-dowodu align-middle" data-tabela-dowodu>
+      <caption>
+        Dowód {{ dowod.id }} — kolejne wiersze, ich wzory i uzasadnienia.
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Nr</th>
+          <th scope="col">Formuła</th>
+          <th scope="col">Uzasadnienie</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for wiersz in dowod.wiersze %}
+          <tr
+            class="wiersz-dowodu{% if wiersz.wciety %} wiersz-wciety{% endif %}{% if wiersz.sprzecznosc %} wiersz-sprzecznosc{% endif %}"
+            data-nr="{{ wiersz.nr }}"
+            {%- if wiersz.aria_label %} aria-label="{{ wiersz.aria_label }}"{% endif %}
+          >
+            <th scope="row" class="wiersz-nr">{{ wiersz.nr }}</th>
+            <td class="wiersz-formula formula">{{ formula_to_html(wiersz.formula) |safe }}</td>
+            <td class="wiersz-uzasadnienie">
+              {{- wiersz.uzasadnienie -}}
+              {%- if wiersz.nazwa_reguly %}
+                <span class="wiersz-nazwa-reguly">{{ wiersz.nazwa_reguly }}</span>
+              {%- endif -%}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Dowody założeniowe</h1>
+    <p class="lead">
+      Dowód założeniowy to rozumowanie zapisane wiersz po wierszu: z założeń powstają
+      kolejne zdania, aż do tezy albo do sprzeczności.
+    </p>
+  </header>
+
+  <section class="sekcja" id="sekcja-jak-czytac" aria-labelledby="naglowek-jak-czytac">
+    <h2 id="naglowek-jak-czytac">Jak czytać dowód założeniowy</h2>
+    <p>
+      W każdym wierszu stoi jedna formuła i uzasadnienie. Uzasadnienie mówi, z których
+      wcześniejszych wierszy ta formuła powstała i jaka reguła ją wyprodukowała.
+    </p>
+    <p>
+      Na tej stronie są {{ liczba_dowodow }} dowody z wykładu, razem
+      {{ liczba_wierszy }} wierszy. Pasek pod tabelą odkrywa je po kolei. Nad tabelą
+      pojawia się wtedy strzałka: pokazuje, z których wierszy powstał nowy wiersz.
+    </p>
+    <div class="lista-rodzajow">
+      {% for rodzaj in rodzaje %}
+        <article class="karta-rodzaju" id="rodzaj-{{ rodzaj.kod }}">
+          <h3>{{ rodzaj.tytul }}</h3>
+          <p>{{ rodzaj.opis }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <nav class="spis-dowodow" aria-label="Spis dowodów">
+    <h2 class="spis-dowodow-tytul">Dowody w tej lekcji</h2>
+    <ol class="lista-dowodow list-unstyled mb-0">
+      {% for dowod in dowody %}
+        <li>
+          <a href="#dowod-{{ dowod.id | lower }}">
+            Dowód {{ dowod.id }}: {{ dowod.tytul }}
+          </a>
+        </li>
+      {% endfor %}
+    </ol>
+  </nav>
+
+  {% for dowod in dowody %}
+    <section
+      class="sekcja dowod"
+      id="dowod-{{ dowod.id | lower }}"
+      data-dowod="{{ dowod.id }}"
+      data-kroki="{{ dowod.kroki_json }}"
+      aria-labelledby="naglowek-dowod-{{ dowod.id | lower }}"
+    >
+      <h2 id="naglowek-dowod-{{ dowod.id | lower }}">Dowód {{ dowod.id }}: {{ dowod.tytul }}</h2>
+      <p class="dowod-teza">
+        <span class="dowod-etykieta">Teza</span>
+        <span class="formula">{{ formula_to_html(dowod.teza) |safe }}</span>
+      </p>
+      <p>{{ dowod.opis }}</p>
+      <p class="dowod-podpowiedz">
+        Pasek pod tabelą prowadzi wiersz po wierszu. Strzałka nad tabelą mówi, z których
+        wierszy powstaje nowy wiersz. Ostatni krok pokazuje sprzeczność, która kończy
+        dowód.
+      </p>
+      <div class="strzalki-dowodu" data-strzalki></div>
+      {{ tabela_dowodu(dowod) }}
+      {% with steps = dowod.kroki %}
+        {% include "partials/_stepper.html" %}
+      {% endwith %}
+    </section>
+  {% endfor %}
+
+  <section class="sekcja" id="skad-kontrprzyklad" aria-labelledby="naglowek-kontrprzyklad">
+    <h2 id="naglowek-kontrprzyklad">Skąd kontrprzykład</h2>
+    <p>
+      Gdy w dowodzie nie wprost nie da się dojść do sprzeczności, rozumowanie jest
+      niepoprawne. Z wierszy dowodu odczytujemy wtedy kontrprzykład, czyli takie
+      wartościowanie, przy którym założenia są prawdziwe, a wniosek fałszywy.
+    </p>
+    <div class="table-responsive">
+      <table class="table tablica-kontrprzykladow align-middle">
+        <caption>Dwa rozumowania z wykładu i ich kontrprzykłady.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Rozumowanie</th>
+            <th scope="col">Wiersze dowodu</th>
+            <th scope="col">Kontrprzykład</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for przyklad in przyklady %}
+            <tr>
+              <td>{{ przyklad.rozumowanie }}</td>
+              <td>
+                <ol class="lista-wierszy">
+                  {% for wzor in przyklad.wiersze %}
+                    <li class="formula">{{ formula_to_html(wzor) |safe }}</li>
+                  {% endfor %}
+                </ol>
+              </td>
+              <td>
+                <span class="kontrprzyklad-wartosci">{{ przyklad.kontrprzyklad }}</span>
+                <span class="kontrprzyklad-komentarz">{{ przyklad.komentarz }}</span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      W pierwszym przykładzie wiersz 3 to wniosek, a nie sprzeczność — dowód nie zamyka
+      się, więc rozumowanie jest niepoprawne. Wartościowanie <code>p = 0</code>,
+      <code>q = 1</code> pokazuje, gdzie rozumowanie się psuje.
+    </p>
+  </section>
+{% endblock %}
+
+{% block skrypty %}
+  <script type="module" src="{{ url_for('static', filename='js/dowody.js') }}"></script>
+{% endblock %}
