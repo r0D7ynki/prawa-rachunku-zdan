@@ -1,4 +1,4 @@
-/* Style komponentu tablicy prawdy (karty PRZ-011, PRZ-073 i PRZ-121).
+/* Style komponentu tablicy prawdy (karty PRZ-011, PRZ-073, PRZ-121 i PRZ-158).
    Kolor nigdy nie jest jedynym nośnikiem informacji: każda wartość ma obok znaku
    `1`/`0` także słowo PRAWDA/FAŁSZ, wpis studenta dostaje znaczek „✓” albo „✕”,
    a wybrany wiersz dodatkowo grubszą krawędź. Komórka zakryta pokazuje pole na jeden
@@ -176,11 +176,19 @@
   align-items: center;
 }
 
+/* „Wyczyść filtry” czeka zdjęty z widoku (atrybut `hidden` z `truth-table.js`,
+   karta PRZ-158). Klasa `btn` ustawia własne `display`, dlatego gasimy atrybut
+   tutaj — tak samo jak w `steps.css` i `dowody.css`. */
+.tt-przyciski-oceny [hidden] {
+  display: none;
+}
+
 .tt-wynik-sprawdzenia {
   font-weight: 600;
 }
 
-/* Komórka zmiennej jest przyciskiem: kliknięcie ustawia wartość tej zmiennej. */
+/* Komórka zmiennej jest przyciskiem: kliknięcie zakłada filtr na tę wartość,
+   a kliknięcie tej samej wartości zdejmuje go (karta PRZ-158). */
 .tt-komorka {
   display: block;
   width: 100%;
