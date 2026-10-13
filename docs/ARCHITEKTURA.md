@@ -672,9 +672,12 @@ createStepper({
 
 ### Paleta, typografia i tryb ciemny (`app.css`)
 
-Całą paletę projektu trzyma `:root` w `app/static/css/app.css`. Pozostałe arkusze
-korzystają z tych zmiennych — nie wpisują kolorów (`#rrggbb`) wprost, bo tryb ciemny
-przełącza sam zestaw zmiennych.
+Całą paletę projektu trzyma `:root` w `app/static/css/app.css`. Nowe arkusze biorą kolory
+wyłącznie z tych zmiennych, bo tryb ciemny przełącza sam zestaw zmiennych, a nie pojedyncze
+reguły. W starszych arkuszach zostały pojedyncze kolory wpisane wprost (`reguly.css`,
+`dowody.css`, `wizualizacje.css`). Łata je blok trybu ciemnego selektorem `:root .klasa` —
+te arkusze ładują się po `app.css`, więc bez podniesienia swoistości wygrałyby kolejnością.
+Właściwa poprawka (`var(--kolor-panel)` w miejsce `#fff`) należy do kart tych plików.
 
 | Zmienna | Rola |
 |---|---|
