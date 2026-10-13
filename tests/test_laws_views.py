@@ -66,11 +66,29 @@ WZORZEC_NAV = re.compile(r'aria-label="Nawigacja między prawami"(?P<tresc>.*?)<
 #: Znaczniki wyróżnionego fragmentu kroku (karta PRZ-143) — otwierający i zamykający.
 WZORZEC_MARK = re.compile(r'<mark class="krok-fragment"[^>]*>|</mark>')
 
-#: Prawa, na których karta PRZ-143 sprawdza sekcję „Krok po kroku”.
+#: Lista kroków sekcji „Krok po kroku” (karta PRZ-157).
+WZORZEC_LISTY_KROKOW = re.compile(r'<ol class="lista-krokow">(?P<tresc>.*?)</ol>', re.DOTALL)
+
+#: Licznik kroków paska („krok 3 z 7”), który zniknął z sekcji kroków (karta PRZ-157).
+WZORZEC_LICZNIKA = re.compile(r"krok\s+\d+\s+z", re.IGNORECASE)
+
+#: Prawa, na których karty PRZ-143 i PRZ-157 sprawdzają sekcję „Krok po kroku”.
 PRAWA_KROKOW = ("de-morgan-1", "rozdzielnosc-1")
 
-#: Zdanie wprowadzające sekcji kroków — wymaga go karta PRZ-143.
+#: Zdanie wprowadzające sekcji kroków — wymaga go karta PRZ-157.
 WPROWADZENIE_KROKOW = "Zamieniamy lewą stronę prawa na prawą."
+
+#: Napisy komponentu kroków, których sekcja nie pokazuje (karta PRZ-157).
+NAPISY_KOMPONENTU = (
+    "data-stepper",
+    "stepper-mount",
+    "data-kroki-prawa",
+    "/static/js/steps.js",
+    "/static/css/stepper.css",
+    "Odtwórz",
+    "Pauza",
+    "Od nowa",
+)
 
 
 def _slug(law: Law) -> str:
@@ -126,6 +144,14 @@ def _sekcja_krokow(html: str) -> str:
 def _kroki_sekcji(sekcja: str) -> list[str]:
     """Bloki ``<li class="krok">`` sekcji kroków, w kolejności ze strony."""
     return re.findall(r'<li class="krok">(?P<tresc>.*?)</li>', sekcja, re.DOTALL)
+
+
+def _lista_krokow(sekcja: str) -> str:
+    """Wnętrze ``<ol class="lista-krokow">`` — lista wszystkich kroków (PRZ-157)."""
+    dopasowanie = WZORZEC_LISTY_KROKOW.search(sekcja)
+
+    assert dopasowanie, 'sekcja kroków musi mieć listę <ol class="lista-krokow">'
+    return dopasowanie["tresc"]
 
 
 def _marki(blok: str) -> list[str]:
@@ -536,24 +562,62 @@ def test_sekcja_krokow_ma_zdanie_wprowadzajace(strony, slug):
     assert "zachowuje sens formuły" in sekcja
 
 
-@pytest.mark.parametrize("slug", PRAWA_KROKOW)
-def test_sekcja_krokow_nie_ma_guizikow_ani_numerkow(strony, slug):
-    """Kryterium 6: bez odtwarzania i bez numerków — zostają tylko strzałki."""
-    sekcja = _sekcja_krokow(strony[slug])
-
-    for napis in ("Odtwórz", "Pauza", "Od nowa", "krok-numer", "lista-krokow"):
-        assert napis not in sekcja, f"sekcja kroków pokazuje {napis!r}"
-    assert "list-unstyled" in sekcja, "lista kroków musi być bez numeracji"
+# --- sekcja „Krok po kroku”: wszystkie kroki widoczne naraz (karta PRZ-157) ---
 
 
 @pytest.mark.parametrize("slug", PRAWA_KROKOW)
-def test_sekcja_krokow_uzywa_komponentu_strzalek(strony, slug):
-    """Sekcja nadal chodzi krok po kroku komponentem PRZ-124 (tylko ‹ ›)."""
+def test_lista_krokow_pokazuje_wszystkie_kroki_prawa(strony, slug):
+    """Kryterium 1: lista ma dokładnie tyle pozycji, ile kroków ma prawo."""
+    law = laws.get(slug)
+    pozycje = _kroki_sekcji(_lista_krokow(_sekcja_krokow(strony[slug])))
+
+    assert len(law.kroki) > 1, f"prawo {slug} ma za mało kroków, żeby lista coś znaczyła"
+    assert len(pozycje) == len(law.kroki), f"lista nie pokazuje wszystkich kroków {slug}"
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_sekcja_krokow_nie_ma_komponentu_ani_przyciskow(strony, slug):
+    """Kryterium 2: bez montowania steppera, bez nawigacji krokami i bez licznika."""
     sekcja = _sekcja_krokow(strony[slug])
 
-    assert 'class="stepper-mount" data-stepper' in sekcja
-    assert "/static/css/stepper.css" in sekcja
-    assert "/static/js/steps.js" in sekcja
+    for napis in NAPISY_KOMPONENTU:
+        assert napis not in sekcja, f"sekcja kroków wciąż pokazuje {napis!r}"
+    assert WZORZEC_LICZNIKA.search(sekcja) is None, "numerki „krok 3 z 7” muszą zniknąć"
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_kazdy_krok_ma_numer_i_tresc_w_kolejnosci(strony, slug):
+    """Kryterium 3: numer, wzory, plakietka, opis i „dlaczego wolno” — w tej kolejności.
+
+    Kolejność jest treścią: początkujący czyta krok od wzoru do uzasadnienia, więc
+    plakietka prawa musi stać pod parą „przed ⇒ po”, a nie nad nią.
+    """
+    law = laws.get(slug)
+    bloki = _kroki_sekcji(_lista_krokow(_sekcja_krokow(strony[slug])))
+
+    assert len(bloki) == len(law.kroki)
+    for numer, blok in enumerate(bloki, start=1):
+        assert f'<span class="krok-numer">Krok {numer}</span>' in blok, f"krok {numer} bez numeru"
+        kolejnosc = [
+            blok.index('class="krok-numer"'),
+            blok.index('class="krok-wzor formula"'),
+            blok.index('class="krok-strzalka"'),
+            blok.index('class="krok-plakietka'),
+            blok.index('class="krok-opis'),
+            blok.index("<strong>Dlaczego wolno:</strong>"),
+        ]
+
+        assert kolejnosc == sorted(kolejnosc), f"krok {numer} prawa {slug} ma złą kolejność"
+
+
+def test_arkusz_oddziela_kroki_i_znosi_numeracje_listy():
+    """Kryterium 5: kroki oddziela linia i tło, a numeracja nie jest podwójna."""
+    arkusz = (KATALOG_APP / "static" / "css" / "steps.css").read_text("utf-8")
+    blok = arkusz[arkusz.index(".lista-krokow") :]
+
+    assert "list-style: none" in blok, "numer kroku rysuje krok, nie lista"
+    assert "border-top" in blok, "kroki muszą być oddzielone linią"
+    assert "background-color" in blok, "kroki muszą mieć własne tło"
 
 
 # --- szablony ----------------------------------------------------------------
