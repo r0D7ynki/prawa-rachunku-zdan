@@ -57,6 +57,35 @@ def test_api_simplify_nieznany_cel(klient):
     assert "xyz" in dane["blad"]
 
 
+def test_api_simplify_odrzuca_cialo_nie_obiekt_json(klient):
+    """Lista zamiast obiektu to błąd danych, nie awaria serwera (kontrakt API)."""
+    odpowiedz = klient.post(ADRES, json=["p"])
+
+    assert odpowiedz.status_code == 200
+    dane = odpowiedz.get_json()
+    assert dane["ok"] is False
+    assert dane["blad"].strip()
+
+
+def test_api_simplify_bez_tresci_zadania_to_blad_danych(klient):
+    odpowiedz = klient.post(ADRES)
+
+    assert odpowiedz.status_code == 200
+    dane = odpowiedz.get_json()
+    assert dane["ok"] is False
+    assert dane["blad"].strip()
+
+
+def test_api_simplify_glebokie_zagniezdzenie_to_blad_danych(klient):
+    """Formuła, która wyczerpuje stos parsera, daje ``ok: false``, a nie kod 500."""
+    odpowiedz = klient.post(ADRES, json={"formula": "(" * 249 + "p" + ")" * 249, "cel": "auto"})
+
+    assert odpowiedz.status_code == 200
+    dane = odpowiedz.get_json()
+    assert dane["ok"] is False
+    assert "zagnieżdżona" in dane["blad"]
+
+
 def test_api_simplify_domyslny_cel_to_auto(klient):
     dane = klient.post(ADRES, json={"formula": "p ∧ (q ∨ r)"}).get_json()
 
@@ -84,6 +113,10 @@ def test_api_simplify_slad_ma_wymagane_pola(klient):
     for krok in dane["kroki"]:
         for pole in POLA_SLADU:
             assert krok[pole].strip()
+
+
+def test_api_simplify_jest_zarejestrowany(aplikacja):
+    assert "api_simplify" in aplikacja.config["BLUEPRINTS"]
 
 
 # ---------------------------------------------------------------------------
@@ -164,3 +197,8 @@ def test_skrypt_ma_polskie_komunikaty_i_arie(skrypt):
     assert "Nie udało się połączyć z serwerem" in skrypt
     assert "aria-expanded" in skrypt
     assert "aria-live" in skrypt
+
+
+def test_skrypt_podpowiada_o_rozwinieciu_kroku(skrypt):
+    """Bez podpowiedzi początkujący nie zgadnie, że krok da się rozwinąć."""
+    assert "Kliknij nagłówek kroku" in skrypt
