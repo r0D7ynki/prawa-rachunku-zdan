@@ -45,7 +45,14 @@ body {
   white-space: nowrap;
 }
 
-.formula .op {
+/* Spójniki we wzorach. `formula.to_html` nadaje każdemu operatorowi własną, stałą klasę
+   (umowa z `docs/ARCHITEKTURA.md`): negacja `op-neg`, koniunkcja `op-and`,
+   alternatywa `op-or`, implikacja `op-imp`, równoważność `op-iff`. */
+.formula .op-neg,
+.formula .op-and,
+.formula .op-or,
+.formula .op-imp,
+.formula .op-iff {
   padding: 0 0.15em;
   color: var(--kolor-akcent);
 }
