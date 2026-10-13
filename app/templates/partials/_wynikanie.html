@@ -1,0 +1,82 @@
+{# Partial: test wynikania (karta PRZ-083).
+   Wejście: `wynik` (dane z `konsekwencja.wynik_dla_strony` — pole `sprawdzono`,
+   `ok`, `wynika`, `kontrprzyklad`, `blad`), a także `zalozenia` i `teza`
+   (teksty z formularza, pokazywane po wysłaniu).
+
+   Formularz działa bez JavaScriptu: wysyła zwykłym POST-em na `/konsekwencja`
+   i wynik wraca narysowany tutaj. Gdy wczyta się `wynikanie.js`, ten sam formularz
+   liczy wynik przez `POST /api/wynikanie` i podmienia zawartość `#wynik-wynikanie`.
+   Dlatego wynik da się pokazać na dwa sposoby — oba składają te same zdania. #}
+<form
+  id="formularz-wynikania"
+  class="wynikanie-formularz"
+  method="post"
+  action="/konsekwencja"
+>
+  <div class="mb-3">
+    <label class="form-label" for="pole-zalozenia">Założenia — jedna formuła w wierszu</label>
+    <textarea
+      class="form-control"
+      id="pole-zalozenia"
+      name="zalozenia"
+      rows="4"
+      aria-describedby="podpowiedz-zalozenia"
+    >{{ zalozenia }}</textarea>
+    <p class="form-text" id="podpowiedz-zalozenia">
+      Na przykład w pierwszym wierszu <span class="formula">p → q</span>,
+      a w drugim <span class="formula">∼q</span>. Limit to 10 założeń.
+    </p>
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="pole-teza">Teza</label>
+    <input
+      class="form-control"
+      id="pole-teza"
+      name="teza"
+      type="text"
+      value="{{ teza }}"
+      aria-describedby="podpowiedz-teza"
+    />
+    <p class="form-text" id="podpowiedz-teza">
+      Na przykład <span class="formula">∼p</span>. Zmiennych w całym pytaniu może być
+      najwyżej 6.
+    </p>
+  </div>
+  <button class="btn btn-primary" id="przycisk-sprawdz" type="submit">
+    Sprawdź, czy teza wynika
+  </button>
+</form>
+
+<p
+  id="komunikat-bledu"
+  class="wynikanie-blad alert alert-warning mt-3 mb-0"
+  role="status"
+  hidden
+></p>
+
+{# Wynik jest opisany tekstem, więc kolor nigdy nie jest jedynym nośnikiem informacji. #}
+<div id="wynik-wynikanie" class="wynikanie-wynik mt-3" aria-live="polite">
+  {% if wynik.sprawdzono %}
+    {% if not wynik.ok %}
+      <p class="alert alert-warning mb-0">{{ wynik.blad }}</p>
+    {% elif wynik.wynika %}
+      <p class="alert alert-success mb-2">Teza wynika z założeń.</p>
+      <p class="text-muted small mb-0">
+        Nie ma wartościowania, w którym założenia są prawdziwe, a teza fałszywa.
+      </p>
+    {% else %}
+      <p class="alert alert-warning mb-2">Teza nie wynika z założeń.</p>
+      <p class="text-muted small mb-1">
+        Kontrprzykład — założenia prawdziwe, teza fałszywa (1 to prawda, 0 to fałsz):
+      </p>
+      <p class="kontrprzyklad mb-2">{{ wynik.kontrprzyklad }}</p>
+      <p class="mb-0">
+        <a class="btn btn-outline-primary btn-sm" href="/plac-zabaw">
+          Sprawdź tezę w placu zabaw
+        </a>
+      </p>
+    {% endif %}
+  {% endif %}
+</div>
+
+<script type="module" src="{{ url_for('static', filename='js/wynikanie.js') }}"></script>

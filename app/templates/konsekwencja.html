@@ -1,0 +1,139 @@
+{#
+  Szablon lekcji /konsekwencja (karta PRZ-083). Treść odwzorowuje sekcję
+  „1. Konsekwencja logiczna” z `docs/TRESC-WYKLAD2.md`.
+
+  Wszystkie wzory przechodzą przez `formula_to_html` (czyli `formula.to_html`).
+  Napisy z metazmiennymi Φ i Ψ parser odrzuca, więc idą na stronę jako zwykły tekst —
+  to samo, co robi `app/blueprints/kpn.py` z literami α i β.
+
+  Oceny rozumowań o Azorze, wniosek pod tablicą i wynik testu liczy
+  `app/blueprints/konsekwencja.py`. Tablicę równoważności rysuje partial
+  `_truth_table.html` (karta PRZ-011) na formule podanej w zmiennej `formula`,
+  a test wynikania — partial `_wynikanie.html`.
+#}
+{% extends "base.html" %}
+
+{% block tytul %}Konsekwencja logiczna{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Konsekwencja logiczna</h1>
+    <p class="lead">
+      Ta lekcja pokazuje, kiedy teza wynika z założeń. Nauczysz się sprawdzać wynikanie
+      wzorem i czytać kontrprzykład, gdy teza nie wynika.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-definicja">
+    <h2 id="naglowek-definicja">Kiedy teza wynika z założeń</h2>
+    <p>
+      Formuła <span class="formula">Ψ</span> <strong>wynika logicznie</strong> z formuł
+      <span class="formula">Φ1, Φ2, …, Φn</span>, gdy implikacja zbudowana z tych formuł
+      jest tautologią.
+    </p>
+    <p class="formula formula-wyrozniona">{{ formula_to_html(definicja) |safe }}</p>
+    <p>
+      Formuły <span class="formula">Φ1 … Φn</span> to <strong>założenia</strong>, czyli to,
+      co przyjmujemy. Formuła <span class="formula">Ψ</span> to <strong>teza</strong>,
+      czyli wniosek.
+    </p>
+    <p>
+      Znaczenie tej definicji jest prostsze niż jej zapis: nie istnieje wartościowanie,
+      w którym wszystkie założenia są prawdziwe, a teza fałszywa. Wystarczy jedno takie
+      wartościowanie, żeby teza nie wynikała z założeń.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-rownowaznosc">
+    <h2 id="naglowek-rownowaznosc">Ten sam warunek inaczej</h2>
+    <p>
+      Wynikanie z dwóch założeń zapisujemy też tak — obie strony są równoważne:
+    </p>
+    <p class="formula formula-wyrozniona">{{ formula_to_html(rownowaznosc_dwoch) |safe }}</p>
+    <p>
+      Sprawdźmy to na dwóch zdaniach z pierwszej lekcji: założenia to
+      <span class="formula">{{ formula_to_html(zalozenia_przykladu[0]) |safe }}</span>
+      i <span class="formula">{{ formula_to_html(zalozenia_przykladu[1]) |safe }}</span>,
+      a teza to <span class="formula">{{ formula_to_html(teza_przykladu) |safe }}</span>.
+    </p>
+    <p class="formula formula-wyrozniona">
+      {{ formula_to_html(przyklad_rownowaznosci) |safe }}
+    </p>
+    <p>
+      Tablica prawdy poniżej liczy się w przeglądarce. Ma
+      {{ wniosek_rownowaznosci.wierszy }} wierszy, po jednym dla każdego układu wartości
+      zmiennych p, q i r.
+    </p>
+    {% include "partials/_truth_table.html" %}
+    <p>{{ wniosek_rownowaznosci.wniosek }}</p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-azor">
+    <h2 id="naglowek-azor">Dwa rozumowania o Azorze</h2>
+    <p>
+      W obu rozumowaniach <span class="formula">p</span> znaczy „Azor jest psem”,
+      a <span class="formula">q</span> — „Azor jest zwierzęciem”. Rozumowania wyglądają
+      podobnie, ale tylko jedno jest poprawne.
+    </p>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <caption>Dwa rozumowania o Azorze: zapis, ocena i wyjaśnienie.</caption>
+        <thead>
+          <tr>
+            <th scope="col">rozumowanie</th>
+            <th scope="col">zapis</th>
+            <th scope="col">ocena</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rozumowanie in azor %}
+            <tr>
+              <td>{{ rozumowanie.opis }}</td>
+              <td class="formula">{{ formula_to_html(rozumowanie.formula) |safe }}</td>
+              <td>
+                <p class="mb-1">
+                  <strong>{{ rozumowanie.ocena }}</strong>
+                </p>
+                <p class="mb-1 small">{{ rozumowanie.wyjasnienie }}</p>
+                {% if rozumowanie.kontrprzyklad %}
+                  <p class="mb-0 small">
+                    Kontrprzykład: {{ rozumowanie.kontrprzyklad }}.
+                  </p>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Oba zapisy różni jedna litera: kolejność negacji. Wystarczy jedno słowo, żeby
+      poprawne rozumowanie zamienić w błędne.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-sprzeczne">
+    <h2 id="naglowek-sprzeczne">Założenia sprzeczne</h2>
+    <p>
+      Założenia są <strong>sprzeczne</strong>, gdy ich koniunkcja jest zawsze fałszywa.
+      Z założeń sprzecznych wynika logicznie dowolna teza.
+    </p>
+    <p class="formula formula-wyrozniona">{{ formula_to_html(sprzeczne.formula) |safe }}</p>
+    <p>
+      Przykład z wykładu: „Pada deszcz i nie pada deszcz. Zatem Ziemia jest płaska.”
+      Rozumowanie jest formalnie poprawne, ale bezsensowne — nie istnieje świat,
+      w którym założenia są spełnione.
+    </p>
+    <p><strong>Tautologie określają formalną poprawność rozumowania, a nie jego sens.</strong></p>
+    <p>{{ sprzeczne.wniosek }}</p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-test">
+    <h2 id="naglowek-test">Test wynikania</h2>
+    <p>
+      Wpisz założenia — jedno w wierszu — i tezę. Strona powie, czy teza wynika
+      z założeń. Gdy nie wynika, pokaże kontrprzykład.
+    </p>
+    {% include "partials/_wynikanie.html" %}
+  </section>
+{% endblock %}
