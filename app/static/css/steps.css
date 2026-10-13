@@ -1,9 +1,13 @@
-/* Style komponentu krokowego przekształcania (karty PRZ-013 i PRZ-077).
+/* Style komponentu krokowego przekształcania (karty PRZ-013, PRZ-077 i PRZ-143).
    Kolor nigdy nie jest jedynym nośnikiem informacji: aktywny krok ma dodatkowo
    etykietę „Krok n”, obramowanie i pogrubienie, a wyróżniony fragment formuły —
-   `aria-label` oraz podkreślenie obok tła. */
+   `aria-label` oraz podkreślenie obok tła.
 
-.steps-mount {
+   Ten sam arkusz obsługuje sekcję „Krok po kroku” na stronie prawa, więc zmienne
+   ustawiamy i na montażu z API, i na kontenerze `.kroki-prawa`. */
+
+.steps-mount,
+.kroki-prawa {
   --steps-akcent: var(--bs-primary, #0d6efd);
   --steps-tlo-aktywne: var(--bs-primary-bg-subtle, #cfe2ff);
   --steps-tlo-widoczne: var(--bs-secondary-bg, #e9ecef);
@@ -92,6 +96,39 @@
 
 .steps-podsumowanie {
   font-weight: 500;
+}
+
+/* --- sekcja „Krok po kroku” na stronie prawa (karta PRZ-143) ----------------
+   Kroki rysuje serwer, a `steps.js` pokazuje jeden naraz. Numerków kroków nie ma
+   w widoku, więc lista jest bez numeracji także bez arkusza Bootstrapa. */
+
+.kroki-lista {
+  padding-left: 0;
+  list-style: none;
+}
+
+.kroki-prawa .stepper-mount {
+  margin-bottom: 0.75rem;
+}
+
+/* Para „przed ⇒ po” jest najważniejsza w kroku, więc idzie dużą czcionką
+   i na własnym tle — inaczej wzór gubi się wśród zdań wyjaśnienia. */
+.kroki-prawa .krok-wzor {
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+.kroki-prawa .krok-linia {
+  background-color: var(--steps-tlo-widoczne);
+  border-radius: 0.25rem;
+}
+
+.kroki-prawa .krok-zmiana {
+  color: var(--bs-secondary-color, #495057);
+}
+
+.kroki-prawa .krok-dlaczego {
+  color: var(--bs-secondary-color, #495057);
 }
 
 @media (prefers-reduced-motion: no-preference) {

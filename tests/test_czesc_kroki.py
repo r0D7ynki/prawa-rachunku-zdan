@@ -348,6 +348,29 @@ def test_skrypt_bez_krokow_pokazuje_sam_komunikat(skrypt):
     assert "brakKrokow" in kod
 
 
+def test_skrypt_prowadzi_sekcje_krokow_rysowana_przez_serwer(skrypt):
+    """Kryterium PRZ-143: te same kroki na stronie prawa prowadzi wspólny stepper."""
+    kod = _bez_komentarzy(skrypt)
+
+    assert "[data-kroki-prawa]" in kod
+    assert "[data-stepper]" in kod
+    assert "li.krok" in kod
+    assert "createStepper({" in kod
+
+
+def test_skrypt_pokazuje_na_stronie_prawa_jeden_krok_naraz(skrypt):
+    """Kryterium PRZ-143: kroki czekają ukryte, a komponent pokazuje jeden.
+
+    Bez JavaScriptu lista zostaje widoczna w całości, więc czytelnik nie traci
+    treści — dlatego ukrywanie robi skrypt, a nie arkusz.
+    """
+    kod = _bez_komentarzy(skrypt)
+
+    assert "pozycja.hidden = indeks !== numer" in kod
+    assert '".krok-plakietka"' in kod
+    assert "textContent.trim()" in kod
+
+
 def test_arkusz_styluje_wyrozniony_fragment(arkusz):
     """Wyróżnienie fragmentu to tło **i** podkreślenie — kolor nie jest jedynym nośnikiem."""
     assert ".krok-fragment" in arkusz

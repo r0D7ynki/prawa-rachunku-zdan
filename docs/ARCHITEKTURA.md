@@ -219,8 +219,13 @@ def all_laws() -> list[Law]              # w kolejności nauki
 def get(slug: str) -> Law | None
 def by_category() -> dict[str, list[Law]]
 def categories() -> list[str]
+def dlaczego_wolno(regula: str) -> str   # jedno zdanie: dlaczego krok tej reguły wolno zrobić
 def validate() -> list[str]              # lista problemów; pusta = treść poprawna
 ```
+
+`dlaczego_wolno` czyta słownik `DLACZEGO_WOLNO` (klucz = `Step.reguła`, m.in. `"założenie"`).
+Dla reguły spoza słownika zwraca `DLACZEGO_WOLNO_OGOLNE` — nowa treść nigdy nie zostawia
+pustego miejsca na stronie (karta PRZ-143).
 
 Moduły w `laws_data/` wystawiają `LAWS: list[Law]`. `laws.py` znajduje je sam
 (`pkgutil.iter_modules`) i sortuje po polu `kolejnosc` z `LAWS` — brak pola = 100.
@@ -320,6 +325,36 @@ Partiale `_gates.html`, `_sets.html` i `_steps.html` składają sekcję rysunkó
 w `_diagramy.html` (`figura`, `zasoby`, `stopka`). Każdy z nich pokazuje **oba** diagramy;
 różni je tylko kolejność figur. Krok przełącza `wizualizacje.js`: gotowe kroki czekają
 w `<template data-wiz-krok>`, a bez JavaScriptu widać pierwszy krok i listę opisów.
+
+### Sekcja „Krok po kroku” — kroki prawa (karta PRZ-143)
+
+Sekcję buduje w całości serwer: `strona_prawa` podaje szablonowi `kroki` — listę
+`KrokWidoku`, a `steps.js` tylko pokazuje jeden krok naraz paskiem strzałek (PRZ-124).
+Bez JavaScriptu czytelnik widzi całą listę, więc nic nie ginie.
+
+```python
+@dataclass(frozen=True)
+class KrokWidoku:
+    plakietka: str   # nazwa użytego prawa albo "punkt wyjścia"
+    przed: Markup    # wzór „przed” z wyróżnionym fragmentem (<mark>)
+    po: Markup       # wzór „po” z wyróżnionym fragmentem (<mark>)
+    opis: str        # opis kroku z danych prawa
+    zmiana: str      # zdanie z różnicy; "" dla kroku bez zmian
+    dlaczego: str    # zdanie „dlaczego wolno” z laws.dlaczego_wolno
+
+def kroki_widoku(law: Law) -> list[KrokWidoku]
+def plakietka_prawa(regula: str) -> str          # "założenie" → "punkt wyjścia"
+def zakresy_zmiany(przed: str, po: str) -> tuple[tuple[int, int], tuple[int, int]]
+def zmieniony_fragment(przed: str, po: str) -> tuple[str, str]
+def zaznacz_fragment(wzor_html: str, formula: str, zakres: tuple[int, int]) -> Markup
+```
+
+**Zmieniony fragment.** Obie formuły porównujemy po tokenach: odcinamy wspólny początek
+i wspólny koniec, a zmieniony środek rozszerzamy o cały jego argument i o obejmujące go
+nawiasy (`∼(p ∨ q)`, nie `∼(p ∨`). Zakresy liczymy na tekście, który widać w HTML
+(`_wyklad`), i dopiero potem wstawiamy `<mark>` w HTML wzoru tak, żeby nie przeciąć
+znacznika operatora. Krok może dopisywać, usuwać albo zamieniać fragment — stąd trzy
+postacie zdania (`Dopisujemy` / `Usuwamy` / `Zamieniamy`); krok bez zmian nie ma zdania.
 
 ## `app/logic/rules.py` — reguły wnioskowania
 

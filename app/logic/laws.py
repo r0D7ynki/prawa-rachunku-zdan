@@ -31,10 +31,34 @@ from types import ModuleType
 
 from app.logic.law_model import Law, Step
 
-__all__ = ["all_laws", "by_category", "categories", "get", "validate"]
+__all__ = ["all_laws", "by_category", "categories", "dlaczego_wolno", "get", "validate"]
 
 #: Pakiet z treścią praw.
 DATA_PACKAGE = "app.logic.laws_data"
+
+#: Zdania „dlaczego wolno" dla reguł używanych w treści praw (karta PRZ-143).
+#: Klucz to identyfikator z pola ``Step.reguła`` — zwykle ``slug`` prawa, a dla
+#: pierwszego kroku ``"założenie"``. Każde zdanie to jedno krótkie uzasadnienie
+#: po polsku, dlaczego ten krok nie zmienia wartości formuły.
+#: Wpisujemy tylko reguły, których powód jest inny niż równoważność obu stron —
+#: dla pozostałych (m.in. oba prawa de Morgana i oba prawa rozdzielności)
+#: wystarcza zdanie ogólne, a brak wpisu nigdy nie zostawia pustego miejsca.
+DLACZEGO_WOLNO: dict[str, str] = {
+    "założenie": "To punkt wyjścia — nic tu jeszcze nie zmieniamy.",
+    "podwojne-przeczenie": "Bo dwa przeczenia przed zdaniem znoszą się i wartość zostaje ta sama.",
+    "przemiennosc-alternatywy": "Bo kolejność zdań w „lub” zmienia tylko zapis, nie wartość.",
+    "przemiennosc-koniunkcji": "Bo kolejność zdań w „i” zmienia tylko zapis, nie wartość.",
+    "lacznosc-alternatywy": "Bo nawiasy mówią tylko, które „lub” liczymy najpierw.",
+    "lacznosc-koniunkcji": "Bo nawiasy mówią tylko, które „i” liczymy najpierw.",
+    "kontrapozycji": "Bo zamiana stron z zaprzeczeniem nie zmienia wartości formuły.",
+    "definiowanie-implikacji": "Bo „jeżeli p, to q” znaczy dokładnie „nie p lub q”.",
+    "idempotencja-alternatywy": "Bo „p lub p” to zawsze to samo co samo „p”.",
+    "idempotencja-koniunkcji": "Bo „p i p” to zawsze to samo co samo „p”.",
+    "podstawianie": "Bo w miejsce zmiennej wolno wstawić dowolną formułę.",
+}
+
+#: Zdanie dla reguły spoza słownika :data:`DLACZEGO_WOLNO`.
+DLACZEGO_WOLNO_OGOLNE = "Bo obie formuły mają tę samą wartość przy każdym wartościowaniu."
 
 #: Kolejność modułu, który nie ma atrybutu ``kolejnosc``.
 DEFAULT_ORDER = 100
@@ -125,6 +149,16 @@ def get(slug: str) -> Law | None:
         if law.slug == slug:
             return law
     return None
+
+
+def dlaczego_wolno(regula: str) -> str:
+    """Zwraca jedno zdanie po polsku: dlaczego krok tej reguły wolno zrobić.
+
+    Zdanie bierzemy ze słownika :data:`DLACZEGO_WOLNO`, a dla nieznanej reguły
+    (np. dopisanej właśnie do treści prawa) zwracamy zdanie ogólne. Dzięki temu
+    nowa treść nigdy nie zostawia pustego miejsca na stronie prawa.
+    """
+    return DLACZEGO_WOLNO.get(regula, DLACZEGO_WOLNO_OGOLNE)
 
 
 def by_category() -> dict[str, list[Law]]:

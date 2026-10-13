@@ -12,6 +12,7 @@ porównanie albo brak klas ``op-…`` by to pokazały.
 from __future__ import annotations
 
 import re
+from html import unescape
 from pathlib import Path
 
 import pytest
@@ -62,6 +63,15 @@ KOLEJNOSC_SEKCJI = [
 WZORZEC_SAFE = re.compile(r"\{\{(?P<wyrazenie>.*?)\|\s*safe\s*\}\}", re.DOTALL)
 WZORZEC_NAV = re.compile(r'aria-label="Nawigacja między prawami"(?P<tresc>.*?)</nav>', re.DOTALL)
 
+#: Znaczniki wyróżnionego fragmentu kroku (karta PRZ-143) — otwierający i zamykający.
+WZORZEC_MARK = re.compile(r'<mark class="krok-fragment"[^>]*>|</mark>')
+
+#: Prawa, na których karta PRZ-143 sprawdza sekcję „Krok po kroku”.
+PRAWA_KROKOW = ("de-morgan-1", "rozdzielnosc-1")
+
+#: Zdanie wprowadzające sekcji kroków — wymaga go karta PRZ-143.
+WPROWADZENIE_KROKOW = "Zamieniamy lewą stronę prawa na prawą."
+
 
 def _slug(law: Law) -> str:
     """Identyfikator prawa w nazwie testu."""
@@ -91,6 +101,65 @@ def _nawigacja(html: str) -> str:
 def _widac(html: str, tekst: str) -> bool:
     """Czy tekst widać na stronie — tak, jak zapisze go Jinja (z escapowaniem)."""
     return str(escape(tekst)) in html
+
+
+def _bez_mark(html: str) -> str:
+    """HTML bez znaczników ``<mark>``.
+
+    Wzór z wyróżnionym fragmentem nie jest już znakiem w znak tym, co zwraca
+    ``formula.to_html`` — ``<mark>`` stoi w środku. Zdjęcie samych znaczników
+    odtwarza wyjście ``to_html``, więc test nadal pilnuje, że wzór idzie przez
+    ``to_html``, a nie przez surowy napis (karta PRZ-143).
+    """
+    return WZORZEC_MARK.sub("", html)
+
+
+def _sekcja_krokow(html: str) -> str:
+    """Wnętrze sekcji „Krok po kroku”: od jej nagłówka do sekcji tablicy prawdy."""
+    poczatek = html.index('id="naglowek-kroki"')
+    koniec = html.index('id="naglowek-tablica-prawdy"')
+
+    assert poczatek < koniec, "sekcja kroków musi stać przed tablicą prawdy"
+    return html[poczatek:koniec]
+
+
+def _kroki_sekcji(sekcja: str) -> list[str]:
+    """Bloki ``<li class="krok">`` sekcji kroków, w kolejności ze strony."""
+    return re.findall(r'<li class="krok">(?P<tresc>.*?)</li>', sekcja, re.DOTALL)
+
+
+def _marki(blok: str) -> list[str]:
+    """Teksty objęte znacznikiem ``<mark>`` w jednym kroku."""
+    return re.findall(r'<mark class="krok-fragment"[^>]*>(?P<tresc>.*?)</mark>', blok, re.DOTALL)
+
+
+def _tekst(html: str) -> str:
+    """Sam tekst fragmentu HTML: bez znaczników, z rozwiązanymi encjami."""
+    return unescape(re.sub(r"<[^>]+>", "", html)).strip()
+
+
+def _zdanie_zmiany(blok: str) -> str:
+    """Zdanie z różnicy pod jednym krokiem."""
+    dopasowanie = re.search(r'<p class="krok-zmiana[^"]*">(?P<tresc>.*?)</p>', blok, re.DOTALL)
+
+    assert dopasowanie, "krok ze zmianą musi mieć zdanie z różnicy"
+    return _tekst(dopasowanie["tresc"])
+
+
+def _fragmenty_zdania(zdanie: str) -> tuple[str, str]:
+    """Fragmenty, które zdanie z różnicy nazywa: ``(przed, po)``.
+
+    „Zamieniamy A na B” daje ``(A, B)``, „Dopisujemy B” — ``("", B)``,
+    a „Usuwamy A” — ``(A, "")``. Pusty napis znaczy „ta strona się nie zmienia”.
+    """
+    bez_koncowki = zdanie.split(" — to ")[0]
+    if bez_koncowki.startswith("Zamieniamy "):
+        przed, _, po = bez_koncowki.removeprefix("Zamieniamy ").partition(" na ")
+        return przed, po
+    if bez_koncowki.startswith("Dopisujemy "):
+        return "", bez_koncowki.removeprefix("Dopisujemy ")
+    assert bez_koncowki.startswith("Usuwamy "), f"nieznane zdanie z różnicy: {zdanie!r}"
+    return bez_koncowki.removeprefix("Usuwamy "), ""
 
 
 @pytest.fixture(scope="module")
@@ -297,7 +366,8 @@ def test_strona_prawa_ma_wyjasnienie_i_przyklad(strony, law):
 
 @pytest.mark.parametrize("law", PRAWA, ids=_slug)
 def test_strona_prawa_ma_kazdy_krok_z_wzorami(strony, law):
-    html = strony[law.slug]
+    # Bez znaczników ``<mark>``, żeby porównywać z gołym wyjściem ``to_html``.
+    html = _bez_mark(strony[law.slug])
 
     for numer, krok in enumerate(law.kroki, start=1):
         assert _widac(html, krok.opis), f"brak opisu kroku {numer} prawa {law.slug}"
@@ -342,6 +412,148 @@ def test_strona_prawa_ma_sam_wzor_prawa_w_komponentach(strony, law):
     assert montaze, "strona prawa nie wstawia żadnego komponentu z wzorem"
     for wzor in montaze:
         assert wzor == str(escape(law.formula)), f"komponent dostał wzór {wzor!r}"
+
+
+# --- sekcja „Krok po kroku” (karta PRZ-143) ----------------------------------
+
+
+def test_dlaczego_wolno_zwraca_zdanie_po_polsku():
+    """Kryterium 1: słownik reguł daje niepuste zdanie dla praw z karty."""
+    for regula in (*PRAWA_KROKOW, "założenie"):
+        zdanie = laws.dlaczego_wolno(regula)
+
+        assert zdanie.strip(), f"brak zdania dla reguły {regula!r}"
+        assert zdanie.endswith("."), f"zdanie dla reguły {regula!r} nie jest zdaniem"
+
+
+def test_dlaczego_wolno_dla_nowej_reguly_nie_zostawia_pustego_miejsca():
+    """Nowa reguła w treści prawa dostaje zdanie ogólne, a nie pusty napis."""
+    zdanie = laws.dlaczego_wolno("regula-ktorej-jeszcze-nie-ma")
+
+    assert zdanie.strip()
+    assert zdanie.endswith(".")
+
+
+def test_plakietka_prawa_nazywa_regule_albo_punkt_wyjscia():
+    """Kryterium 2: „założenie” to „punkt wyjścia”, a reguła — nazwa prawa."""
+    assert widoki.plakietka_prawa("założenie") == "punkt wyjścia"
+    for slug in PRAWA_KROKOW:
+        assert widoki.plakietka_prawa(slug) == laws.get(slug).nazwa
+    assert widoki.plakietka_prawa("regula-spoza-rejestru") == "regula-spoza-rejestru"
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_kazdy_krok_ma_plakietke_z_nazwa_prawa(strony, slug):
+    """Kryterium 2: nad wzorami każdego kroku stoi nazwa użytego prawa."""
+    law = laws.get(slug)
+    bloki = _kroki_sekcji(_sekcja_krokow(strony[slug]))
+
+    assert len(bloki) == len(law.kroki)
+    for numer, (krok, blok) in enumerate(zip(law.kroki, bloki, strict=True), start=1):
+        nazwa = escape(widoki.plakietka_prawa(krok.reguła))
+        wzorzec = f'<span class="krok-plakietka badge text-bg-secondary">{nazwa}</span>'
+
+        assert wzorzec in blok, f"krok {numer} prawa {slug} nie ma plakietki prawa"
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_kazdy_krok_wyroznia_fragment_w_obu_wzorach(strony, slug):
+    """Kryterium 3: wzór „przed” i „po” ma fragment w ``<mark>`` z opisem zmiany."""
+    law = laws.get(slug)
+    sekcja = _sekcja_krokow(strony[slug])
+    bloki = _kroki_sekcji(sekcja)
+
+    assert len(bloki) == len(law.kroki)
+    assert sekcja.count('aria-label="ten fragment zastępujemy"') == 2 * len(law.kroki)
+    for numer, blok in enumerate(bloki, start=1):
+        marki = _marki(blok)
+
+        assert len(marki) == 2, f"krok {numer} prawa {slug} nie ma dwóch wyróżnień"
+        assert all(fragment.strip() for fragment in marki), "wyróżnienie nie może być puste"
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_zdanie_zmiany_wymienia_uzyte_prawo(strony, slug):
+    """Kryterium 3: krok, który coś zmienia, ma zdanie z różnicy z nazwą prawa."""
+    law = laws.get(slug)
+    sekcja = _sekcja_krokow(strony[slug])
+    zmieniajace = [krok for krok in law.kroki if krok.przed != krok.po]
+
+    assert zmieniajace, f"prawo {slug} nie ma kroku ze zmianą"
+    assert sekcja.count('class="krok-zmiana') == len(zmieniajace)
+    for krok in zmieniajace:
+        koncowka = f"— to {escape(widoki.plakietka_prawa(krok.reguła))}."
+
+        assert koncowka in sekcja, f"zdanie zmiany kroku {krok.reguła!r} nie nazywa prawa"
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_zdanie_zmiany_nazywa_dokladnie_wyroznione_fragmenty(strony, slug):
+    """Kryterium 3: zdanie z różnicy cytuje dokładnie te fragmenty, co ``<mark>``.
+
+    Wzór z wyróżnieniem jest tym, co widać, więc zdanie musi nazywać ten sam
+    fragment — inaczej początkujący szuka w formule tekstu, którego tam nie ma.
+    """
+    law = laws.get(slug)
+    bloki = _kroki_sekcji(_sekcja_krokow(strony[slug]))
+
+    assert len(bloki) == len(law.kroki)
+    for numer, (krok, blok) in enumerate(zip(law.kroki, bloki, strict=True), start=1):
+        przed_mark, po_mark = (_tekst(fragment) for fragment in _marki(blok))
+
+        if krok.przed == krok.po:
+            assert "krok-zmiana" not in blok, f"krok {numer} bez zmiany nie ma zdania"
+            continue
+        fragment, fragment_po = _fragmenty_zdania(_zdanie_zmiany(blok))
+
+        assert fragment or fragment_po, f"krok {numer} prawa {slug} bez zdania z różnicy"
+        if fragment:
+            assert fragment == przed_mark, f"krok {numer}: zdanie nie cytuje wzoru „przed”"
+        if fragment_po:
+            assert fragment_po == po_mark, f"krok {numer}: zdanie nie cytuje wzoru „po”"
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_kazdy_krok_ma_zdanie_dlaczego_wolno(strony, slug):
+    """Kryterium 4: pod każdym krokiem stoi zdanie „dlaczego wolno”."""
+    law = laws.get(slug)
+    sekcja = _sekcja_krokow(strony[slug])
+    naglowek = "<strong>Dlaczego wolno:</strong>"
+
+    assert sekcja.count(naglowek) == len(law.kroki)
+    for krok in law.kroki:
+        zdanie = escape(laws.dlaczego_wolno(krok.reguła))
+
+        assert f"{naglowek} {zdanie}" in sekcja, f"brak zdania dla kroku {krok.reguła!r}"
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_sekcja_krokow_ma_zdanie_wprowadzajace(strony, slug):
+    """Kryterium 5: sekcja mówi, że zamieniamy lewą stronę prawa na prawą."""
+    sekcja = _sekcja_krokow(strony[slug])
+
+    assert WPROWADZENIE_KROKOW in sekcja
+    assert "zachowuje sens formuły" in sekcja
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_sekcja_krokow_nie_ma_guizikow_ani_numerkow(strony, slug):
+    """Kryterium 6: bez odtwarzania i bez numerków — zostają tylko strzałki."""
+    sekcja = _sekcja_krokow(strony[slug])
+
+    for napis in ("Odtwórz", "Pauza", "Od nowa", "krok-numer", "lista-krokow"):
+        assert napis not in sekcja, f"sekcja kroków pokazuje {napis!r}"
+    assert "list-unstyled" in sekcja, "lista kroków musi być bez numeracji"
+
+
+@pytest.mark.parametrize("slug", PRAWA_KROKOW)
+def test_sekcja_krokow_uzywa_komponentu_strzalek(strony, slug):
+    """Sekcja nadal chodzi krok po kroku komponentem PRZ-124 (tylko ‹ ›)."""
+    sekcja = _sekcja_krokow(strony[slug])
+
+    assert 'class="stepper-mount" data-stepper' in sekcja
+    assert "/static/css/stepper.css" in sekcja
+    assert "/static/js/steps.js" in sekcja
 
 
 # --- szablony ----------------------------------------------------------------
