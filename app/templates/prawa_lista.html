@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block tytul %}Prawa rachunku zdań — lista{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Prawa rachunku zdań</h1>
+    <p class="lead">
+      Wybierz prawo, żeby zobaczyć jego wzór, wyjaśnienie po ludzku, przykład,
+      kroki przekształcenia, tablicę prawdy i rysunek.
+    </p>
+    <p class="licznik-praw">Praw w zestawie: {{ liczba }}</p>
+  </header>
+
+  {% if grupy %}
+    {% for kategoria, prawa in grupy.items() %}
+      <section class="sekcja" aria-labelledby="kategoria-{{ loop.index }}">
+        <h2 id="kategoria-{{ loop.index }}">{{ kategoria }}</h2>
+        <ul class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 lista-praw">
+          {% for prawo in prawa %}
+            <li class="col">
+              <a class="karta-prawa" href="/prawa/{{ prawo.slug }}">
+                <span class="karta-prawa-nazwa">{{ prawo.nazwa }}</span>
+                <span class="formula">{{ formula_to_html(prawo.formula) |safe }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endfor %}
+  {% else %}
+    <p>Brak praw w zestawie. Treść pojawia się tu stopniowo — zajrzyj później.</p>
+  {% endif %}
+{% endblock %}
