@@ -142,40 +142,23 @@
               <a class="nav-link" href="/spis-tresci">Spis treści</a>
             </li>
             {#
-              Przełącznik motywu (karta PRZ-138) w prawym narożniku menu. „Auto” to brak
-              klucza w localStorage — o motywie decyduje wtedy system. Wybrany przycisk
-              ma `aria-pressed="true"`; stan zaznacza też obwódka i pogrubienie, żeby sam
-              kolor nie niósł informacji. Bez JavaScriptu grupa znika (klasa `bez-js`).
+              Przełącznik motywu (karta PRZ-155) w prawym narożniku menu: **jeden suwak**
+              jasny/ciemny zamiast trzech przycisków. Opcji „Auto” nie ma w widoku —
+              brak zapisanego wyboru znaczy „jak w systemie”, a pierwsze przełączenie
+              zapisuje `light` albo `dark` w localStorage["motyw"]. Stan niesie pozycja
+              suwaka; ikony ☀ i ☾ po bokach tylko go opisują. Bez JavaScriptu suwak
+              znika (klasa `bez-js`), a motywem rządzi zapytanie o media z app.css.
             #}
             <li class="nav-item d-flex align-items-center ms-lg-3">
-              <div class="motyw-przelacznik" role="group" aria-label="Motyw strony">
-                <button
-                  type="button"
-                  class="motyw-przycisk"
-                  data-motyw="auto"
-                  aria-pressed="true"
-                  title="Motyw jak w systemie"
-                >
-                  <span aria-hidden="true">◐</span> Auto
-                </button>
-                <button
-                  type="button"
-                  class="motyw-przycisk"
-                  data-motyw="light"
-                  aria-pressed="false"
-                  title="Motyw jasny"
-                >
-                  <span aria-hidden="true">☀</span> Jasny
-                </button>
-                <button
-                  type="button"
-                  class="motyw-przycisk"
-                  data-motyw="dark"
-                  aria-pressed="false"
-                  title="Motyw ciemny"
-                >
-                  <span aria-hidden="true">☾</span> Ciemny
-                </button>
+              <div class="przelacznik-motywu-pole">
+                <span class="przelacznik-motywu-ikona" aria-hidden="true">☀</span>
+                <input
+                  class="form-check-input przelacznik-motywu"
+                  type="checkbox"
+                  role="switch"
+                  aria-label="Tryb ciemny"
+                />
+                <span class="przelacznik-motywu-ikona" aria-hidden="true">☾</span>
               </div>
             </li>
           </ul>
