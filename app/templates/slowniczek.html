@@ -52,12 +52,13 @@
     <dd>
       Spójnik logiczny, inaczej funktor, łączy zdania w jedno większe zdanie.
       Do spójników należą negacja, koniunkcja, alternatywa, implikacja i równoważność.
-      Na stronie rozpoznasz je po symbolach ¬, ∧, ∨, → i ↔.
+      Na stronie rozpoznasz je po symbolach ∼, ∧, ∨, → i ≡.
     </dd>
 
     <dt id="negacja">negacja</dt>
     <dd>
-      Negacja odwraca wartość zdania i zapisujemy ją jako <span class="formula">¬p</span>.
+      Negacja odwraca wartość zdania i zapisujemy ją jako <span class="formula">∼p</span>.
+      W innych książkach spotkasz zapis <span class="formula">¬p</span> — to ten sam spójnik.
       Zdanie „nie pada” jest prawdziwe dokładnie wtedy, gdy zdanie „pada” jest fałszywe.
       Na klawiaturze zapiszesz ją jako <code>~</code> albo <code>!</code>.
     </dd>
@@ -85,7 +86,8 @@
 
     <dt id="rownowaznosc">równoważność</dt>
     <dd>
-      Równoważność <span class="formula">p ↔ q</span> jest prawdziwa, gdy oba zdania mają tę samą wartość.
+      Równoważność <span class="formula">p ≡ q</span> jest prawdziwa, gdy oba zdania mają tę samą wartość.
+      W innych książkach spotkasz zapis <span class="formula">p ↔ q</span> — to ten sam spójnik.
       Mówimy wtedy: p wtedy i tylko wtedy, gdy q.
       Fałsz wychodzi tylko przy dwóch różnych wartościach, czyli prawda–fałsz albo fałsz–prawda.
     </dd>
@@ -100,6 +102,7 @@
     <dt id="tabela-prawdy">tabela prawdy</dt>
     <dd>
       Tabela prawdy wypisuje wartość formuły dla wszystkich możliwych wartościowań.
+      Zapisujemy je krótko: <span class="formula">1</span> to PRAWDA, a <span class="formula">0</span> to FAŁSZ.
       Każda zmienna podwaja liczbę wierszy, więc trzy zmienne dają osiem wierszy.
       Mówimy też „tablica prawdy” i znaczy to dokładnie to samo.
       Ostatnia kolumna pokazuje wartość całej formuły.
@@ -109,14 +112,14 @@
     <dd>
       Tautologia to formuła prawdziwa przy każdym wartościowaniu zmiennych.
       W jej tablicy prawdy nie znajdziesz wiersza z fałszem.
-      Prosty przykład to <span class="formula">p ∨ ¬p</span>.
+      Prosty przykład to <span class="formula">p ∨ ∼p</span>.
     </dd>
 
     <dt id="kontrtautologia">kontrtautologia</dt>
     <dd>
       Kontrtautologia to formuła fałszywa przy każdym wartościowaniu.
       Nazywamy ją też sprzecznością.
-      Prosty przykład to <span class="formula">p ∧ ¬p</span>.
+      Prosty przykład to <span class="formula">p ∧ ∼p</span>.
     </dd>
 
     <dt id="formula-spelnialna">formuła spełnialna</dt>
@@ -143,7 +146,7 @@
     <dt id="forma-normalna">forma normalna (NNF, DNF, CNF)</dt>
     <dd>
       Forma normalna to zapis formuły według ustalonej reguły.
-      NNF sprowadza negacje do zmiennych i nie używa znaków → ani ↔.
+      NNF sprowadza negacje do zmiennych i nie używa znaków → ani ≡.
       DNF to alternatywa koniunkcji, a CNF to koniunkcja alternatyw.
     </dd>
 
