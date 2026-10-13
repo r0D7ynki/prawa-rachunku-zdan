@@ -585,6 +585,9 @@ bo strony spoza kursu (np. `/slowniczek`) też dostają `NAV`, tyle że bez lekc
 
 Jeden pasek prowadzi użytkownika krok po kroku. Korzystają z niego tablica prawdy,
 bramki, diagramy zbiorów i dowód tautologii — dzięki temu zachowanie jest wszędzie takie samo.
+Pasek ma **dokładnie dwa elementy interaktywne**: okrągłą strzałkę „‹” (poprzedni krok)
+i okrągłą strzałkę „›” (następny krok). Między nimi stoi tekstowe opisanie bieżącego kroku.
+Numerków, kropek i przycisków odtwarzania nie ma (decyzja karty PRZ-124).
 
 Pliki: `app/static/js/stepper.js` (moduł ES), `app/static/css/stepper.css`,
 `app/templates/partials/_stepper.html`.
@@ -598,14 +601,11 @@ const stepper = createStepper({
   mount: document.querySelector("#kroki"),   // element, w którym powstaje pasek (wymagany)
   steps: [{ tytul: "...", opis: "..." }],    // co najmniej 1 krok
   onStep: (index, step) => { ... },          // co pokazać po wejściu w krok
-  autoMs: 1500,                              // tempo odtwarzania (domyślnie 1500 ms)
-  labels: { prev: "Wstecz", next: "Dalej", play: "Odtwórz", pause: "Pauza", reset: "Od nowa" },
 });
 ```
 
-Pola `onStep`, `autoMs` i `labels` są opcjonalne. `labels` nadpisuje pojedyncze napisy —
-brakujące zostają domyślne. Krok `step` to obiekt z polami `tytul` i `opis` (oba napisy po polsku);
-komponent czyta tylko te dwa pola i przekazuje cały obiekt dalej do `onStep`.
+Pole `onStep` jest opcjonalne. Krok `step` to obiekt z polami `tytul` i `opis` (oba napisy po
+polsku); komponent czyta tylko te dwa pola i przekazuje cały obiekt dalej do `onStep`.
 
 Zwrócony obiekt:
 
@@ -613,32 +613,33 @@ Zwrócony obiekt:
 |---|---|
 | `index` | numer bieżącego kroku, **liczony od zera** |
 | `length` | liczba kroków |
-| `playing` | `true`, gdy trwa odtwarzanie |
 | `go(index)` | przejście do kroku o indeksie od zera; numer spoza listy jest przycinany |
 | `next()` / `prev()` | krok dalej / wstecz; na końcach listy nic się nie dzieje |
-| `play()` / `pause()` | włączenie i zatrzymanie odtwarzania |
-| `reset()` | zatrzymanie odtwarzania i powrót do pierwszego kroku |
-| `destroy()` | zatrzymanie odtwarzania, zdjęcie nasłuchów i usunięcie paska |
+| `destroy()` | zdjęcie nasłuchów i usunięcie paska |
 
 **Numeracja.** `index`, argument `go` i pierwszy argument `onStep` liczą kroki od zera
-(`stepper.go(2)` to trzeci krok). Widoczny wskaźnik pokazuje numer od jednego („Krok 3 z 7”).
+(`stepper.go(2)` to trzeci krok). Widok **nie pokazuje** numeru kroku — widać tylko dwie
+strzałki i opis. Numer może najwyżej trafić do czytnika ekranu po stronie karty, która
+używa paska.
 
 **Kto rysuje co.** Komponent pisze wyłącznie do własnego kontenera `mount` (podmienia jego
 zawartość na pasek) i do swojego elementu opisu. Resztę rysuje karta, która go używa —
 w `onStep(index, step)`. `onStep` jest wołane od razu przy tworzeniu (krok pierwszy)
 i przy każdej zmianie kroku; samo odświeżenie paska go nie powtarza.
 
-**Autoodtwarzanie.** `play()` przechodzi do kolejnego kroku co `autoMs`. Na ostatnim kroku
-odtwarzanie samo się zatrzymuje i przycisk wraca do napisu „Odtwórz”. `play()` na ostatnim
-kroku zaczyna od pierwszego. Ręczne `go`, `next` i `prev` nie zatrzymują odtwarzania.
+**Bez odtwarzania i bez konfiguracji napisów.** Pasek nie prowadzi kroków sam: nie ma metod
+`play()`, `pause()` ani `reset()`, pola `playing` ani opcji `autoMs` i `labels`. Widoczny
+znak przycisku to na stałe „‹” albo „›”, a jego nazwa dla czytnika ekranu to „Poprzedni krok”
+albo „Następny krok” — strony nie nadpisują tych napisów (karta PRZ-124).
 
-**Klawiatura.** Pasek ma `tabindex="0"`; strzałki `ArrowLeft`/`ArrowRight`, `Home` i `End`
-przechodzą między krokami, a spacja włącza i zatrzymuje odtwarzanie. Spacja na przycisku
-jest pomijana — tam klawisz ma już swoje znaczenie (klik).
+**Klawiatura.** Pasek ma `tabindex="0"`; strzałki `ArrowLeft`/`ArrowRight` oraz `Home` i `End`
+przechodzą między krokami.
 
-**Dostępność.** Kropki kroków są przyciskami `<button>`; bieżąca ma `aria-current="step"`,
-a jej etykieta to „Krok n: tytuł”. Treść kroku jest ogłaszana przez `aria-live="polite"`.
-Bieżący krok widać nie tylko po kolorze, ale też po obramowaniu i pogrubieniu.
+**Dostępność.** Przyciski to `<button type="button">` z `aria-label`. Na pierwszym kroku „‹”
+jest `disabled` (dodatkowo `aria-disabled="true"`), na ostatnim — „›”. Treść kroku jest
+ogłaszana przez `aria-live="polite"`. Wyłączoną strzałkę widać nie tylko po kolorze, ale też
+po przygaszeniu i kursorze `not-allowed`. Na wąskim ekranie przyciski mają 44 px, a opis
+zawija się pod nimi.
 
 **Brak JavaScriptu.** Partial pokazuje w `<noscript>` pełną listę kroków jako `<ol>`
 (gdy w kontekście przekazano `steps`), a bez kroków — jedno zdanie po polsku.
