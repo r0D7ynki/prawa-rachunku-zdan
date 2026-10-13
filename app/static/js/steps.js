@@ -9,7 +9,7 @@ const TEKSTY = {
   ladowanie: "Wczytuję kroki przekształcenia…",
   siec: "Nie udało się połączyć z serwerem. Sprawdź połączenie i kliknij „Od nowa”.",
   brakKrokow: "Ta formuła nie wymaga przekształcenia — jest już w żądanej postaci.",
-  podpowiedz: "Kliknij krok, aby rozwinąć wyjaśnienie.",
+  podpowiedz: "Kliknij nagłówek kroku, aby rozwinąć wyjaśnienie.",
 };
 
 /** Tworzy element z klasą i tekstem (tekst zawsze bezpiecznie, przez `textContent`). */
@@ -119,8 +119,11 @@ function rysujSklad(montaz, slad, status) {
   const { pasek, przyciski } = zbudujSterowanie();
   const lista = element("ol", "steps-lista list-group list-group-flush mb-3");
   const podsumowanie = element("p", "steps-podsumowanie alert alert-success mb-0");
+  const podpowiedz = element("p", "steps-podpowiedz text-muted small mb-2", TEKSTY.podpowiedz);
 
-  let pokazane = 0;
+  // Pierwszy krok pokazujemy od razu — użytkownik widzi, od czego zaczynamy.
+  const pierwszy = Math.min(1, kroki.length);
+  let pokazane = pierwszy;
 
   function odswiez() {
     lista.replaceChildren();
@@ -137,22 +140,20 @@ function rysujSklad(montaz, slad, status) {
       lista.append(pozycja);
     });
 
-    przyciski.poprzedni.disabled = pokazane === 0;
+    przyciski.poprzedni.disabled = pokazane <= 1;
     przyciski.nastepny.disabled = pokazane >= kroki.length;
     przyciski.wszystkie.disabled = pokazane >= kroki.length;
-    przyciski.odNowa.disabled = pokazane === 0;
+    przyciski.odNowa.disabled = pokazane <= 1;
+    podpowiedz.hidden = kroki.length === 0;
 
     if (kroki.length === 0) {
       podsumowanie.textContent = `${TEKSTY.brakKrokow} Forma wynikowa: ${slad.forma}. Liczba kroków: 0.`;
       status.textContent = podsumowanie.textContent;
     } else {
       podsumowanie.textContent =
-        `Widoczny krok ${pokazane} z ${kroki.length}. ` +
+        `Pokazany krok ${pokazane} z ${kroki.length}. ` +
         `Forma wynikowa: ${slad.forma}. Liczba kroków: ${kroki.length}.`;
-      status.textContent =
-        pokazane === 0
-          ? `Formuła wyjściowa: ${slad.start}. ${TEKSTY.podpowiedz}`
-          : `Krok ${pokazane}: ${kroki[pokazane - 1].nazwa}.`;
+      status.textContent = `Krok ${pokazane}: ${kroki[pokazane - 1].nazwa}.`;
     }
   }
 
@@ -161,7 +162,7 @@ function rysujSklad(montaz, slad, status) {
     odswiez();
   });
   przyciski.poprzedni.addEventListener("click", () => {
-    pokazane = Math.max(pokazane - 1, 0);
+    pokazane = Math.max(pokazane - 1, pierwszy);
     odswiez();
   });
   przyciski.wszystkie.addEventListener("click", () => {
@@ -169,11 +170,11 @@ function rysujSklad(montaz, slad, status) {
     odswiez();
   });
   przyciski.odNowa.addEventListener("click", () => {
-    pokazane = 0;
+    pokazane = pierwszy;
     odswiez();
   });
 
-  montaz.append(pasek, lista, podsumowanie);
+  montaz.append(pasek, podpowiedz, lista, podsumowanie);
   odswiez();
 }
 
