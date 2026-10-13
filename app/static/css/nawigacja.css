@@ -1,0 +1,186 @@
+/* Nawigacja kursu: okruszki, boczny spis lekcji i sąsiedzi „poprzednia/następna”.
+   Właściciel: karta PRZ-069. Kolory bierzemy ze zmiennych z `app.css`, żeby nawigacja
+   nie wprowadzała drugiej palety. */
+
+/* --- okruszki pod menu ------------------------------------------------ */
+
+.okruszki {
+  margin-bottom: 0.75rem;
+}
+
+.okruszki .breadcrumb {
+  margin-bottom: 0;
+  font-size: 0.9rem;
+}
+
+.okruszki .breadcrumb-item + .breadcrumb-item::before {
+  color: #8b87a0;
+}
+
+/* --- dyskretne strzałki nad treścią ----------------------------------- */
+
+.nawigacja-lekcji-gora {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.nawigacja-lekcji-odnosnik {
+  color: var(--kolor-akcent);
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.nawigacja-lekcji-odnosnik:hover,
+.nawigacja-lekcji-odnosnik:focus-visible {
+  text-decoration: underline;
+}
+
+/* --- boczny spis lekcji (tylko lg i większe) -------------------------- */
+
+.spis-lekcji {
+  position: sticky;
+  top: 5.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--kolor-ramka);
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.spis-lekcji-tytul {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #55515e;
+}
+
+.spis-lekcji-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.spis-lekcji-odnosnik {
+  display: block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  color: #2d2a3a;
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.spis-lekcji-odnosnik:hover,
+.spis-lekcji-odnosnik:focus-visible {
+  background: var(--kolor-akcent-jasny);
+  color: var(--kolor-akcent);
+}
+
+.spis-lekcji-odnosnik.aktywny {
+  background: var(--kolor-akcent-jasny);
+  color: var(--kolor-akcent);
+  font-weight: 600;
+}
+
+.spis-lekcji-ikona {
+  margin-right: 0.25rem;
+  color: var(--kolor-akcent);
+}
+
+.spis-lekcji-skroty {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--kolor-ramka);
+  font-size: 0.9rem;
+}
+
+/* --- karty sąsiadów pod treścią --------------------------------------- */
+
+.nawigacja-lekcji-dol {
+  margin-top: 2.5rem;
+}
+
+.karta-lekcji {
+  display: block;
+  height: 100%;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--kolor-ramka);
+  border-radius: 0.75rem;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+}
+
+.karta-lekcji:hover,
+.karta-lekcji:focus-visible {
+  border-color: var(--kolor-akcent);
+  background: var(--kolor-akcent-jasny);
+}
+
+.karta-lekcji-nastepna {
+  text-align: right;
+}
+
+.karta-lekcji-etykieta {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--kolor-akcent);
+}
+
+.karta-lekcji-tytul {
+  display: block;
+  margin: 0.25rem 0;
+  font-weight: 600;
+}
+
+.karta-lekcji-opis {
+  display: block;
+  font-size: 0.9rem;
+  color: #55515e;
+}
+
+/* --- spis treści całego kursu ----------------------------------------- */
+
+.spis-tresci-wyklad {
+  padding-bottom: 1rem;
+}
+
+.spis-tresci-lekcje {
+  padding-left: 0;
+  list-style: none;
+}
+
+.spis-tresci-lekcja {
+  margin-bottom: 0.75rem;
+}
+
+.spis-tresci-numer {
+  display: inline-block;
+  min-width: 2.5rem;
+  color: var(--kolor-akcent);
+  font-variant-numeric: tabular-nums;
+}
+
+.spis-tresci-opis {
+  display: block;
+  margin-left: 2.5rem;
+  color: #55515e;
+  font-size: 0.9rem;
+}
+
+.spis-tresci-wkrotce {
+  color: #55515e;
+  font-style: italic;
+}
+
+.spis-tresci-narzedzia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  padding-left: 1.25rem;
+}

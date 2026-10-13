@@ -1,0 +1,134 @@
+{#
+  Szablon lekcji /reguly (karta PRZ-090). Reguły przychodzą gotowe z rejestru
+  `app.logic.rules` — tutaj nie ma ani jednego wzoru wpisanego ręcznie.
+
+  Przesłanki i wnioski idą przez `metazmienne_to_html` (metazmienne Φ, Ψ), a tautologie
+  przez `formula_to_html` (zwykłe zmienne p, q). Oba wyniki wstawiamy przez `|safe`.
+
+  Kreska między przesłankami a wnioskiem to element `div.regula-kreska` malowany w CSS
+  (`app/static/css/reguly.css`) — nie znak „—”. Strona nie ładuje własnego skryptu:
+  cała treść jest w HTML.
+#}
+{% extends "base.html" %}
+
+{% block tytul %}Reguły wnioskowania{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/reguly.css') }}" />
+{% endblock %}
+
+{#
+  Karta jednej reguły: kod i nazwa, przesłanki nad kreską, wniosek pod kreską,
+  tautologia, przykład z życia i opis. `regula` to obiekt `app.logic.rules.Rule`.
+#}
+{% macro karta_reguly(regula) %}
+  {% set identyfikator = "regula-" ~ regula.kod | lower %}
+  <article class="karta-reguly" id="{{ identyfikator }}" aria-labelledby="{{ identyfikator }}-nazwa">
+    <h3 class="regula-nazwa" id="{{ identyfikator }}-nazwa">
+      <span class="regula-kod">{{ regula.kod }}</span>
+      <span class="regula-nazwa-tekst">{{ regula.nazwa }}</span>
+      {% if regula.pelna_nazwa %}
+        <span class="regula-pelna-nazwa">({{ regula.pelna_nazwa }})</span>
+      {% endif %}
+    </h3>
+
+    <div class="regula-schemat">
+      <p class="regula-etykieta">Przesłanki</p>
+      <ul class="regula-przeslanki">
+        {% for przeslanka in regula.przeslanki %}
+          <li class="formula">{{ metazmienne_to_html(przeslanka) |safe }}</li>
+        {% endfor %}
+      </ul>
+      <div class="regula-kreska" aria-hidden="true"></div>
+      <p class="regula-etykieta">Wniosek</p>
+      <p class="regula-wniosek formula">
+        {{- metazmienne_to_html(regula.wniosek) |safe -}}
+        {%- for dodatkowy in regula.wnioski_dodatkowe %}
+          <span class="regula-spojnik">oraz</span> {{ metazmienne_to_html(dodatkowy) |safe }}
+        {%- endfor %}
+      </p>
+    </div>
+
+    <dl class="regula-szczegoly">
+      <dt>Tautologia reguły</dt>
+      <dd class="regula-tautologia formula">
+        {{- formula_to_html(regula.tautologia) |safe -}}
+        {%- for dodatkowa in regula.tautologie_dodatkowe %}
+          <span class="regula-spojnik">oraz</span> {{ formula_to_html(dodatkowa) |safe }}
+        {%- endfor %}
+      </dd>
+      <dt>Przykład z życia</dt>
+      <dd class="regula-przyklad">{{ regula.przyklad }}</dd>
+      <dt>Co robi ta reguła</dt>
+      <dd class="regula-opis">{{ regula.opis }}</dd>
+    </dl>
+
+    <p class="regula-odnosnik">
+      <a
+        class="btn btn-outline-secondary btn-sm"
+        href="{{ plac_zabaw }}?formula={{ regula.tautologia | urlencode }}"
+        aria-label="Sprawdź tautologię reguły {{ regula.kod }} w placu zabaw"
+      >
+        Sprawdź w placu zabaw
+      </a>
+    </p>
+  </article>
+{% endmacro %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Reguły wnioskowania</h1>
+    <p class="lead">
+      Reguła wnioskowania to gotowy schemat: jeżeli przesłanki są prawdziwe, to wniosek
+      też musi być prawdziwy.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-wyjasnienie">
+    <h2 id="naglowek-wyjasnienie">Czym jest reguła wnioskowania</h2>
+    <p>
+      Reguła wnioskowania to zapisany schemat rozumowania. Mówi, z jakich przesłanek
+      wolno wyciągnąć jaki wniosek.
+    </p>
+    <p>
+      Każda reguła z tej listy odpowiada pewnej <a href="/tautologie">tautologii</a>.
+      Tautologia to formuła prawdziwa zawsze, a więc i dla każdego podstawienia.
+    </p>
+    <p>
+      Dlatego wniosek nie może być fałszywy, gdy przesłanki są prawdziwe. Wzory piszemy
+      literami Φ, Ψ — to metazmienne, czyli miejsca na dowolne formuły.
+    </p>
+    <p>
+      Reguły są potrzebne w dowodach: kolejne wiersze dowodu powstają z poprzednich
+      właśnie przez podstawienie do schematu. W zestawie jest {{ liczba }} reguł.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-pierwotne">
+    <h2 id="naglowek-pierwotne">Reguły pierwotne</h2>
+    <p>
+      Te siedem reguł to podstawa dowodzenia. Wystarczą, żeby przeprowadzić dowód
+      wprost i nie wprost.
+    </p>
+    <div class="lista-regul">
+      {% for regula in pierwotne %}
+        {{ karta_reguly(regula) }}
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if dodatkowe %}
+    <section class="sekcja" aria-labelledby="naglowek-dodatkowe">
+      <h2 id="naglowek-dodatkowe">Reguły dodatkowe</h2>
+      <p>
+        Te trzy schematy skracają dowody. Każdy z nich wynika z praw wykładu 1,
+        ale w dowodzie wolno go użyć od razu.
+      </p>
+      <div class="lista-regul">
+        {% for regula in dodatkowe %}
+          {{ karta_reguly(regula) }}
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

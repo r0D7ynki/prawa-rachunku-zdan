@@ -1,0 +1,136 @@
+/* Style strony /rezolucja (karta PRZ-092): schemat reguły i dwa dowody krok po kroku.
+   Właściciel: karta PRZ-092. Wspólne klasy (.formula, .sekcja, .naglowek-strony)
+   zostają w app.css.
+
+   Skrypt `rezolucja.js` dodaje wiersze, wyróżnia je klasami (wiersz-biezacy,
+   wiersz-rodzic, wiersz-podswietlony) i rysuje nad tabelą strzałkę .strzalka-rezolucji.
+   Kolor nigdy nie jest jedynym nośnikiem informacji: każda strzałka ma opis słowny,
+   wiersz sprzeczności niesie tekst „Sprzeczność …”, a para sprzeczna — opis dla
+   czytnika ekranu (`.visually-hidden`). */
+
+/* --- schemat reguły --------------------------------------------------------- */
+
+/* Przesłanki nad kreską, wniosek pod nią — jak zapis reguły w wykładzie. */
+.schemat-rezolucji {
+  max-width: 32rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--kolor-tlo);
+}
+
+.lista-przeslanek {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.lista-przeslanek li {
+  max-width: none;
+}
+
+/* Kreska oddzielająca przesłanki od wniosku — element HTML, nie znak „—”. */
+.kreska-rezolucji {
+  width: 60%;
+  margin: 0.5rem 0;
+  border-top: 2px solid var(--kolor-akcent);
+}
+
+.wniosek-rezolucji {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* --- algorytm --------------------------------------------------------------- */
+
+.lista-algorytmu {
+  max-width: 46rem;
+}
+
+.lista-algorytmu li {
+  margin-bottom: 0.35rem;
+}
+
+/* --- tabela dowodu ---------------------------------------------------------- */
+
+/* Wiersze ukryte przez kroki nie mogą zajmować miejsca w tabeli. */
+.tablica-rezolucji [hidden] {
+  display: none !important;
+}
+
+.tablica-rezolucji td,
+.tablica-rezolucji th {
+  vertical-align: middle;
+}
+
+/* Kolumna literału: krótka, żeby nie rozpychała tabeli. */
+.tablica-rezolucji .literal {
+  width: 6rem;
+  color: #6b6880;
+}
+
+/* Wiersz, który dodaje bieżący krok. */
+.wiersz-biezacy {
+  background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+  font-weight: 600;
+}
+
+/* Wiersz użyty przez bieżący krok — z lewej strony znacznik, nie tylko tło. */
+.wiersz-rodzic > :first-child {
+  border-left: 3px solid var(--bs-primary, #0d6efd);
+}
+
+/* Para sprzeczna: znacznik przy numerze wiersza. */
+.wiersz-sprzecznosc > :first-child {
+  border-left: 3px solid var(--bs-danger, #dc3545);
+}
+
+/* Ostatni krok podświetla oba sprzeczne wiersze. */
+.wiersz-podswietlony {
+  background-color: var(--bs-danger-bg-subtle, #f8d7da);
+  font-weight: 600;
+}
+
+/* --- strzałka nad tabelą ---------------------------------------------------- */
+
+/* Krok bez strzałki nie zostawia pustego pasa nad tabelą. */
+.strzalki-rezolucji:empty {
+  display: none;
+}
+
+.strzalki-rezolucji {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.strzalka-rezolucji {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 999px;
+  background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+  color: var(--bs-body-color, #212529);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.strzalka-linia {
+  color: var(--bs-primary, #0d6efd);
+  font-weight: 700;
+}
+
+.strzalka-operacja {
+  color: var(--bs-secondary-color, #6c757d);
+  font-style: italic;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tablica-rezolucji tbody tr {
+    transition: opacity 150ms ease-in-out;
+  }
+}

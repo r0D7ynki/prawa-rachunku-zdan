@@ -30,20 +30,31 @@ Pythona poza Flasketem — frontend to Bootstrap z CDN i czysty JavaScript.
 
 ## Twarde zasady
 
-1. **Zależności**: tylko `flask` w `pyproject.toml`. Frontend wyłącznie Bootstrap 5.3 z CDN
-   i czysty JavaScript (moduły ES). Zero npm, zero `node_modules`.
+1. **Zależności**: działanie strony opiera się wyłącznie na `flask`. Frontend to Bootstrap 5.3
+   z CDN i czysty JavaScript (moduły ES). Zero npm, zero `node_modules`.
+   **Wyjątek zatwierdzony (D25)**: `pyyaml` w grupie `dev` — potrzebny, żeby test parsował
+   workflow GitHub Actions. Zależność deweloperska nie trafia do działania strony.
 2. **Kontrakt**: implementujesz dokładnie funkcje i typy z `docs/ARCHITEKTURA.md`.
+   Gdy implementacja musi dodać pole albo funkcję spoza kontraktu, **dopisz to w
+   `docs/ARCHITEKTURA.md` w tym samym commicie** — to część zadania, nie wyjście poza zakres.
    Nie zmieniasz plików innej karty. Nowy widok = nowy moduł w `app/blueprints/`
    z wystawioną zmienną `bp`. Nowa treść praw = nowy plik w `app/logic/laws_data/`.
+   Katalogi robocze roju (`worker-*/`, `qa-gate/`, `review-*/`) nigdy nie należą do projektu —
+   nie commituj ich i nie twórz ich w drzewie repo.
 3. **Bezpieczeństwo**: nigdy `eval` ani `exec` na tekście użytkownika. Wynik HTML buduj
    z AST. Serwer nie zwraca poprawnej odpowiedzi quizu przed sprawdzeniem.
-4. **Język**: interfejs i komunikaty po polsku. Nazwy w kodzie po angielsku
-   (`parse`, `truth_table`), treść strony po polsku. Zdanie w treści ma najwyżej 15–20 słów.
-   Strona czynna.
+4. **Język**: interfejs i komunikaty po polsku. Nazwy modułów i funkcji w `app/` po angielsku
+   (`parse`, `truth_table`). **Nazwy funkcji testowych mogą być po polsku** — opisują
+   zachowanie dla polskiego zespołu (`test_strona_glowna_liczy_prawa`). Treść strony po polsku.
+   Zdanie w treści ma najwyżej 15–20 słów. Strona czynna.
 5. **Dostępność**: każdy element interaktywny działa z klawiatury, ma `aria-label`,
    a wynik jest opisany tekstem (kolor nie jest jedynym nośnikiem informacji).
 6. **Test**: nowe zachowanie ma test, który pada bez zmiany. Testy logiki nie wymagają
    przeglądarki — używaj `flask.test_client()`.
+   **JavaScript**: projekt nie ma runnera JS (żadnego Node ani npm). Testem zachowania skryptu
+   jest test statyczny w `tests/`: sprawdza obecność wymaganych identyfikatorów, klas i wywołań
+   w pliku `.js` oraz brak `innerHTML` z danymi z API. Nie żądaj testu jednostkowego JS
+   i nie dodawaj środowiska Node.
 7. **Zakres**: zmieniasz tylko pliki z sekcji `## Files` karty. Potrzebny inny plik —
    wpis w `## Log`, karta wraca do `ready`, stop.
 

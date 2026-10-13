@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block tytul %}Plac zabaw — policz własną formułę{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/playground.css') }}" />
+{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Plac zabaw</h1>
+    <p class="lead">
+      Wpisz formułę i naciśnij „Sprawdź”. Zobaczysz klasyfikację, tablicę prawdy
+      i krokowe uproszczenie. W drugiej sekcji porównasz dwie formuły.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-formula">
+    <h2 id="naglowek-formula">Twoja formuła</h2>
+
+    <form
+      id="formularz-formuly"
+      class="plac-zabaw-formularz"
+      method="get"
+      action="/plac-zabaw"
+    >
+      <label class="form-label" for="pole-formula">Formuła do sprawdzenia</label>
+      <input
+        id="pole-formula"
+        name="formula"
+        type="text"
+        class="form-control form-control-lg pole-formuly"
+        value="{{ formula }}"
+        autocomplete="off"
+        spellcheck="false"
+        aria-describedby="podpowiedz-formula"
+      />
+      <p id="podpowiedz-formula" class="text-muted small mb-2">
+        Używaj symboli ¬, ∧, ∨, →, ↔ oraz nawiasów. Litery to zmienne, np. p i q.
+      </p>
+
+      <div class="klawiatura-symboli" role="group" aria-label="Klawiatura symboli">
+        {% for symbol in symbole %}
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-symbol"
+            data-symbol="{{ symbol }}"
+            aria-label="Wstaw symbol {{ symbol }}"
+          >
+            {{ symbol }}
+          </button>
+        {% endfor %}
+      </div>
+
+      <p class="mb-1 mt-3">Przykłady na start:</p>
+      <ul class="lista-przykladow list-inline mb-3">
+        {% for przyklad in przyklady %}
+          <li class="list-inline-item">
+            <a
+              class="przyklad btn btn-sm btn-outline-primary"
+              data-przyklad="{{ przyklad }}"
+              href="/plac-zabaw?formula={{ przyklad|urlencode }}"
+              aria-label="Wstaw formułę {{ przyklad }} do pola"
+            >{{ przyklad }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <label class="form-label" for="pole-cel">Cel przekształcenia</label>
+      <select id="pole-cel" name="cel" class="form-select mb-3 pole-cel">
+        {% for cel in cele %}
+          <option value="{{ cel }}">{{ cel }}</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit" id="przycisk-sprawdz" class="btn btn-primary btn-lg">
+        Sprawdź
+      </button>
+    </form>
+
+    <p id="komunikat-bledu" class="alert alert-warning mt-3 mb-0" role="alert" hidden></p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-wynik">
+    <h2 id="naglowek-wynik">Wynik</h2>
+    <div
+      id="wynik-klasyfikacja"
+      class="wynik-klasyfikacja mb-2"
+      role="status"
+      aria-live="polite"
+    ></div>
+    <div id="wynik-formula" class="wynik-formula mb-3"></div>
+    <div id="wynik-tablica" class="wynik-tablica" data-rola="tablica-prawdy">
+      <p class="text-muted small mb-1">
+        Wpisz formułę i naciśnij „Sprawdź”, aby zobaczyć tablicę prawdy.
+      </p>
+    </div>
+    <div id="wynik-kroki" class="wynik-kroki" data-rola="kroki-przeksztalcen">
+      <p class="text-muted small mb-1">
+        Kroki uproszczenia pojawią się tutaj po sprawdzeniu formuły.
+      </p>
+    </div>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-porownanie">
+    <h2 id="naglowek-porownanie">Porównaj dwie formuły</h2>
+    <p>
+      Sprawdź, czy druga formuła znaczy dokładnie to samo co pierwsza.
+      Gdy nie — pokażemy kontrprzykład: wartościowanie, przy którym wyniki się różnią.
+    </p>
+
+    <form
+      id="formularz-porownania"
+      class="plac-zabaw-formularz"
+      method="get"
+      action="/plac-zabaw"
+    >
+      <label class="form-label" for="pole-druga">Druga formuła</label>
+      <input
+        id="pole-druga"
+        name="druga"
+        type="text"
+        class="form-control pole-formuly"
+        value="{{ druga }}"
+        autocomplete="off"
+        spellcheck="false"
+      />
+
+      <button type="submit" id="przycisk-porownaj" class="btn btn-primary mt-3">
+        Porównaj
+      </button>
+    </form>
+
+    <div
+      id="wynik-rownowaznosc"
+      class="wynik-rownowaznosc mt-3"
+      role="status"
+      aria-live="polite"
+    ></div>
+  </section>
+
+  <nav
+    class="d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
+    aria-label="Nawigacja między lekcjami"
+  >
+    <a class="btn btn-outline-secondary" href="/prawa">← Poprzednia lekcja: prawa</a>
+    <a class="btn btn-primary" href="/quiz">Następna lekcja: quiz →</a>
+  </nav>
+{% endblock %}
+
+{% block skrypty %}
+  <script type="module" src="{{ url_for('static', filename='js/playground.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,77 @@
+/* Style quizu. Właściciel: karta PRZ-015.
+   Kolory i zmienne dziedziczymy z app.css — tu tylko układ tego widoku. */
+
+.kontener-pytan {
+  min-height: 12rem;
+}
+
+.postep-tekst {
+  text-align: left;
+}
+
+.progress {
+  height: 0.6rem;
+  background-color: var(--kolor-akcent-jasny);
+}
+
+.progress-bar {
+  background-color: var(--kolor-akcent);
+}
+
+.licznik-poprawnych {
+  font-size: 0.95rem;
+}
+
+.pytanie-tresc {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  line-height: 1.4;
+}
+
+.lista-odpowiedzi {
+  max-width: 100%;
+}
+
+.lista-odpowiedzi .btn-odpowiedz {
+  width: 100%;
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+/* Wybrana (i zablokowana) odpowiedź ma zostać czytelna: pełne tło zamiast zarysu. */
+.lista-odpowiedzi .btn-odpowiedz:disabled {
+  opacity: 1;
+}
+
+.btn-odpowiedz.btn-success:disabled {
+  color: #fff;
+}
+
+.btn-odpowiedz.btn-danger:disabled {
+  color: #fff;
+}
+
+.podpowiedz {
+  font-size: 0.95rem;
+}
+
+.wyjasnienie {
+  line-height: 1.5;
+}
+
+.wynik-liczbowy {
+  font-size: 1.15rem;
+}
+
+.lista-bledow {
+  margin-bottom: 0;
+}
+
+.blad-pytania {
+  border-color: var(--kolor-ramka) !important;
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+}
+
+.blad-tresc {
+  font-size: 0.95rem;
+}

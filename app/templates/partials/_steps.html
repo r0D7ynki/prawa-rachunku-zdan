@@ -1,6 +1,19 @@
-{# Partial: krokowe przekształcenia. Wypełnia karta PRZ-013.
-   Wejście: `formula` (tekst formuły w Unicode), opcjonalnie `cel` ("auto"|"nnf"|"dnf"|"cnf"). #}
+{# Partial: krokowe przekształcenia. Wypełniają karty PRZ-013 i PRZ-077.
+   Wejście: `formula` (tekst formuły w Unicode), opcjonalnie `cel` ("auto"|"nnf"|"dnf"|"cnf").
+   Skrypt `steps.js` dorysowuje kroki, pasek prowadzenia (komponent `createStepper`)
+   i podsumowanie. Na stronie prawa partial dostaje też `prawo`, którego tu nie używamy. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/steps.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
 <div class="steps-mount" data-formula="{{ formula }}" data-cel="{{ cel|default('auto') }}"
      data-rola="kroki-przeksztalcen">
-  <p class="text-muted small mb-1">Kroki przekształcenia pojawią się tutaj po wczytaniu skryptu.</p>
+  <noscript>
+    <p class="alert alert-info mb-2">
+      Prowadzenie krok po kroku i wyróżnianie zmienianego fragmentu wymaga włączonego
+      JavaScriptu. Bez niego prześledź kroki wypisane w sekcji „Krok po kroku” powyżej.
+    </p>
+  </noscript>
+  <p class="steps-ladowanie text-muted small mb-1">
+    Kroki przekształcenia pojawią się tutaj po wczytaniu skryptu.
+  </p>
 </div>
+<script type="module" src="{{ url_for('static', filename='js/steps.js') }}"></script>

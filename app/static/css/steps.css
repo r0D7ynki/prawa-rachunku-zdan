@@ -1,0 +1,102 @@
+/* Style komponentu krokowego przekształcania (karty PRZ-013 i PRZ-077).
+   Kolor nigdy nie jest jedynym nośnikiem informacji: aktywny krok ma dodatkowo
+   etykietę „Krok n”, obramowanie i pogrubienie, a wyróżniony fragment formuły —
+   `aria-label` oraz podkreślenie obok tła. */
+
+.steps-mount {
+  --steps-akcent: var(--bs-primary, #0d6efd);
+  --steps-tlo-aktywne: var(--bs-primary-bg-subtle, #cfe2ff);
+  --steps-tlo-widoczne: var(--bs-secondary-bg, #e9ecef);
+  --steps-tlo-fragmentu: var(--bs-warning-bg-subtle, #fff3cd);
+  --steps-ramka-fragmentu: var(--bs-warning-border-subtle, #ffe69c);
+}
+
+.steps-lista {
+  padding-left: 0;
+  list-style: none;
+}
+
+.krok {
+  border-left: 4px solid transparent;
+  border-radius: 0.25rem;
+}
+
+/* Kroki czekające na wejście są zdjęte z widoku (atrybut `hidden` z `steps.js`). */
+.krok[hidden] {
+  display: none;
+}
+
+/* Krok bieżący: rozwinięty, z opisem. */
+.krok-aktywny {
+  border-left-color: var(--steps-akcent);
+  background-color: var(--steps-tlo-aktywne);
+}
+
+/* Kroki już minięte: zwinięte do jednej linii, wygaszone. */
+.krok-zwiniety {
+  background-color: var(--steps-tlo-widoczne);
+}
+
+.krok-zwiniety .krok-linia {
+  opacity: 0.75;
+}
+
+.krok-linia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.6rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.krok-aktywny .krok-linia {
+  padding-bottom: 0;
+}
+
+.krok-numer {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.krok-wzor {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.krok-strzalka {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.krok-plakietka {
+  white-space: normal;
+  text-align: left;
+}
+
+/* Fragment, który zmienia ten krok. Tło idzie razem z podkreśleniem,
+   żeby wyróżnienie było widoczne także bez koloru. */
+.krok-fragment {
+  padding: 0 0.15em;
+  background-color: var(--steps-tlo-fragmentu);
+  border-bottom: 2px solid var(--steps-ramka-fragmentu);
+  border-radius: 0.2rem;
+}
+
+.krok-tresc {
+  padding: 0.35rem 0.75rem 0.6rem 0.75rem;
+}
+
+.krok-pozycja {
+  font-style: italic;
+}
+
+.steps-podsumowanie {
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .krok,
+  .krok-fragment {
+    transition: background-color 120ms ease-in-out;
+  }
+}

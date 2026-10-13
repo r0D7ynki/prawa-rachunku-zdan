@@ -1,0 +1,67 @@
+/* Style tablic dowodowych krok po kroku na /tautologie (karta PRZ-076).
+   Skrypt `tautologie.js` ukrywa komórki atrybutem `hidden`, gasi odrzucone wiersze
+   klasą `wiersz-odrzucony` i wstawia nad tabelą strzałki `.strzalka-tabeli`.
+   Kolor nigdy nie jest jedynym nośnikiem informacji: odrzucone wiersze opisuje
+   zdanie kroku, a oprócz wyblaknięcia mają kreskowaną krawędź. */
+
+/* Komórki ukryte przez kroki nie mogą zajmować miejsca w tabeli. */
+.tablica-krokowa [hidden] {
+  display: none !important;
+}
+
+/* Krok bez strzałek nie zostawia pustego pasa nad tabelą. */
+.strzalki-tabeli:empty {
+  display: none;
+}
+
+.strzalki-tabeli {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.strzalka-tabeli {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 999px;
+  background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+  color: var(--bs-body-color, #212529);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.strzalka-linia {
+  color: var(--bs-primary, #0d6efd);
+  font-weight: 700;
+}
+
+.strzalka-operacja {
+  color: var(--bs-secondary-color, #6c757d);
+  font-style: italic;
+}
+
+/* Wiersz odrzucony przez metodę skróconą: gaśnie i dostaje kreskowaną krawędź. */
+.wiersz-odrzucony > :first-child {
+  border-left: 3px dashed var(--bs-secondary-color, #6c757d);
+}
+
+.wiersz-odrzucony {
+  opacity: 0.45;
+}
+
+/* Wiersz wniosku dodawany przez ostatni krok dowodu. */
+.wiersz-wniosku {
+  background-color: var(--bs-success-bg-subtle, #d1e7dd);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tablica-krokowa tbody tr {
+    transition: opacity 150ms ease-in-out;
+  }
+}

@@ -1,5 +1,27 @@
-{# Partial: wizualizacja bramek logicznych. Wypełnia karta PRZ-012.
-   Wejście: `formula` (tekst formuły w Unicode). #}
+{# Partial: wizualizacja bramek logicznych z prowadzeniem krok po kroku.
+   Wypełniają karty PRZ-012 i PRZ-074.
+   Wejście: `formula` (tekst formuły w Unicode); opcjonalnie `prawo` — obiekt prawa
+   z polem `po_ludzku` (opis formuły prostym językiem).
+   Skrypt `gates.js` pobiera drzewo formuły z `/api/formula/parse`, wartości podformuł
+   z `/api/formula/table`, a potem prowadzi użytkownika przez bramki krok po kroku:
+   przełączniki wejść, strzałki na przewodach i słowa PRAWDA/FAŁSZ. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/wizualizacje.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
 <div class="gates-mount" data-formula="{{ formula }}" data-rola="bramki-logiczne">
-  <p class="text-muted small mb-1">Schemat bramek pojawi się tutaj po wczytaniu skryptu.</p>
+  <noscript>
+    <p class="wiz-wzor">
+      Wzór: <span class="formula">{{ formula }}</span>
+    </p>
+    {% if prawo is defined and prawo and prawo.po_ludzku %}
+      <p class="wiz-opis">{{ prawo.po_ludzku }}</p>
+    {% endif %}
+    <p class="alert alert-info mb-0">
+      Schemat bramek z krokami i strzałkami wymaga włączonego JavaScriptu. Bez rysunku
+      też sprawdzisz prawo: przeczytaj wzór i kroki powyżej oraz tablicę prawdy.
+    </p>
+  </noscript>
+  <p class="wiz-ladowanie text-muted small mb-1">
+    Schemat bramek pojawi się tutaj po wczytaniu skryptu.
+  </p>
 </div>
+<script type="module" src="{{ url_for('static', filename='js/gates.js') }}"></script>

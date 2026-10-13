@@ -1,0 +1,29 @@
+# Bramka jakości przy każdym pushu i pull requeście.
+# Uruchamia ten sam skrypt co lokalnie: ./scripts/gate.sh (ocena po kodzie wyjścia).
+name: Bramka jakości
+
+on:
+  push:
+    branches: [main, swarm/integration]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Bramka
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Pobranie kodu
+        uses: actions/checkout@v5
+      - name: Instalacja uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.11"
+      - name: Zależności
+        run: uv sync --frozen
+      - name: Bramka projektu
+        run: ./scripts/gate.sh

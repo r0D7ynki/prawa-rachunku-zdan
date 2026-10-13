@@ -1,0 +1,124 @@
+{#
+  Hub wykładu (karta PRZ-071): tytuł i opis wykładu, ponumerowana lista lekcji
+  oraz karty sąsiednich wykładów. Wszystkie dane pochodzą z rejestru `app.lessons`
+  (karta PRZ-070) — szablon nie wypisuje tytułów ani ścieżek ręcznie.
+
+  Ten sam szablon obsługuje numer spoza rejestru: wtedy `wyklad` jest puste,
+  a widok zwraca kod 404 (patrz `app/blueprints/wyklad.py`).
+
+  Lista lekcji używa klas z `css/nawigacja.css` (karta PRZ-069), więc hub wygląda
+  jak spis treści kursu. Karty sąsiadów mają klasy Bootstrapa: nawigację lekcji
+  zostawiamy `base.html`, a szablon lekcji nie powtarza jej znaczników
+  (pilnuje tego `tests/test_nawigacja.py`).
+#}
+{% extends "base.html" %}
+
+{% block tytul -%}
+  {% if wyklad %}Wykład {{ wyklad.numer }}: {{ wyklad.tytul }}{% else %}Nie ma takiego wykładu{% endif %}
+{%- endblock %}
+
+{% block tresc %}
+  {% if not wyklad %}
+    <header class="naglowek-strony">
+      <h1>Nie ma takiego wykładu</h1>
+      <p class="lead">Numer wykładu nie prowadzi do żadnej strony kursu.</p>
+    </header>
+
+    <section class="sekcja" aria-labelledby="naglowek-brak-wykladu">
+      <h2 id="naglowek-brak-wykladu">Nie znajdujemy tego adresu</h2>
+      <p>
+        Nie mamy wykładu o numerze „{{ numer[:20] }}”. Numer mógł się zmienić
+        albo zawierać literówkę.
+      </p>
+      <p>
+        Zobacz <a href="/spis-tresci">spis treści</a> — tam są wszystkie wykłady
+        i lekcje w kolejności nauki.
+      </p>
+    </section>
+  {% else %}
+    <header class="naglowek-strony">
+      <h1>Wykład {{ wyklad.numer }}: {{ wyklad.tytul }}</h1>
+      <p class="lead">{{ wyklad.opis }}</p>
+    </header>
+
+    <p>
+      <a href="/spis-tresci">Wszystkie wykłady w spisie treści</a>
+    </p>
+
+    <section class="sekcja" id="lekcje-wykladu" aria-labelledby="naglowek-lekcji">
+      {% if wyklad.gotowy %}
+        <h2 id="naglowek-lekcji">Lekcje wykładu</h2>
+        <p>Lekcje w kolejności nauki — zaczynasz od pierwszej.</p>
+        <ol class="spis-tresci-lekcje">
+          {% for lekcja in wyklad.lekcje %}
+            <li class="spis-tresci-lekcja">
+              <a href="{{ lekcja.sciezka }}">
+                <span class="spis-tresci-numer" aria-hidden="true">
+                  {{- wyklad.numer }}.{{ loop.index -}}
+                </span>
+                {{ lekcja.tytul }}
+              </a>
+              <span class="spis-tresci-opis">{{ lekcja.opis }}</span>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <h2 id="naglowek-lekcji">Wykład w przygotowaniu</h2>
+        <p>Ten wykład pojawi się wkrótce — materiał jest jeszcze w opracowaniu.</p>
+
+        {% if wyklad.lekcje %}
+          <h3>Planowane tematy</h3>
+          <ul class="wyklad-plan">
+            {% for lekcja in wyklad.lekcje %}
+              <li>
+                <span class="wyklad-plan-tytul">{{ lekcja.tytul }}</span>
+                <span class="spis-tresci-opis">{{ lekcja.opis }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endif %}
+    </section>
+
+    <nav class="nawigacja-lekcji-dol" aria-label="Sąsiednie wykłady">
+      <div class="row g-3">
+        {% if poprzedni %}
+          <div class="col-md-6">
+            <a
+              class="card h-100 text-decoration-none"
+              href="/wyklad/{{ poprzedni.numer }}"
+            >
+              <span class="card-body">
+                <span class="d-block small fw-semibold text-uppercase text-primary">
+                  <span aria-hidden="true">←</span> Poprzedni wykład
+                </span>
+                <span class="d-block fw-semibold my-1">
+                  Wykład {{ poprzedni.numer }}: {{ poprzedni.tytul }}
+                </span>
+                <span class="d-block small text-body-secondary">{{ poprzedni.opis }}</span>
+              </span>
+            </a>
+          </div>
+        {% endif %}
+        {% if nastepny %}
+          <div class="col-md-6">
+            <a
+              class="card h-100 text-decoration-none text-end"
+              href="/wyklad/{{ nastepny.numer }}"
+            >
+              <span class="card-body">
+                <span class="d-block small fw-semibold text-uppercase text-primary">
+                  Następny wykład <span aria-hidden="true">→</span>
+                </span>
+                <span class="d-block fw-semibold my-1">
+                  Wykład {{ nastepny.numer }}: {{ nastepny.tytul }}
+                </span>
+                <span class="d-block small text-body-secondary">{{ nastepny.opis }}</span>
+              </span>
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </nav>
+  {% endif %}
+{% endblock %}

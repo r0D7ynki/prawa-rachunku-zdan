@@ -1,0 +1,214 @@
+{#
+  Szablon lekcji /kpn (karta PRZ-022). Wszystkie wzory przechodzą przez
+  `formula_to_html` (czyli `formula.to_html`) i są wstawiane przez `|safe`.
+
+  Moduł `app/blueprints/kpn.py` liczy to, czego nie warto wpisywać ręcznie:
+
+  - pary `x` i `∼x` w każdej klauzuli przykładu tautologii i kontrprzykładu,
+  - wartościowanie, przy którym kontrprzykład jest fałszywy,
+  - listę klauzul z wyniku `to_cnf` silnika przekształceń.
+
+  Nazwy praw w wyprowadzeniach pochodzą z rejestru `app.logic.laws` — szablon
+  tylko linkuje do `/prawa/<slug>`.
+#}
+{% extends "base.html" %}
+
+{% block tytul %}Klauzule i koniunkcyjna postać normalna{% endblock %}
+
+{% macro derivation(start, steps) %}
+  <p class="formula formula-wyrozniona">{{ formula_to_html(start) |safe }}</p>
+  <ol class="kroki-wyprowadzenia">
+    {% for step in steps %}
+      <li>
+        <span class="formula">{{ formula_to_html(step.formula) |safe }}</span>
+        <span class="prawa-kroku">
+          —
+          {%- for law in step.laws %}
+            <a href="/prawa/{{ law.slug }}">{{ law.name }}</a>{% if not loop.last %} i {% endif %}
+          {%- endfor %}
+        </span>
+      </li>
+    {% endfor %}
+  </ol>
+{% endmacro %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Klauzule i koniunkcyjna postać normalna</h1>
+    <p class="lead">
+      Ta lekcja pokazuje zwykłą postać formuły. Nauczysz się rozpoznawać klauzulę,
+      zapisywać formułę w KPN i sprawdzać tautologię bez pełnej tablicy prawdy.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-klauzula">
+    <h2 id="naglowek-klauzula">Klauzula</h2>
+    <p>
+      Klauzula to alternatywa zmiennych zdaniowych lub ich negacji. Mówiąc prościej,
+      klauzula to <strong>lista warunków połączonych słowem lub</strong>.
+    </p>
+    <p>
+      Taka lista jest prawdziwa, gdy prawdziwy jest choć jeden warunek. Nie trzeba,
+      żeby prawdziwe były wszystkie.
+    </p>
+    <p>Trzy klauzule z wykładu:</p>
+    <ul class="lista-przykladow">
+      {% for clause in clause_examples %}
+        <li class="formula">{{ formula_to_html(clause) |safe }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-kpn">
+    <h2 id="naglowek-kpn">Koniunkcyjna postać normalna (KPN)</h2>
+    <p>
+      Formuła jest w koniunkcyjnej postaci normalnej (KPN), jeżeli jest koniunkcją
+      pewnej liczby klauzul.
+    </p>
+    <p>
+      Taką formułę czytamy jak umowę: każda klauzula musi być spełniona. Klauzule
+      łączy spójnik <span class="formula">{{ formula_to_html("∧") |safe }}</span>,
+      więc wystarczy jedna fałszywa klauzula, żeby cała formuła była fałszywa.
+    </p>
+    <p>Dwa zapisy KPN z wykładu:</p>
+    <ul class="lista-przykladow">
+      {% for formula in cnf_examples %}
+        <li class="formula">{{ formula_to_html(formula) |safe }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-sprowadzanie">
+    <h2 id="naglowek-sprowadzanie">Jak sprowadzić formułę do KPN</h2>
+    <p>
+      Każdą formułę można zapisać w równoważnej KPN. Wystarczą prawa, które już znasz.
+      Nazwa przy każdym kroku mówi, na co ten krok pozwala.
+    </p>
+    <p>Pierwszy przykład z wykładu — implikacja w implikacji:</p>
+    {{ derivation(implication_formula, implication_steps) }}
+    <p>
+      Dochodzimy do koniunkcji dwóch klauzul. Formuła po lewej i po prawej stronie
+      ma tę samą tablicę prawdy.
+    </p>
+    <p>Drugi przykład z wykładu — równoważność bez implikacji:</p>
+    {{ derivation(equivalence_formula, equivalence_steps) }}
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-test">
+    <h2 id="naglowek-test">Test tautologiczności w KPN</h2>
+    <p>
+      Formuła w KPN jest tautologią wtedy i tylko wtedy, gdy w każdej klauzuli występuje
+      pewna zmienna zdaniowa i jej negacja.
+    </p>
+    <p>
+      Para <span class="formula">{{ formula_to_html("p ∨ ∼p") |safe }}</span> jest zawsze
+      prawdziwa, więc klauzula z taką parą też jest zawsze prawdziwa.
+    </p>
+    <p>Przykład tautologii z wykładu:</p>
+    <p class="formula formula-wyrozniona">{{ formula_to_html(tautology_example) |safe }}</p>
+    <div class="table-responsive">
+      <table class="table tablica-prawdy align-middle">
+        <caption>
+          Sprawdzamy każdą klauzulę przykładu osobno: czy ma parę zmiennej i jej negacji.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">klauzula</th>
+            <th scope="col">zmienna i jej negacja</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for clause in tautology_clauses %}
+            <tr>
+              <td class="formula">{{ formula_to_html(clause.formula) |safe }}</td>
+              <td>{{ clause.pairs | join(", ") }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if tautology_holds %}
+      <p>
+        Formuła jest tautologią: każda z {{ tautology_clauses | length }} klauzul
+        ma swoją parę. Pełna tablica prawdy miałaby tu {{ tautology_row_count }} wierszy.
+      </p>
+    {% endif %}
+
+    <h3>Kontrprzykład</h3>
+    <p>Ta formuła wygląda podobnie, ale nie jest tautologią. Zobaczmy, gdzie brakuje pary:</p>
+    <p class="formula formula-wyrozniona">{{ formula_to_html(non_tautology_example) |safe }}</p>
+    <div class="table-responsive">
+      <table class="table tablica-prawdy align-middle">
+        <caption>
+          Ten sam test dla kontrprzykładu: szukamy pary zmiennej i jej negacji.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">klauzula</th>
+            <th scope="col">zmienna i jej negacja</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for clause in non_tautology_clauses %}
+            <tr>
+              <td class="formula">{{ formula_to_html(clause.formula) |safe }}</td>
+              <td>{% if clause.pairs %}{{ clause.pairs | join(", ") }}{% else %}brak pary{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      W drugiej klauzuli nie ma pary: p występuje tylko z negacją, a r tylko bez negacji.
+      W pierwszej klauzuli też nie ma pary. Ta formuła nie jest tautologią.
+    </p>
+    {% if falsifying_assignment %}
+      <p>
+        Łatwo to sprawdzić — formuła daje 0 dla
+        {% for name, value in falsifying_assignment.items() -%}
+          {{ name }} = {{ "1" if value else "0" }}{% if not loop.last %}, {% endif %}
+        {%- endfor %}.
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-przydatnosc">
+    <h2 id="naglowek-przydatnosc">Po co to jest</h2>
+    <p>
+      W KPN sprawdzenie tautologii to sprawdzenie każdej klauzuli osobno — bez
+      wypisywania całej tablicy prawdy.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-silnik">
+    <h2 id="naglowek-silnik">Ten sam wynik liczy silnik</h2>
+    <p>
+      Sprowadzanie do KPN robi też plac zabaw. Dla formuły
+      <span class="formula">{{ formula_to_html(implication_formula) |safe }}</span>
+      wynik przekształcania <code>to_cnf</code> to dwie klauzule:
+    </p>
+    <ul class="lista-klauzul">
+      {% for clause in engine_result.clauses %}
+        <li class="formula">{{ formula_to_html(clause) |safe }}</li>
+      {% endfor %}
+    </ul>
+    <p>
+      <a
+        class="btn btn-outline-primary"
+        href="/plac-zabaw?formula={{ implication_formula | urlencode }}&cel=cnf"
+      >
+        Sprowadź własną formułę do KPN w placu zabaw
+      </a>
+    </p>
+  </section>
+
+  <nav
+    class="d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
+    aria-label="Nawigacja między lekcjami"
+  >
+    <a class="btn btn-outline-secondary" href="/przeksztalcanie">
+      ← Poprzednia lekcja: przekształcanie formuł
+    </a>
+    <a class="btn btn-primary" href="/prawa">Następna lekcja: prawa rachunku zdań →</a>
+  </nav>
+{% endblock %}

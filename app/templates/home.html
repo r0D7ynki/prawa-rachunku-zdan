@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block tytul %}Prawa rachunku zdań — nauka od zera{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Prawa rachunku zdań</h1>
+    <p class="lead">
+      Rachunek zdań to dział logiki, który bada zdania prawdziwe i fałszywe.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-sciezka">
+    <h2 id="naglowek-sciezka">Ścieżka nauki</h2>
+    <p>Przejdź osiem kroków w tej kolejności. Każdy krok opiera się na poprzednim.</p>
+    <ol class="lista-sciezki">
+      <li>
+        <a href="/wstep">Wstęp</a> — czym zajmuje się logika i jak uczyć się z tej strony.
+      </li>
+      <li>
+        <a href="/formuly">Formuły</a> — jak zapisać zdanie i policzyć jego wartość logiczną.
+      </li>
+      <li>
+        <a href="/tautologie">Tautologie</a> — jak sprawdzić, że formuła jest zawsze prawdziwa.
+      </li>
+      <li>
+        <a href="/przeksztalcanie">Przekształcanie</a> — jak krok po kroku uprościć formułę.
+      </li>
+      <li>
+        <a href="/kpn">KPN</a> — jak sprowadzić formułę do koniunkcyjnej postaci normalnej.
+      </li>
+      <li>
+        <a href="/prawa">Prawa</a> — zestaw praw z tablicami prawdy i rysunkami.
+      </li>
+      <li>
+        <a href="/plac-zabaw">Plac zabaw</a> — wpisz własną formułę i obejrzyj jej przekształcenia.
+      </li>
+      <li>
+        <a href="/quiz">Quiz</a> — sprawdź, czy rozpoznajesz prawa w praktyce.
+      </li>
+    </ol>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-tautologia">
+    <h2 id="naglowek-tautologia">Tautologia i prawo logiczne</h2>
+    <p>
+      Tautologia to formuła prawdziwa przy każdym podstawieniu wartości.
+      Sprawdzasz to tablicą prawdy: gdy wynik jest prawdą w każdym wierszu, masz tautologię.
+    </p>
+    <p>
+      Prawo logiczne to taka tautologia, którą stosujemy w przekształceniach.
+      Pozwala zamienić jeden fragment formuły na inny, równoważny fragment.
+    </p>
+    <p>
+      Symbole tłumaczy strona <a href="/jak-czytac">Jak czytać</a>,
+      a każde pojęcie opisuje <a href="/slowniczek">Słowniczek</a>.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-prawa">
+    <h2 id="naglowek-prawa">Prawa w zestawie</h2>
+    <p class="licznik-praw">Praw w zestawie: {{ prawa|length }}</p>
+
+    {% if prawa %}
+      <ul class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 lista-praw">
+        {% for prawo in prawa %}
+          {# `urlencode` koduje spację, znak zapytania i kratkę, ale sam ukośnik zostawia:
+             taki adres rozjechałby się na dwie ścieżki. Dlatego ukośnik kodujemy ręcznie. #}
+          <li class="col">
+            <a class="karta-prawa" href="/prawa/{{ prawo.slug|urlencode|replace('/', '%2F') }}">
+              <span class="karta-prawa-kategoria">{{ prawo.kategoria }}</span>
+              <span class="karta-prawa-nazwa">{{ prawo.nazwa }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="mt-3">
+        Pełną listę z opisami znajdziesz na stronie <a href="/prawa">Prawa</a>.
+      </p>
+    {% else %}
+      <p>
+        Treść praw powstaje w kolejnych krokach projektu. Zajrzyj tu wkrótce.
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-jak-korzystac">
+    <h2 id="naglowek-jak-korzystac">Jak korzystać ze strony</h2>
+    <ul>
+      <li>
+        <strong>Tablica prawdy</strong> pokazuje wartość formuły w każdym wierszu.
+        Każdy wiersz to jedno wartościowanie zmiennych.
+      </li>
+      <li>
+        <strong>Krokowe przekształcenia</strong> prowadzą od lewej strony prawa do prawej.
+        Po drodze widać, z którego prawa korzystamy.
+      </li>
+      <li>
+        <strong>Rysunek</strong> pokazuje to samo inaczej: bramkami logicznymi albo diagramem zbiorów.
+      </li>
+      <li>
+        <a href="/plac-zabaw">Plac zabaw</a> liczy tablicę prawdy dla formuły, którą sam wpiszesz.
+      </li>
+      <li>
+        <a href="/quiz">Quiz</a> sprawdza, czy rozpoznajesz prawa w praktyce.
+      </li>
+    </ul>
+  </section>
+{% endblock %}

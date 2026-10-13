@@ -9,6 +9,8 @@ Trzy workery pracują równolegle. Dlatego:
 
 1. **Każda karta tworzy własne pliki.** Nie edytuje plików innej karty.
 2. `app/__init__.py` sam znajduje widoki w `app/blueprints/`. Nikt go nie edytuje.
+   Jedyny wyjątek: `app.context_processor` z `NAV` (karta PRZ-070) — patrz sekcja
+   „`app/lessons.py` — rejestr wykładów i lekcji”.
 3. `app/logic/laws.py` sam znajduje treść praw w `app/logic/laws_data/`. Nikt go nie edytuje.
 4. Szablony współdzielone (`base.html`, partiale) mają jednego właściciela.
 5. Odnośniki w menu to zwykłe ścieżki (`/prawa`), nie `url_for`. Dzięki temu brak widoku
@@ -28,36 +30,64 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/logic/laws_data/implikacja.py` | definiowanie implikacji, kontrapozycja | PRZ-003 |
 | `app/logic/laws_data/algebra.py` | łączność, rozdzielność, przemienność | PRZ-004 |
 | `app/logic/laws_data/de_morgan.py` | dwa prawa de Morgana | PRZ-005 |
-| `app/logic/laws_data/zastepowanie.py` | prawo zastępowania równych | PRZ-005 |
+| `app/logic/laws_data/zastepowanie.py` | prawo zastępowania równ. | PRZ-005 |
+| `app/logic/laws_data/dodatkowe.py` | idempotencja i reguła podstawiania | PRZ-024 |
 | `app/logic/simplify.py` | silnik przekształceń ze śladem kroków | PRZ-006 |
 | `app/logic/quiz.py` | generator pytań | PRZ-007 |
+| `app/logic/rules.py` | rejestr reguł wnioskowania (wykład 2) | PRZ-090 |
+| `app/logic/proofs.py` | dane dowodów założeniowych A–F (wykład 2) | PRZ-091 |
+| `app/logic/resolution.py` | reguła rezolucji: kroki dwóch dowodów (wykład 2) | PRZ-092 |
+| `app/lessons.py` | rejestr wykładów i lekcji (nawigacja) | PRZ-070 |
 | `app/blueprints/home.py` | `/`, `/slowniczek`, `/jak-czytac` | PRZ-008 |
 | `app/blueprints/api_formula.py` | `/api/formula/*`, `/api/equivalence` | PRZ-009 |
 | `app/blueprints/api_laws.py` | `/api/prawa` | PRZ-010 |
 | `app/blueprints/laws.py` | `/prawa`, `/prawa/<slug>` | PRZ-010 |
 | `app/blueprints/api_simplify.py` | `/api/formula/simplify` | PRZ-013 |
 | `app/blueprints/api_quiz.py` | `/api/quiz/*` | PRZ-015 |
+| `app/blueprints/wstep.py` | `/wstep` | PRZ-018 |
+| `app/blueprints/formuly.py` | `/formuly` | PRZ-019 |
+| `app/blueprints/tautologie.py` | `/tautologie` | PRZ-020 |
+| `app/blueprints/przeksztalcanie.py` | `/przeksztalcanie` | PRZ-021 |
+| `app/blueprints/kpn.py` | `/kpn` | PRZ-022 |
 | `app/blueprints/playground.py` | `/plac-zabaw` | PRZ-014 |
 | `app/blueprints/quiz.py` | `/quiz` | PRZ-015 |
-| `app/templates/base.html` | szkielet strony, menu, stopka | PRZ-008 |
+| `app/blueprints/spis_tresci.py` | `/spis-tresci` | PRZ-069 |
+| `app/blueprints/reguly.py` | `/reguly` | PRZ-090 |
+| `app/blueprints/dowody.py` | `/dowody` | PRZ-091 |
+| `app/blueprints/konsekwencja.py` | `/konsekwencja` | PRZ-083 |
+| `app/blueprints/rezolucja.py` | `/rezolucja` | PRZ-092 |
+| `app/blueprints/api_wynikanie.py` | `/api/wynikanie` | PRZ-083 |
+| `app/templates/base.html` | szkielet strony, menu, okruszki, nawigacja lekcji, stopka | PRZ-008, PRZ-069 |
+| `app/templates/spis_tresci.html` | spis treści kursu (wykłady i lekcje) | PRZ-069 |
+| `app/static/css/nawigacja.css` | style menu, okruszków, spisu lekcji i kart sąsiadów | PRZ-069 |
+| `app/templates/reguly.html` | karty reguł wnioskowania | PRZ-090 |
+| `app/static/css/reguly.css` | style kart reguł | PRZ-090 |
+| `app/templates/dowody.html` | tabela dowodu, pasek kroków, kontrprzykład | PRZ-091 |
+| `app/static/js/dowody.js` | dowód krok po kroku, strzałki i sprzeczność | PRZ-091 |
+| `app/static/css/dowody.css` | style strony `/dowody` | PRZ-091 |
 | `app/templates/partials/_truth_table.html` | komponent tablicy prawdy | PRZ-011 |
 | `app/templates/partials/_gates.html` | komponent bramek | PRZ-012 |
 | `app/templates/partials/_sets.html` | komponent diagramów zbiorów | PRZ-012 |
 | `app/templates/partials/_steps.html` | komponent kroków | PRZ-013 |
+| `app/templates/partials/_stepper.html` | wspólny pasek kroków (stepper) | PRZ-072 |
 
 ## Notacja formuł
 
+**Notacja z wykładu jest główna**: `∼` (negacja, U+223C), `≡` (równoważność, U+2261),
+`∧`, `∨`, `→`, a wartości logiczne to `1` i `0`. Notacja popularna (`¬`, `↔`) jest
+pokazywana obok jako ciekawostka.
+
 Wejście parsera przyjmuje znaki Unicode oraz odpowiedniki ASCII:
 
-| Znaczenie | Unicode | ASCII |
+| Znaczenie | Notacja wykładu | Inne dopuszczone |
 |---|---|---|
-| negacja | `¬` | `~`, `!`, `not` |
+| negacja | `∼` (U+223C) | `¬`, `~`, `!`, `not` |
 | koniunkcja | `∧` | `&`, `^`, `and` |
 | alternatywa | `∨` | `|`, `+`, `or` |
 | implikacja | `→` | `->`, `=>`, `implies` |
-| równoważność | `↔` | `<->`, `<=>`, `iff` |
+| równoważność | `≡` (U+2261) | `↔`, `<->`, `<=>`, `iff` |
 
-Kolejność wiązania od najsłabszego: `↔`, `→` (prawostronna), `∨`, `∧`, `¬`.
+Kolejność wiązania od najsłabszego: `≡`, `→` (prawostronna), `∨`, `∧`, `∼`.
 Nazwa zmiennej: litera albo wyraz (`[A-Za-z_][A-Za-z0-9_]*`), np. `p`, `q`, `deszcz`.
 
 ## `app/logic/formula.py`
@@ -99,8 +129,8 @@ Node = Var | Not | And | Or | Imp | Iff
 
 ```python
 def parse(text: str) -> Node
-def to_text(node: Node, style: str = "unicode") -> str   # "unicode" | "ascii" | "latex"
-def to_html(node: Node) -> str        # bezpieczny HTML, operatory w <span class="op">
+def to_text(node: Node, style: str = "wyklad") -> str  # "wyklad" | "unicode" | "ascii" | "latex"
+def to_html(node: Node, styl: str = "wyklad") -> str  # bezpieczny HTML, operator w <span class="op-...">
 def variables(node: Node) -> list[str]                    # posortowane, bez powtórzeń
 def evaluate(node: Node, env: Mapping[str, bool]) -> bool
 def size(node: Node) -> int                               # liczba liści
@@ -111,8 +141,25 @@ def normalize(node: Node) -> Node     # porządkuje strony ∧ i ∨ (stała kol
 def same(a: Node, b: Node) -> bool    # porównanie po normalize
 ```
 
+Style wypisywania (`to_text` i `to_html` przyjmują ten sam zestaw):
+
+| styl | negacja | koniunkcja | alternatywa | implikacja | równoważność |
+|---|---|---|---|---|---|
+| `"wyklad"` (domyślny) | `∼` | `∧` | `∨` | `→` | `≡` |
+| `"unicode"` | `¬` | `∧` | `∨` | `→` | `↔` |
+| `"ascii"` | `~` | `&` | `|` | `->` | `<->` |
+| `"latex"` | `\neg` | `\land` | `\lor` | `\to` | `\leftrightarrow` |
+
+Nieznany styl to `FormulaError` z komunikatem po polsku i listą dozwolonych stylów.
+
 `to_html` używa tylko `str`, `Var`, `Not`, `And`, `Or`, `Imp`, `Iff` — nigdy `eval`.
 Nawiasy stawia tylko tam, gdzie zmieniają sens. Wynik nadaje się do `|safe` w Jinja.
+
+**Testy nie mogą zakładać konkretnego znaku operatora.** Sprawdzaj strukturę
+(`isinstance`), wynik `to_text(..., style="ascii")` albo klasy HTML. Każdy operator ma
+własną, stałą klasę: negacja `op-neg`, koniunkcja `op-and`, alternatywa `op-or`,
+implikacja `op-imp`, równoważność `op-iff` (obsługuje `≡` i `↔`). Argument `style` różni
+tylko znak operatora — struktura HTML i klasy są w obu stylach takie same.
 
 ## `app/logic/truth.py`
 
@@ -226,6 +273,180 @@ def check(prawo: str | None, seed: int, pytanie_id: str, odpowiedz: int) -> bool
 `generate` z tym samym `seed` daje ten sam zestaw. `check` generuje ponownie i porównuje
 odpowiedź — dzięki temu serwer nie wysyła poprawnej odpowiedzi do przeglądarki.
 
+## `app/logic/rules.py` — reguły wnioskowania
+
+Treść pochodzi z `docs/TRESC-WYKLAD2.md`, sekcja „2. Reguły wnioskowania”; ten plik jest dla
+niej źródłem prawdy (tak samo jak `laws.py` dla praw wykładu 1).
+
+```python
+@dataclass(frozen=True)
+class Rule:
+    kod: str                 # "RO", "OK", …
+    nazwa: str               # "Reguła odrywania"
+    pelna_nazwa: str         # "Modus Ponens" albo ""
+    typ: str                 # "pierwotna" | "dodatkowa"
+    przeslanki: list[str]    # ["Φ → Ψ", "Φ"]
+    wniosek: str             # "Ψ"
+    tautologia: str          # "((p → q) ∧ p) → q"
+    przyklad: str
+    opis: str
+    wnioski_dodatkowe: list[str] = []       # patrz niżej
+    tautologie_dodatkowe: list[str] = []    # patrz niżej
+
+PIERWOTNA = "pierwotna"
+DODATKOWA = "dodatkowa"
+
+def rules() -> list[Rule]        # kopie listy: pierwotne wg tabeli, potem dodatkowe
+def get(kod: str) -> Rule | None # kod bez wielkości liter i spacji (" ro " → RO)
+```
+
+**Dwa dodatkowe pola (decyzja karty PRZ-090).** Wykład podaje dwie reguły w dwóch wersjach:
+**OK** (`Φ ∧ Ψ ⊢ Φ` oraz `Φ ∧ Ψ ⊢ Ψ`, z osobną tautologią dla każdej wersji) i **OR**
+(`Φ ≡ Ψ ⊢ Φ → Ψ` oraz `Φ ≡ Ψ ⊢ Ψ → Φ`, z jedną wspólną tautologią). Żeby każde pole było
+pojedynczym wzorem przepisanym z tabeli, a nie sklejoną listą, drugą wersję trzymamy
+w `wnioski_dodatkowe` i `tautologie_dodatkowe`. U pozostałych ośmiu reguł oba pola są puste.
+
+**Notacja.** `tautologia` i `tautologie_dodatkowe` mają zwykłe zmienne (`p`, `q`) — parsują się
+przez `formula.parse` i przechodzą przez `formula.to_html`. Pola `przeslanki`, `wniosek`
+i `wnioski_dodatkowe` używają **metazmiennych** `Φ`, `Ψ`, `Θ` — to dowolne formuły, a nie
+zmienne zdaniowe, więc parser ich nie przyjmie. Rysuje je dopiero widok
+(`app/blueprints/reguly.py`), zamieniając metazmienne na litery przed parsowaniem i wracając
+do nich w drzewie (`formula.replace`). **Kod spoza `app/logic/` nie może zakładać, że te pola
+są formułami.**
+
+Kolejność kodów: `RO`, `OK`, `DK`, `OA`, `DA`, `DR`, `OR` (pierwotne), `DM1`, `DM2`, `KP`
+(dodatkowe) — jak dwie tabele wykładu.
+
+## `app/blueprints/reguly.py` — strona `/reguly`
+
+Lekcja „Reguły wnioskowania”: wyjaśnienie, czym jest reguła, sekcje „Reguły pierwotne”
+i „Reguły dodatkowe” i karta na każdą regułę. Karta pokazuje kod i nazwę, przesłanki nad
+kreską, wniosek pod kreską, tautologię, przykład z życia i opis. Kreska to `div.regula-kreska`
+(`aria-hidden`), malowany w `app/static/css/reguly.css` — nie znak `—`. Każda karta ma
+odnośnik „Sprawdź w placu zabaw” z tautologią reguły w parametrze `formula`
+(`/plac-zabaw?formula=…`), więc plac zabaw otwiera się z gotowym wzorem, także bez JavaScriptu.
+
+Sekcje powstają z pola `Rule.typ` — widok nie zna kodów reguł ani ich liczby. Metazmienne
+rysuje `metazmienne_to_html`, tautologie `formula_to_html`; oba oddają napis jako tekst
+(bez znaczników), gdy wzór się nie parsuje, żeby błąd w treści nie dawał strony 500.
+
+## `app/logic/proofs.py` — dowody założeniowe
+
+Dane sześciu dowodów A–F z wykładu 2 (`docs/TRESC-WYKLAD2.md`, sekcje „3. Dowód założeniowy
+wprost”, „4. Dowód założeniowy nie wprost” i „5. Niepoprawne rozumowania i kontrprzykład”).
+Moduł trzyma **tylko dane**, w kolejności z wykładu — tak samo jak `rules.py` dla reguł
+wnioskowania i `resolution.py` dla rezolucji. Nie dowodzi niczego sam.
+
+```python
+@dataclass(frozen=True)
+class ProofLine:
+    nr: str            # "1", "4.1"
+    formula: str       # "(p ∨ q) → (r ∨ s)"
+    uzasadnienie: str  # "RO 2, 3" albo "Założenie" albo "Sprzeczność 5, 7"
+    z: list[str]       # numery wierszy, z których korzysta: ["2", "3"]
+
+@dataclass(frozen=True)
+class Proof:
+    id: str            # "A" … "F"
+    tytul: str
+    rodzaj: str        # "wprost" | "nie-wprost" | "wielokrotne"
+    teza: str          # formuła tezy do pokazania
+    wiersze: list[ProofLine]
+    opis: str
+
+def proofs() -> list[Proof]              # sześć dowodów A–F, kopia listy
+def get(proof_id: str) -> Proof | None   # " a " → dowód A; nieznany id → None
+def is_contradiction(line: ProofLine) -> bool
+```
+
+**Pole `z`** trzyma numery wierszy użytych w tym kroku. Założenia niczego nie wyprowadzają,
+więc ich `z` jest puste — to wiersze, których `uzasadnienie` stoi w stałej
+`UZASADNIENIA_BEZ_Z` (`Założenie`, `Z dow. nie wprost`, `Dodatkowe założenie`). Pozostałe
+wiersze mają `z` niepuste: widok rysuje z niego strzałki, a test sprawdza, że każdy numer
+istnieje w tym samym dowodzie. Pole jest **listą**, bo tak mówi kontrakt karty. `proofs()`
+oddaje nową listę dowodów, ale same obiekty `Proof` i ich listy są wspólne — wołający
+**nie może** modyfikować `z` ani `wiersze` w miejscu (widok kopiuje `z` do kroków paska).
+
+**Wiersz sprzeczności** zamyka dowód nie wprost. Jego `formula` to napis „Sprzeczność 5, 7”,
+a nie formuła — `is_contradiction` rozpoznaje go po przedrostku (stała `SPRZECZNOSC`).
+Kod spoza tego modułu **nie może** wkładać `formula` takiego wiersza do `formula.parse`;
+jego `z` to dwa wiersze, które sobie przeczą. Uwaga: `truth.is_contradiction` bada formułę,
+a `proofs.is_contradiction` — wiersz dowodu; importuj z nazwą modułu.
+
+**Rodzaje.** Stałe `RODZAJ_WPROST`, `RODZAJ_NIE_WPROST`, `RODZAJ_WIELOKROTNE` nazywają
+wartości pola `rodzaj` (widok buduje sekcje i wstęp z tych stałych, nie z napisów).
+Formuły wierszy (poza wierszem sprzeczności) to zwykłe formuły ze zmiennymi `p`, `q` —
+parsują się przez `formula.parse`, inaczej niż metazmienne `Φ`, `Ψ` w `rules.py`.
+
+## `app/blueprints/dowody.py` — strona `/dowody`
+
+Lekcja „Dowody założeniowe”: wstęp do trzech rodzajów dowodu (stała `RODZAJE`), sekcja na
+każdy dowód z `proofs.proofs()` i sekcja „Skąd kontrprzykład” (`PRZYKLADY_KONTRPRZYKLADU`,
+tabela z `docs/TRESC-WYKLAD2.md`, sekcja 5). Widok nie zna liczby ani identyfikatorów
+dowodów — bierze je z rejestru.
+
+Dla każdego dowodu widok przygotowuje:
+
+* wiersze tabeli (numer, wzór, uzasadnienie, pełna nazwa reguły), z `wciety` dla numerów
+  z kropką („4.1”) i `aria_label` z opisem sprzeczności; opisuje je `_wiersz_widoku`,
+* kroki paska jako JSON w `kroki_json` → atrybut `data-kroki` sekcji dowodu (`_krok_widoku`).
+
+Wzory rysuje `formula.to_html` (`formula_to_html`); napis, który formułą nie jest
+(„Sprzeczność 5, 7”, kontrprzykład), oddaje jako czysty tekst — literówka w treści da brzydki
+wzór, a nie stronę 500. Kody reguł z `uzasadnienie` (`RO 2, 3` → `RO`) prowadzi do pełnych
+nazw przez `rules.get`; nieznany kod zostaje samym napisem z wykładu.
+
+Bez JavaScriptu cała tabela dowodu jest w HTML (żaden wiersz nie ma `hidden`), a pasek kroków
+pokazuje `<noscript>` z listą wierszy. Wiersz sprzeczności ma klasę `wiersz-sprzecznosc`
+i polski opis słowny dla czytnika ekranu, więc kolor nie jest jedynym nośnikiem informacji.
+Skrypt `app/static/js/dowody.js` korzysta z `createStepper` (komponent PRZ-072): odkrywa
+wiersze po kolei, wyróżnia bieżący wiersz i jego źródła, rysuje nad tabelą strzałkę
+„wiersze 2 i 3 → wiersz 5 · RO” i zamyka dowód podświetleniem pary sprzecznej. Skrypt pisze
+do DOM wyłącznie przez `textContent`, nigdy `innerHTML`.
+
+## `app/logic/resolution.py` — reguła rezolucji
+
+Dane dwóch dowodów rezolucyjnych z wykładu 2 (`docs/TRESC-WYKLAD2.md`, sekcje „6. Reguła
+rezolucji” i „7. Algorytm rezolucji”). Ten moduł trzyma wyłącznie dane — tak samo jak
+`rules.py` dla reguł wnioskowania i `laws_data/` dla praw wykładu 1.
+
+```python
+@dataclass(frozen=True)
+class ResolutionStep:
+    nr: int
+    klauzula: str       # "q ∨ r"
+    rodzice: list[int]  # [1, 3]
+    literal: str        # "p" — na czym sklejono; "" dla założeń i sprzeczności
+    rodzaj: str         # "zalozenie" | "negacja-tezy" | "rezolucja" | "sprzecznosc"
+
+@dataclass(frozen=True)
+class ResolutionProof:
+    id: str
+    tytul: str
+    opis: str
+    kroki: list[ResolutionStep]
+
+def proofs() -> list[ResolutionProof]   # dwa przykłady, kopie listy
+```
+
+Stałe `RODZAJ_ZALOZENIE`, `RODZAJ_NEGACJA_TEZY`, `RODZAJ_REZOLUCJA`, `RODZAJ_SPRZECZNOSC`
+nazywają wartości pola `rodzaj`. Wiersz `sprzecznosc` zamyka dowód: ma pusty `literal`,
+a jego `rodzice` to dwa sprzeczne wiersze.
+
+## `app/blueprints/rezolucja.py` — strona `/rezolucja` (PRZ-092)
+
+Lekcja „Rezolucja”: reguła ze schematem literałów, algorytm w czterech krokach i dwa dowody
+z wykładu. Widok tylko przygotowuje dane z `resolution.proofs()` dla szablonu:
+
+* kolumnę „Skąd” składa z rodzaju kroku (teksty założeń to stała `ZRODLA_ZALOZEN`),
+* kroki pakuje w JSON (`kroki_json`) do atrybutu `data-kroki` sekcji dowodu. Skrypt
+  `app/static/js/rezolucja.js` czyta ten JSON: dodaje wiersze krok po kroku, rysuje
+  strzałkę od `rodzice` do nowej klauzuli (z literałem sklejenia) i podświetla
+  sprzeczność. Wiersze sprzeczne mają klasę `wiersz-sprzecznosc` i opis słowny dla
+  czytnika ekranu (parę sprzeczną wyznaczają `rodzice` ostatniego kroku — wiersz pary
+  mówi o drugim wierszu pary, nie o swoim pochodzeniu),
+* bez JavaScriptu cała tabela zostaje w HTML.
+
 ## API
 
 Każdy obszar API to **osobny moduł** w `app/blueprints/` (nazwa blueprintu w nawiasie).
@@ -249,17 +470,202 @@ z tego drzewa, więc nie zgaduje struktury z tekstu.
 
 `api_simplify.py` (blueprint `api_simplify`): `POST /api/formula/simplify`
 `{"formula": str, "cel": "auto"|"nnf"|"dnf"|"cnf"}` → `ok`, `slad`, `blad`.
+Każdy krok w `slad.kroki` ma dodatkowo pole `fragment` — tekst podformuły, którą ten krok
+zastępuje (`""`, gdy nie ma czego wskazać). Pole dokłada endpoint, bo silnik
+`app/logic/simplify.py` opisuje krok bez wskazania zmienianego fragmentu (karta PRZ-077).
 
 `api_quiz.py` (blueprint `api_quiz`):
 
 | Endpoint | Wejście | Wyjście |
 |---|---|---|
-| `/api/quiz/generate` | `{"prawo": str\|null, "ile": int, "seed": int}` | `ok`, `seed`, `pytania` |
-| `/api/quiz/check` | `{"prawo", "seed", "id", "odpowiedz"}` | `ok`, `poprawna`, `wyjasnienie` |
+| `/api/quiz/generate` | `{"prawo": str\|null, "ile": int, "seed": int}` | `ok`, `seed`, `pytania`, `komunikat`, `blad` |
+| `/api/quiz/check` | `{"prawo", "seed", "id", "odpowiedz"}` | `ok`, `poprawna`, `wyjasnienie`, `blad` |
+
+`komunikat` w `/api/quiz/generate` to zdanie po polsku dla użytkownika, gdy `ok` jest prawdą,
+ale zestaw różni się od zamówionego (np. mniej pytań niż `ile`, bo tyle jest dostępnych).
+Przy pełnym zestawie pole jest puste. Dopisane po przeglądzie PRZ-015 (D27).
+
+`api_wynikanie.py` (blueprint `api_wynikanie`, `url_prefix="/api"`, karta PRZ-083):
+
+| Endpoint | Wejście | Wyjście |
+|---|---|---|
+| `/api/wynikanie` | `{"zalozenia": [str], "teza": str}` | `ok`, `wynika`, `kontrprzyklad`, `blad` |
+
+`wynika` odpowiada na pytanie, czy teza wynika logicznie z listy założeń. `kontrprzyklad`
+to pierwsze wartościowanie, przy którym założenia są prawdziwe, a teza fałszywa — słownik
+`{"p": 1, "q": 0}` (wartości jako `1`/`0`) albo `null`, gdy teza wynika. Granice: 10 założeń,
+6 zmiennych i 500 znaków na formułę; przekroczenie to `ok: false` z komunikatem po polsku.
+
+`api_wynikanie.check_entailment(zalozenia, teza)` to cała logika wynikania (bez Flaska):
+buduje koniunkcję założeń i porównuje ją przez `truth.equivalent` z tą samą koniunkcją
+poszerzoną o tezę. Funkcji używa też widok `/konsekwencja`, więc formularz strony
+i endpoint API liczą wynik tym samym kodem. Błędne dane zwracają słownik z `ok: false`
+i `blad` zamiast wyjątku.
 
 Widoki HTML: `home.py` → `/`, `/slowniczek`, `/jak-czytac`; `laws.py` → `/prawa`,
-`/prawa/<slug>`; `playground.py` → `/plac-zabaw`; `quiz.py` → `/quiz`.
+`/prawa/<slug>`; `playground.py` → `/plac-zabaw`; `quiz.py` → `/quiz`;
+`wstep.py` → `/wstep`; `formuly.py` → `/formuly`; `tautologie.py` → `/tautologie`;
+`przeksztalcanie.py` → `/przeksztalcanie`; `kpn.py` → `/kpn`; `reguly.py` → `/reguly`;
+`konsekwencja.py` → `/konsekwencja` (GET oraz POST z formularza testu wynikania);
+`rezolucja.py` → `/rezolucja`.
 
+Kolejność nauki na stronie (ścieżka kursu): `/wstep` → `/formuly` → `/tautologie` →
+`/przeksztalcanie` → `/kpn` → `/prawa` → `/plac-zabaw` → `/quiz` → `/konsekwencja` →
+`/reguly` → `/dowody` → `/rezolucja`. Osiem pierwszych pozycji to wykład 1, cztery ostatnie —
+wykład 2 (karta PRZ-093). Każda strona kursu kończy się odnośnikiem „następna lekcja”
+i „poprzednia lekcja” (zwykłe `href`, nie `url_for`). Kolejność tę wypisuje rejestr lekcji —
+patrz niżej.
+
+## `app/lessons.py` — rejestr wykładów i lekcji
+
+Jedno źródło prawdy dla nawigacji (karta PRZ-070). Menu, spis treści, okruszki i odnośniki
+„poprzednia/następna lekcja” czytają dane z tego modułu, a nie z szablonów. Nowy wykład
+albo nowa lekcja to wpis w tym jednym pliku.
+
+```python
+@dataclass(frozen=True)
+class Lesson:
+    slug: str          # "formuly"
+    sciezka: str       # "/formuly"
+    tytul: str         # "Formuły i wartościowanie"
+    opis: str          # jedno zdanie, do 20 słów
+    wyklad: int        # numer wykładu
+    ikona: str         # krótki znak, np. "≡"
+
+@dataclass(frozen=True)
+class Lecture:
+    numer: int
+    tytul: str
+    opis: str
+    lekcje: tuple[Lesson, ...]
+    gotowy: bool       # False = „wkrótce”
+```
+
+```python
+def lectures() -> list[Lecture]        # w kolejności numerów
+def lessons() -> list[Lesson]          # wszystkie lekcje po kolei (płaska lista)
+def lesson(sciezka: str) -> Lesson | None
+def lecture(numer: int) -> Lecture | None
+def previous(sciezka: str) -> Lesson | None   # sąsiad w płaskiej liście
+def next(sciezka: str) -> Lesson | None       # sąsiad w płaskiej liście
+def tool_links() -> list[dict]         # {"sciezka", "tytul", "ikona"}; pozycje narzędziowe
+```
+
+Rejestr zawiera trzy wykłady. **Wykład 1** „Klasyczny rachunek zdań” ma osiem lekcji
+(`/wstep` → `/quiz`), a **wykład 2** „Konsekwencja logiczna i dowody” (karta PRZ-093) cztery,
+w kolejności nauki: `/konsekwencja` (Wynikanie logiczne), `/reguly` (Reguły wnioskowania),
+`/dowody` (Dowody założeniowe) i `/rezolucja` (Rezolucja). Oba są `gotowy=True`, a ich lekcje
+tworzą jedną płaską listę: `lessons()` zwraca najpierw osiem lekcji wykładu 1, potem cztery
+wykładu 2. Dlatego `next("/quiz")` to początek wykładu 2 („Wynikanie logiczne”), a odnośniki
+„poprzednia/następna lekcja” prowadzą przez granicę wykładów. Rysunek wykładu 2 wymaga czterech
+tras (`/konsekwencja`, `/reguly`, `/dowody`, `/rezolucja`) i huba `/wyklad/2`.
+**Wykład 3** „Elementy teorii zbiorów i relacji” zostaje zapowiedzią (`gotowy=False`, pusta
+lista lekcji). Pozycje narzędziowe to Prawa `/prawa`, Plac zabaw `/plac-zabaw`, Quiz `/quiz`,
+Słowniczek `/slowniczek` i Jak czytać `/jak-czytac`.
+
+`create_app` (karta PRZ-070 — jedyny wyjątek od zasady „nikt nie edytuje `app/__init__.py`”)
+dodaje `app.context_processor`, który wstrzykuje do **każdego** szablonu:
+
+```python
+NAV = {
+    "lectures": lectures(),
+    "lesson": lesson(request.path),      # None poza kursem
+    "previous": previous(request.path),  # None na początku i poza kursem
+    "next": next(request.path),          # None na końcu i poza kursem
+    "tools": tool_links(),
+}
+```
+
+Dzięki temu szablony nie wołają funkcji Pythona — czytają `NAV.lesson.tytul`,
+`NAV.previous.sciezka` albo `NAV.tools`. Szablon sprawdza `None` (`{% if NAV.previous %}`),
+bo strony spoza kursu (np. `/slowniczek`) też dostają `NAV`, tyle że bez lekcji.
+
+
+## Komponent kroków: `stepper.js`, `_stepper.html`, `stepper.css`
+
+Jeden pasek prowadzi użytkownika krok po kroku. Korzystają z niego tablica prawdy,
+bramki, diagramy zbiorów i dowód tautologii — dzięki temu zachowanie jest wszędzie takie samo.
+
+Pliki: `app/static/js/stepper.js` (moduł ES), `app/static/css/stepper.css`,
+`app/templates/partials/_stepper.html`.
+
+### Kontrakt `createStepper`
+
+```js
+import { createStepper } from "/static/js/stepper.js";
+
+const stepper = createStepper({
+  mount: document.querySelector("#kroki"),   // element, w którym powstaje pasek (wymagany)
+  steps: [{ tytul: "...", opis: "..." }],    // co najmniej 1 krok
+  onStep: (index, step) => { ... },          // co pokazać po wejściu w krok
+  autoMs: 1500,                              // tempo odtwarzania (domyślnie 1500 ms)
+  labels: { prev: "Wstecz", next: "Dalej", play: "Odtwórz", pause: "Pauza", reset: "Od nowa" },
+});
+```
+
+Pola `onStep`, `autoMs` i `labels` są opcjonalne. `labels` nadpisuje pojedyncze napisy —
+brakujące zostają domyślne. Krok `step` to obiekt z polami `tytul` i `opis` (oba napisy po polsku);
+komponent czyta tylko te dwa pola i przekazuje cały obiekt dalej do `onStep`.
+
+Zwrócony obiekt:
+
+| Pole | Znaczenie |
+|---|---|
+| `index` | numer bieżącego kroku, **liczony od zera** |
+| `length` | liczba kroków |
+| `playing` | `true`, gdy trwa odtwarzanie |
+| `go(index)` | przejście do kroku o indeksie od zera; numer spoza listy jest przycinany |
+| `next()` / `prev()` | krok dalej / wstecz; na końcach listy nic się nie dzieje |
+| `play()` / `pause()` | włączenie i zatrzymanie odtwarzania |
+| `reset()` | zatrzymanie odtwarzania i powrót do pierwszego kroku |
+| `destroy()` | zatrzymanie odtwarzania, zdjęcie nasłuchów i usunięcie paska |
+
+**Numeracja.** `index`, argument `go` i pierwszy argument `onStep` liczą kroki od zera
+(`stepper.go(2)` to trzeci krok). Widoczny wskaźnik pokazuje numer od jednego („Krok 3 z 7”).
+
+**Kto rysuje co.** Komponent pisze wyłącznie do własnego kontenera `mount` (podmienia jego
+zawartość na pasek) i do swojego elementu opisu. Resztę rysuje karta, która go używa —
+w `onStep(index, step)`. `onStep` jest wołane od razu przy tworzeniu (krok pierwszy)
+i przy każdej zmianie kroku; samo odświeżenie paska go nie powtarza.
+
+**Autoodtwarzanie.** `play()` przechodzi do kolejnego kroku co `autoMs`. Na ostatnim kroku
+odtwarzanie samo się zatrzymuje i przycisk wraca do napisu „Odtwórz”. `play()` na ostatnim
+kroku zaczyna od pierwszego. Ręczne `go`, `next` i `prev` nie zatrzymują odtwarzania.
+
+**Klawiatura.** Pasek ma `tabindex="0"`; strzałki `ArrowLeft`/`ArrowRight`, `Home` i `End`
+przechodzą między krokami, a spacja włącza i zatrzymuje odtwarzanie. Spacja na przycisku
+jest pomijana — tam klawisz ma już swoje znaczenie (klik).
+
+**Dostępność.** Kropki kroków są przyciskami `<button>`; bieżąca ma `aria-current="step"`,
+a jej etykieta to „Krok n: tytuł”. Treść kroku jest ogłaszana przez `aria-live="polite"`.
+Bieżący krok widać nie tylko po kolorze, ale też po obramowaniu i pogrubieniu.
+
+**Brak JavaScriptu.** Partial pokazuje w `<noscript>` pełną listę kroków jako `<ol>`
+(gdy w kontekście przekazano `steps`), a bez kroków — jedno zdanie po polsku.
+
+**Brak kroków.** `createStepper` nie rzuca błędu: bez `steps` pokazuje w kontenerze komunikat
+po polsku, bez `mount` nie dotyka dokumentu. W obu razach zwrócony obiekt ma te same metody
+(nic nie robią), więc karta, która go używa, nie musi ich sprawdzać.
+
+### Użycie partialu
+
+```jinja
+{% include "partials/_stepper.html" %}
+```
+
+Partial renderuje kontener `[data-stepper]` i dołącza `stepper.css` oraz `stepper.js`
+(moduł ES) przez `url_for('static', ...)`. Strona podaje mu opcjonalnie `steps` wyłącznie
+po to, żeby `<noscript>` miał co pokazać — pasek i tak rysuje `createStepper` z konfiguracji
+podanej w JavaScripcie:
+
+```js
+const kroki = [{ tytul: "Założenie", opis: "Zapisujemy wzór wyjściowy." }, /* ... */];
+createStepper({
+  mount: document.querySelector("[data-stepper]"),
+  steps: kroki,
+  onStep: (index, step) => { /* karta rysuje swoją wizualizację kroku */ },
+});
+```
 
 ## Frontend
 

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block tytul %}Wstęp: logika i poprawne wnioskowanie{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Wstęp: logika i poprawne wnioskowanie</h1>
+    <p class="lead">
+      Logika mówi, z jakich przesłanek wynika jaki wniosek. Ta lekcja pokazuje, po co
+      się jej uczymy i kiedy wnioskowanie jest poprawne.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-czym-jest-logika">
+    <h2 id="naglowek-czym-jest-logika">Czym jest logika</h2>
+    <p>
+      Logika opisuje sposoby wnioskowania uznawane za poprawne.
+      Dzięki niej wiesz, z jakich przesłanek wynika jaki wniosek.
+    </p>
+    <p>
+      Logika powstała w IV wieku przed naszą erą. Jej twórcą był Arystoteles.
+    </p>
+    <p>
+      Słowo „pragmatyczna” znaczy, że patrzymy na logikę jak na narzędzie.
+      Używamy tego narzędzia w nauce i w technice.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-plan-kursu">
+    <h2 id="naglowek-plan-kursu">Plan kursu</h2>
+    <p>Kurs ma trzy części:</p>
+    <ol>
+      <li>klasyczny rachunek zdań,</li>
+      <li>rachunek predykatów,</li>
+      <li>elementy teorii zbiorów i relacji.</li>
+    </ol>
+    <p>
+      Zaczynamy od rachunku zdań, bo jest najprostszy.
+      Na nim opierają się dwie pozostałe części.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-przyklady">
+    <h2 id="naglowek-przyklady">Cztery przykłady wnioskowania</h2>
+    <p>
+      Przeczytaj każde wnioskowanie i sam zdecyduj, czy jest poprawne.
+      Odpowiedź znajdziesz w rozwijanym wierszu pod przykładem.
+    </p>
+
+    <article class="przyklad-wnioskowania">
+      <p>
+        Każdy kwadrat jest prostokątem. Figura A jest kwadratem.
+        Zatem figura A jest prostokątem.
+      </p>
+      <details class="odpowiedz" aria-label="Odpowiedź do przykładu o kwadracie">
+        <summary>Odpowiedź: <strong>poprawne</strong></summary>
+        <p class="wyjasnienie">
+          Reguła mówi o każdym kwadracie, a figura A jest kwadratem, więc A jest prostokątem.
+        </p>
+      </details>
+    </article>
+
+    <article class="przyklad-wnioskowania">
+      <p>
+        Jeżeli się nauczę, to zdam. Nie zdałem, więc się nie nauczyłem.
+      </p>
+      <p class="formula">{{ formula_to_html(kontrapozycja) |safe }}</p>
+      <details class="odpowiedz" aria-label="Odpowiedź do przykładu z kontrapozycją">
+        <summary>Odpowiedź: <strong>poprawne</strong></summary>
+        <p class="wyjasnienie">
+          To kontrapozycja: z implikacji i zaprzeczonego następnika wynika zaprzeczony poprzednik.
+        </p>
+      </details>
+    </article>
+
+    <article class="przyklad-wnioskowania">
+      <p>
+        Jeżeli się nauczę, to zdam. Nie nauczyłem się, więc nie zdam.
+      </p>
+      <p class="formula">{{ formula_to_html(odwrocenie_implikacji) |safe }}</p>
+      <details class="odpowiedz" aria-label="Odpowiedź do przykładu z odwróceniem implikacji">
+        <summary>Odpowiedź: <strong>niepoprawne</strong></summary>
+        <p class="wyjasnienie">
+          To odwrócenie implikacji, bo można nie uczyć się, a mimo to zdać.
+        </p>
+        <p>
+          Powyższy wzór nie jest tautologią. Oto wiersz, w którym jest fałszywy
+          (p = 0, q = 1):
+        </p>
+        <table class="table table-sm tablica-prawdy">
+          <caption>
+            Wartości w wierszu, w którym odwrócenie implikacji daje fałsz
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">p</th>
+              <th scope="col">q</th>
+              <th scope="col">p → q</th>
+              <th scope="col">∼p</th>
+              <th scope="col">(p → q) ∧ ∼p</th>
+              <th scope="col">∼q</th>
+              <th scope="col">wynik</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>1</td>
+              <td>1</td>
+              <td>1</td>
+              <td>1</td>
+              <td>0</td>
+              <td class="falsz">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+    </article>
+
+    <article class="przyklad-wnioskowania">
+      <p>
+        Każdy filozof jest mądry. Nie jestem filozofem, więc nie jestem mądry.
+      </p>
+      <details class="odpowiedz" aria-label="Odpowiedź do przykładu z filozofem">
+        <summary>Odpowiedź: <strong>niepoprawne</strong></summary>
+        <p class="wyjasnienie">
+          To ten sam błąd w rachunku predykatów, bo ktoś, kto nie jest filozofem, też może być mądry.
+        </p>
+      </details>
+    </article>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-zdanie-logiczne">
+    <h2 id="naglowek-zdanie-logiczne">Zdanie logiczne</h2>
+    <p>
+      Zdanie logiczne to stwierdzenie, któremu można przypisać prawdę albo fałsz.
+      Pytanie ani rozkaz zdaniem logicznym nie jest.
+    </p>
+    <dl>
+      <dt>„9 dzieli się przez 3”</dt>
+      <dd>Prawda. To zdanie logiczne i jest prawdziwe.</dd>
+
+      <dt>„Słońce krąży wokół Ziemi”</dt>
+      <dd>Fałsz. To zdanie logiczne i jest fałszywe.</dd>
+
+      <dt>„Która godzina?”</dt>
+      <dd>To nie jest zdanie logiczne. Pytaniu nie przypiszesz prawdy ani fałszu.</dd>
+
+      <dt>„Ten samochód jest drogi”</dt>
+      <dd>
+        To zależy od ustalenia, co znaczy „drogi”. Wartość zależy od przyjętej granicy ceny.
+      </dd>
+    </dl>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-nieporozumienie">
+    <h2 id="naglowek-nieporozumienie">Skąd bierze się nieporozumienie</h2>
+    <p>
+      Logika nie rozstrzyga, czy zdanie ma sens. Zakłada ustalone znaczenie słów
+      i ocenia tylko wartość: prawda albo fałsz.
+    </p>
+    <p>
+      Dlatego najpierw ustalamy, co znaczą słowa. Dopiero potem liczymy wartość logiczną.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-literatura">
+    <h2 id="naglowek-literatura">Literatura</h2>
+    <ul>
+      <li>Ross i Wright, „Matematyka dyskretna”.</li>
+      <li>Słupecki, Borkowski, „Elementy logiki matematycznej i teorii zbiorów”.</li>
+      <li>Słupecki, Hałkowska, Piróg-Rzepecka, „Logika i teoria mnogości”.</li>
+      <li>Stanosz, „Wprowadzenie do logiki formalnej”.</li>
+      <li>Stanosz, „Ćwiczenia z logiki”.</li>
+    </ul>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-zaliczenie">
+    <h2 id="naglowek-zaliczenie">Zaliczenie</h2>
+    <p>
+      Zaliczenie to test pisemny na ostatnim wykładzie.
+      Warto ćwiczyć przekształcenia i tablice prawdy na tej stronie.
+    </p>
+  </section>
+
+  <nav
+    class="d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
+    aria-label="Nawigacja między lekcjami"
+  >
+    <a class="btn btn-outline-secondary" href="/">← Poprzednia lekcja: strona główna</a>
+    <a class="btn btn-primary" href="/formuly">Następna lekcja: formuły i wartościowanie →</a>
+  </nav>
+{% endblock %}

@@ -7,12 +7,15 @@ requires-python = ">=3.11"
 dependencies = ["flask>=3.1"]
 
 [dependency-groups]
-dev = ["pytest>=8.3", "ruff>=0.9"]
+dev = ["pytest>=8.3", "ruff>=0.9", "pyyaml>=6.0"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["scripts/kanban", "*.md"]
+# `scripts/kanban` to kopia narzędzia tablicy (ma własny styl). Katalogi robocze roju
+# (`worker-*/`, `qa-gate/`, `review-*/`) nigdy nie należą do projektu — agent mógł je
+# przypadkiem utworzyć w drzewie, a ich kod nie podlega tej bramce.
+extend-exclude = ["scripts/kanban", "*.md", "worker-*", "qa-gate", "review-*", "staging"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
