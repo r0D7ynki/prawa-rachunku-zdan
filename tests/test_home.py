@@ -182,6 +182,46 @@ def test_strona_glowna_liczy_prawa_z_rejestru(monkeypatch, klient):
     assert "de Morgan" in html
 
 
+def _prawo(slug: str) -> SimpleNamespace:
+    """Prawo zastępcze — testy adresu nie zależą od treści rejestru ``laws_data``."""
+    return SimpleNamespace(slug=slug, nazwa="Prawo testowe", kategoria="podstawowe")
+
+
+@pytest.mark.parametrize(
+    ("slug", "adres"),
+    [
+        ("wylaczony-srodek", "/prawa/wylaczony-srodek"),
+        ("de-morgan", "/prawa/de-morgan"),
+    ],
+)
+def test_zwykly_slug_zostaje_bez_zmian(monkeypatch, klient, slug, adres):
+    """Adres poprawnego sluga wygląda jak dotąd — kodowanie nic tu nie zmienia."""
+    monkeypatch.setattr(home, "_all_laws", lambda: [_prawo(slug)])
+
+    html = klient.get("/").get_data(as_text=True)
+
+    assert f'href="{adres}"' in html, f"slug {slug!r} dał inny adres niż {adres!r}"
+
+
+@pytest.mark.parametrize(
+    ("slug", "zakodowany"),
+    [
+        ("dziwny/slug", "dziwny%2Fslug"),
+        ("spacja w-slugu", "spacja%20w-slugu"),
+        ("pytanie?znak", "pytanie%3Fznak"),
+        ("krzyzyk#znak", "krzyzyk%23znak"),
+    ],
+)
+def test_slug_ze_znakiem_specjalnym_jest_zakodowany(monkeypatch, klient, slug, zakodowany):
+    """Znak spoza ``[a-z0-9-]`` nie rozjeżdża adresu prawa: trafia do niego zakodowany."""
+    monkeypatch.setattr(home, "_all_laws", lambda: [_prawo(slug)])
+
+    html = klient.get("/").get_data(as_text=True)
+
+    assert f"/prawa/{slug}" not in html, f"adres prawa ma surowy slug {slug!r}"
+    assert f'href="/prawa/{zakodowany}"' in html, f"brak zakodowanego adresu {zakodowany!r}"
+
+
 def test_strona_glowna_bez_rejestru_nie_udaje_tresci(monkeypatch, klient):
     monkeypatch.setattr(home, "_all_laws", lambda: [])
 
