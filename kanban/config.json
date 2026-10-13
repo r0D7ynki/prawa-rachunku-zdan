@@ -1,0 +1,63 @@
+{
+  "prefix": "PRZ",
+  "headings": "en",
+  "tool_dir": "scripts/kanban",
+  "swarmboard_version": "0.6.31",
+  "swarmboard_tool_hash": "a4987bc679ab547c3b18218ff97cc7d132062cb2719d2e35ad33be9cb338695a",
+  "wip": {
+    "in-progress": 4,
+    "in-progress-per-model": 3,
+    "review": 4
+  },
+  "test_column": false,
+  "sizes": {
+    "S": "1 plik, do ~50 zmienionych linii, bez zmian w API modułów",
+    "M": "do 3 plików, jeden moduł + testy",
+    "L": "wiele modułów, zmiana kontraktu między modułami lub UX"
+  },
+  "models": {
+    "claude": {
+      "tool": "Claude Code",
+      "max_size": "L",
+      "dod": [
+        "Diff przejrzany przez `/code-review` lub drugi model przed `review`"
+      ]
+    },
+    "codex": {
+      "tool": "OpenAI Codex CLI",
+      "max_size": "M",
+      "dod": [
+        "Zmieniono wyłącznie pliki z sekcji Pliki"
+      ]
+    },
+    "gemini": {
+      "tool": "Google Antigravity / Gemini CLI",
+      "max_size": "L",
+      "dod": [
+        "Zmiana UI zweryfikowana w przeglądarce agenta — zrzut lub opis w sekcji Dowód"
+      ]
+    },
+    "deepseek": {
+      "tool": "DeepSeek V4.1 Flash przez Claude Code (ANTHROPIC_BASE_URL)",
+      "max_size": "L",
+      "dod": [
+        "Zmieniono wyłącznie pliki z sekcji Pliki — inny plik = powrót karty do `ready` z poprawionym zakresem",
+        "Wynik bramki wklejony dosłownie (ostatnie linie) w sekcji Dowód"
+      ]
+    },
+    "human": {
+      "tool": "człowiek",
+      "max_size": "L",
+      "dod": []
+    }
+  },
+  "dod": [
+    "Bramka projektu (./scripts/gate.sh) przechodzi — oceniona po KODZIE WYJŚCIA, nie po wyjściu potoku",
+    "Nowe zachowanie ma test, który pada przed zmianą (dowód mutacją na kopii źródła albo uzasadnienie w Dowodzie)",
+    "Żadnych sekretów, danych osobowych ani realnych danych w repo, logach i promptach",
+    "Bez nowych zależności, uprawnień i połączeń sieciowych bez decyzji w rejestrze decyzji projektu",
+    "Dokumentacja zaktualizowana, jeśli zmienia się zachowanie",
+    "Przegląd niezależny: reviewer ≠ wykonawca (inny model, `/code-review` albo człowiek)"
+  ],
+  "gate": ["./scripts/gate.sh"]
+}

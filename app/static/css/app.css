@@ -1,0 +1,73 @@
+/* Style wspólne projektu. Właściciel: karta PRZ-008. */
+:root {
+  --kolor-tlo: #f7f7fb;
+  --kolor-akcent: #4c3bcf;
+  --kolor-akcent-jasny: #ece9ff;
+  --kolor-prawda: #157f4a;
+  --kolor-falsz: #b3261e;
+  --kolor-ramka: #dcd8ee;
+}
+
+body {
+  background: var(--kolor-tlo);
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  z-index: 1080;
+  background: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+}
+
+.navbar-zadania {
+  background: #fff;
+  border-bottom: 1px solid var(--kolor-ramka);
+}
+
+.navbar-brand {
+  font-weight: 600;
+  color: var(--kolor-akcent);
+}
+
+.formula {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+
+.formula .op {
+  padding: 0 0.15em;
+  color: var(--kolor-akcent);
+}
+
+.prawda {
+  color: var(--kolor-prawda);
+  font-weight: 600;
+}
+
+.falsz {
+  color: var(--kolor-falsz);
+  font-weight: 600;
+}
+
+.karta-prawa {
+  background: #fff;
+  border: 1px solid var(--kolor-ramka);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  height: 100%;
+}
+
+.stopka {
+  background: #fff;
+}

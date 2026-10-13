@@ -1,0 +1,6 @@
+{# Partial: krokowe przekształcenia. Wypełnia karta PRZ-013.
+   Wejście: `formula` (tekst formuły w Unicode), opcjonalnie `cel` ("auto"|"nnf"|"dnf"|"cnf"). #}
+<div class="steps-mount" data-formula="{{ formula }}" data-cel="{{ cel|default('auto') }}"
+     data-rola="kroki-przeksztalcen">
+  <p class="text-muted small mb-1">Kroki przekształcenia pojawią się tutaj po wczytaniu skryptu.</p>
+</div>

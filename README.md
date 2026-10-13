@@ -1,0 +1,56 @@
+# Prawa rachunku zdań — interaktywna strona
+
+Strona do nauki praw i tautologii rachunku zdań. Wyjaśnia każdy wzór prostym językiem,
+pokazuje tablicę prawdy, krokowe przekształcenia i rysunek. Materiał dla osoby, która
+zaczyna logikę na studiach.
+
+## 14 praw
+
+| # | Prawo | Formuła |
+|---|---|---|
+| 1 | Wyłączonego środka | `p ∨ ¬p` |
+| 2 | Identyczności | `p → p` |
+| 3 | Podwójnego przeczenia | `¬¬p ↔ p` |
+| 4 | Definiowania implikacji | `(p → q) ↔ (¬p ∨ q)` |
+| 5 | Kontrapozycji | `(p → q) ↔ (¬q → ¬p)` |
+| 6 | Łączności alternatywy | `(p ∨ q) ∨ r ↔ p ∨ (q ∨ r)` |
+| 7 | Łączności koniunkcji | `(p ∧ q) ∧ r ↔ p ∧ (q ∧ r)` |
+| 8 | Pierwsze rozdzielności | `p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r)` |
+| 9 | Drugie rozdzielności | `p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r)` |
+| 10 | Przemienności alternatywy | `p ∨ q ↔ q ∨ p` |
+| 11 | Przemienności koniunkcji | `p ∧ q ↔ q ∧ p` |
+| 12 | Pierwsze de Morgana | `¬(p ∧ q) ↔ (¬p ∨ ¬q)` |
+| 13 | Drugie de Morgana | `¬(p ∨ q) ↔ (¬p ∧ ¬q)` |
+| 14 | Zastępowania równych | jeśli `A ↔ B`, to `C[A] ↔ C[B]` |
+
+## Funkcje strony
+
+- interaktywne tablice prawdy — klikasz wartość zmiennej i widzisz wynik,
+- krokowe przekształcenia — każdy krok z nazwą użytego prawa,
+- wizualizacje — bramki logiczne oraz diagramy zbiorów dla de Morgana,
+- plac zabaw — wpisujesz formułę, dostajesz uproszczenie i tablicę prawdy,
+- quiz z podpowiedziami,
+- słowniczek pojęć.
+
+## Uruchomienie
+
+```bash
+uv sync
+uv run flask --app app run --debug
+# http://127.0.0.1:5000/
+```
+
+## Bramka jakości
+
+```bash
+./scripts/gate.sh          # ruff, pytest, walidacja kart Kanban
+echo $?                    # 0 = zielona
+```
+
+## Praca z agentami
+
+Projekt używa tablicy Kanban i roju **swarmboard**. Zasady pracy: `AGENTS.md`.
+Architektura i kontrakty modułów: `docs/ARCHITEKTURA.md`. Treść praw: `docs/TRESC-PRAW.md`.
+
+Kod pisze rój na modelu `deepseek` (DeepSeek V4.1 Flash), a karty sprawdza reviewer
+`claude` (Antigravity, `claude-sonnet-4-6`).

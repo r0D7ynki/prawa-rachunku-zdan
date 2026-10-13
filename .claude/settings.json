@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Edit",
+      "Write",
+      "Bash(uv:*)",
+      "Bash(python3:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(ruff:*)",
+      "Bash(pytest:*)",
+      "Bash(./scripts/gate.sh:*)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh repo:*)",
+      "Bash(rm -rf:*)",
+      "Read(./.env)",
+      "Read(./**/api_key)"
+    ]
+  }
+}
