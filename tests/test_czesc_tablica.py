@@ -1,4 +1,4 @@
-"""Testy komponentu interaktywnej tablicy prawdy (karta PRZ-011).
+"""Testy komponentu interaktywnej tablicy prawdy (karty PRZ-011 i PRZ-073).
 
 Tablica powstaje w przeglądarce z danych API, więc testy nie mogą jej narysować.
 Sprawdzają to, co da się sprawdzić bez przeglądarki:
@@ -7,7 +7,9 @@ Sprawdzają to, co da się sprawdzić bez przeglądarki:
   brak liczenia wartości w Jinja),
 * czy API zwraca dane w kształcie, na którym opiera się skrypt (pole ``znaki``),
 * jak zbudowany jest skrypt — czy adres bierze z atrybutu, czy pokazuje słowa
-  ``PRAWDA``/``FAŁSZ`` obok koloru, czy obsługuje klawiaturę i błędy po polsku.
+  ``PRAWDA``/``FAŁSZ`` obok koloru, czy obsługuje klawiaturę i błędy po polsku,
+* czy tablica rośnie krok po kroku: import wspólnego ``createStepper``, kropka
+  w nieodkrytej komórce, ``aria-current`` na bieżącej i przycisk „Pokaż całą tabelę”.
 
 Wzorzec testu źródłowego jest ten sam, co w ``tests/test_czesc_kroki.py``.
 """
@@ -118,6 +120,13 @@ def test_partial_dolacza_pliki_statyczne(aplikacja):
     assert "/static/css/truth-table.css" in html
 
 
+def test_partial_dolacza_styl_paska_krokow(aplikacja):
+    """Pasek kroków rysuje `stepper.js`, więc jego style muszą być na stronie."""
+    html = _renderuj(aplikacja, formula=FORMULA)
+
+    assert "/static/css/stepper.css" in html
+
+
 def test_partial_nie_liczy_wartosci_w_jinja(aplikacja):
     """Partial nie ma liczyć logiki — żadnych pętli, warunków ani filtrów."""
     zrodlo = PARTIAL.read_text(encoding="utf-8")
@@ -149,6 +158,13 @@ def test_widok_na_stronie_ma_tablice_z_adresem_api(klient):
     assert 'class="truth-table-mount"' in html
     assert f'data-adres="{ADRES}"' in html
     assert "/static/js/truth-table.js" in html
+
+
+def test_widok_na_stronie_dolacza_styl_paska_krokow(klient):
+    """Pasek kroków pod tabelą potrzebuje `stepper.css` także na prawdziwej stronie."""
+    html = klient.get("/formuly").get_data(as_text=True)
+
+    assert "/static/css/stepper.css" in html
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +303,102 @@ def test_skrypt_ma_uwage_o_ostatniej_kolumnie(skrypt):
 
 
 # ---------------------------------------------------------------------------
+# Prowadzenie krok po kroku (karta PRZ-073)
+# ---------------------------------------------------------------------------
+
+
+def test_skrypt_importuje_wspolny_stepper(skrypt):
+    """Pasek kroków ma być wspólny (karta PRZ-072), a nie wklejony drugi raz."""
+    assert 'from "/static/js/stepper.js"' in skrypt
+    assert "import { createStepper }" in skrypt
+    assert "createStepper({" in skrypt
+
+
+def test_skrypt_oddaje_stepperowi_wlasny_kontener(skrypt):
+    """Komponent pisze tylko do swojego kontenera — karta daje mu go w `mount`."""
+    assert 'setAttribute("data-stepper", "")' in skrypt
+    assert "mount: montazKrokow" in skrypt
+
+
+def test_skrypt_buduje_kroki_z_odpowiedzi_api(skrypt):
+    """Kroki powstają z danych API: kolumna wynikowa, wiersz po wierszu."""
+    assert "function zbudujKroki" in skrypt
+    assert "tytul: `Kolumna ${etykieta}`" in skrypt
+    assert "TEKSTY.wiersz" in skrypt
+
+
+def test_numer_kroku_jest_numerem_komorki(skrypt):
+    """Bez tego „Dalej” odkrywałoby raz jedną, raz kilka komórek."""
+    assert "numerKolumny.get(kolumna) * liczbaWierszy + wiersz" in skrypt
+    assert "komorka.numer <= indeks" in skrypt
+    assert "komorka.numer === indeks" in skrypt
+
+
+def test_kroki_pomijaja_kolumny_zmiennych(skrypt):
+    """Kolumny zmiennych są odkryte od początku, więc nie dostają własnych kroków."""
+    assert "const kolumnyKrokow = kolumny" in skrypt
+    assert "zmienne.includes(etykieta) ? null : indeks" in skrypt
+    assert "komorka.numer === null || komorka.numer <= indeks" in skrypt
+    assert "for (const [pozycja, kolumna] of kolumnyKrokow.entries())" in skrypt
+
+
+def test_skrypt_ukrywa_nieodkryte_komorki_kropka(skrypt):
+    """Student ma widzieć, jak tabela rośnie — przyszłe komórki pokazują kropkę."""
+    assert 'ukryta: "·"' in skrypt
+    assert 'element("span", "tt-ukryte", TEKSTY.ukryta)' in skrypt
+    assert 'classList.toggle("tt-odkryta", odkryta)' in skrypt
+
+
+def test_skrypt_oznacza_biezaca_komorke_arie_current(skrypt):
+    """Bieżąca komórka musi być opisana, nie tylko obramowana kolorem."""
+    assert 'setAttribute("aria-current", "true")' in skrypt
+    assert 'removeAttribute("aria-current")' in skrypt
+    assert "function opisKomorki" in skrypt
+    assert "TEKSTY.nieodkryta" in skrypt
+
+
+def test_skrypt_wyroznia_biezaca_kolumne_naglowkiem(skrypt):
+    assert "tt-biezaca-kolumna" in skrypt
+    assert 'classList.toggle("tt-biezaca", jestBiezaca)' in skrypt
+
+
+def test_skrypt_ma_przycisk_pokaz_cala_tabele(skrypt):
+    """Przycisk przydaje się przy sprawdzaniu: przeskakuje na ostatni krok."""
+    assert 'pokazWszystko: "Pokaż całą tabelę"' in skrypt
+    assert 'element("button", "btn btn-outline-primary btn-sm", TEKSTY.pokazWszystko)' in skrypt
+    assert "stepper.go(stepper.length - 1)" in skrypt
+
+
+def test_skrypt_konczy_podsumowaniem_z_klasyfikacja(skrypt):
+    """Ostatni krok mówi, czym jest formuła, i ile wierszy ma jedynkę."""
+    assert "TEKSTY.podsumowanie" in skrypt
+    assert "Formuła jest ${NAZWY_KLASYFIKACJI[klasyfikacja] || klasyfikacja}." in skrypt
+    assert 'ileJedynek: "Wierszy z jedynką"' in skrypt
+    assert 'tautologia: "tautologią"' in skrypt
+
+
+def test_kroki_maja_tytul_i_opis_dla_steppera(skrypt):
+    """`createStepper` czyta pola `tytul` i `opis` — bez nich pasek byłby pusty."""
+    assert "steps: kroki" in skrypt
+    assert "onStep: (indeks) => pokazKrok(indeks)" in skrypt
+
+
+def test_skrypt_zachowuje_filtrowanie_po_komorkach_zmiennych(skrypt):
+    """Zachowanie z karty PRZ-011 zostaje: kliknięcie zmiennej filtruje wiersze."""
+    assert 'przycisk.setAttribute("aria-pressed", "false")' in skrypt
+    assert "ustawienie.set(nazwa, znak)" in skrypt
+    assert "tt-odfiltrowany" in skrypt
+
+
+def test_skrypt_nie_wstawia_danych_z_api_przez_innerhtml(skrypt):
+    """Kroki i wartości pochodzą z API — nie mogą trafić do DOM jako kod."""
+    assert ".innerHTML" not in skrypt
+    assert "insertAdjacentHTML" not in skrypt
+    assert "outerHTML" not in skrypt
+    assert "document.write" not in skrypt
+
+
+# ---------------------------------------------------------------------------
 # Style
 # ---------------------------------------------------------------------------
 
@@ -300,3 +412,23 @@ def test_styl_rozroznia_stany_wiersza(styl):
 def test_styl_zachowuje_widocznosc_fokusu(styl):
     """Element interaktywny bez widocznego fokusu nie działa z klawiatury."""
     assert ":focus-visible" in styl
+
+
+def test_styl_ukrywa_nieodkryte_komorki(styl):
+    """Kropka zamiast wartości: wartość pokazuje się dopiero z klasą `tt-odkryta`."""
+    assert ".tt-komorka-wyniku .tt-ukryte" in styl
+    assert ".tt-komorka-wyniku .tt-wartosc" in styl
+    assert ".tt-komorka-wyniku.tt-odkryta .tt-wartosc" in styl
+
+
+def test_styl_nie_zdradza_wyniku_tlem_przed_odkryciem(styl):
+    """Tło w kolorze prawdy/fałszu pokazywałoby wynik przed krokiem."""
+    assert ".tt-komorka-wyniku.tt-wynik-1," in styl
+    assert "background-color: transparent;" in styl
+
+
+def test_styl_wyroznia_biezaca_komorke_i_kolumne(styl):
+    """Bieżący krok widać po obramowaniu i nagłówku, nie tylko po kolorze."""
+    assert ".tt-komorka-wyniku.tt-biezaca" in styl
+    assert ".tt-naglowek-podformuly.tt-biezaca-kolumna" in styl
+    assert ".tt-kroki-pasek" in styl
