@@ -1,9 +1,11 @@
-{# Partial: interaktywna tablica prawdy budowana krok po kroku. Wypełniają karty
-   PRZ-011 i PRZ-073.
+{# Partial: interaktywna tablica prawdy z wpisywaniem wartości. Wypełniają karty
+   PRZ-011, PRZ-073 i PRZ-121.
    Wejście: `formula` (tekst formuły w Unicode).
    Skrypt `truth-table.js` pobiera tablicę z adresu w `data-adres` i dorysowuje tabelę,
    filtry, panel „Twoje ustawienie” oraz pasek kroków ze wspólnego komponentu
-   `stepper.js`. Partial nie liczy żadnych wartości — dokłada tylko style paska. #}
+   `stepper.js`. Zakryta komórka wyniku to pole na jeden znak: student wpisuje `0`
+   albo `1` i od razu widzi, czy dobrze.
+   Partial nie liczy żadnych wartości — dokłada tylko style komponentu i paska. #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/truth-table.css') }}" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
 <div class="truth-table-mount"
@@ -12,8 +14,8 @@
      data-rola="tablica-prawdy">
   <noscript>
     <p class="alert alert-info mb-2">
-      Tablica prawdy i prowadzenie krok po kroku liczą się w przeglądarce
-      i wymagają włączonego JavaScriptu.
+      Tablica prawdy, wpisywanie wartości i prowadzenie krok po kroku liczą się
+      w przeglądarce i wymagają włączonego JavaScriptu.
     </p>
     <p class="mb-0">Wzór formuły: <span class="formula">{{ formula }}</span>.</p>
   </noscript>
