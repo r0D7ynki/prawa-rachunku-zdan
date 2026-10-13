@@ -124,6 +124,11 @@ def test_rownowaznosc_wykladowa_wiaze_najslabiej():
     assert parse("∼p ≡ q") == Iff(Not(Var("p")), Var("q"))
 
 
+def test_parser_wiaze_rownowaznosc_lewostronnie():
+    """``≡`` łączy w lewo: ``p ≡ q ≡ r`` to ``(p ≡ q) ≡ r``, a nie ``p ≡ (q ≡ r)``."""
+    assert parse("p ≡ q ≡ r") == Iff(Iff(Var("p"), Var("q")), Var("r"))
+
+
 # ---------------------------------------------------------------------------
 # Parsowanie: błędy
 # ---------------------------------------------------------------------------
@@ -404,6 +409,34 @@ def test_evaluate_rownowaznosc():
     formula = parse("p ↔ q")
     assert evaluate(formula, {"p": True, "q": True}) is True
     assert evaluate(formula, {"p": True, "q": False}) is False
+
+
+def test_rownowaznosc_jest_laczna():
+    """``≡`` jest łączne, więc oba rozstawienia nawiasów dają ten sam wynik."""
+    lewa = parse("(p ≡ q) ≡ r")
+    prawa = parse("p ≡ (q ≡ r)")
+    sprawdzone = 0
+    for wartosci in itertools.product([False, True], repeat=3):
+        przypisanie = dict(zip(("p", "q", "r"), wartosci, strict=True))
+        assert evaluate(lewa, przypisanie) is evaluate(prawa, przypisanie)
+        sprawdzone += 1
+    assert sprawdzone == 8
+
+
+def test_implikacja_nie_jest_laczna():
+    """Dla porównania ``→`` łączne nie jest — wystarczy jedno różniące wartościowanie.
+
+    Np. dla ``p = F``, ``q = T``, ``r = F``: ``(F → T) → F`` to fałsz,
+    a ``F → (T → F)`` to prawda.
+    """
+    lewa = parse("(p → q) → r")
+    prawa = parse("p → (q → r)")
+    rozne = []
+    for wartosci in itertools.product([False, True], repeat=3):
+        przypisanie = dict(zip(("p", "q", "r"), wartosci, strict=True))
+        if evaluate(lewa, przypisanie) is not evaluate(prawa, przypisanie):
+            rozne.append(przypisanie)
+    assert rozne, "implikacja miałaby być łączna, a nie jest"
 
 
 def test_evaluate_brak_wartosci_zmiennej_to_blad():
