@@ -1,0 +1,129 @@
+/* Style komponentu tablicy prawdy (karta PRZ-011).
+   Kolor nigdy nie jest jedynym nośnikiem informacji: każda wartość ma obok znaku
+   `1`/`0` także słowo PRAWDA/FAŁSZ, a wybrany wiersz dodatkowo grubszą krawędź. */
+
+.truth-table-mount {
+  --tt-akcent: var(--bs-primary, #0d6efd);
+  --tt-prawda: var(--bs-success-bg-subtle, #d1e7dd);
+  --tt-falsz: var(--bs-secondary-bg, #e9ecef);
+  --tt-wybrany: var(--bs-primary-bg-subtle, #cfe2ff);
+}
+
+.tt-tabela {
+  min-width: 22rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tt-tabela th,
+.tt-tabela td {
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Nagłówki: zmienne i podformuły. Podformuły są dłuższe, więc mogą się łamać. */
+.tt-naglowek-zmiennej,
+.tt-naglowek-podformuly {
+  font-weight: 600;
+}
+
+.tt-naglowek-podformuly {
+  white-space: normal;
+  max-width: 14rem;
+}
+
+.tt-numer-kolumny,
+.tt-numer {
+  color: var(--bs-secondary-color, #6c757d);
+  font-weight: 500;
+}
+
+/* Pojedyncza wartość: znak `1`/`0` oraz słowo PRAWDA/FAŁSZ. */
+.tt-wartosc {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.tt-znak {
+  font-family: var(--bs-font-monospace, monospace);
+  font-weight: 700;
+}
+
+.tt-slownie {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+/* Tło kolumn wynikowych rozróżnia prawdę i fałsz — słowo obok zostaje zawsze. */
+.tt-wynik-1 {
+  background-color: var(--tt-prawda);
+}
+
+.tt-wynik-0 {
+  background-color: var(--tt-falsz);
+}
+
+/* Komórka zmiennej jest przyciskiem: kliknięcie ustawia wartość tej zmiennej. */
+.tt-komorka {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background: none;
+  cursor: pointer;
+}
+
+.tt-komorka:hover {
+  border-color: var(--tt-akcent);
+}
+
+.tt-komorka[aria-pressed="true"] {
+  border-color: var(--tt-akcent);
+  border-width: 2px;
+  background-color: var(--tt-wybrany);
+}
+
+.tt-komorka:focus-visible,
+.tt-wiersz:focus-visible {
+  outline: 2px solid var(--tt-akcent);
+  outline-offset: 2px;
+}
+
+/* Wiersz można wybrać kliknięciem albo Enterem — musi to być widoczne. */
+.tt-wiersz {
+  cursor: pointer;
+}
+
+/* Wiersz sprzeczny z ustawieniem: wygaszony, ale nadal obecny w tabeli. */
+.tt-odfiltrowany {
+  opacity: 0.4;
+}
+
+/* Wiersz zgodny z pełnym ustawieniem — podświetlenie wyboru. */
+.tt-wybrany {
+  background-color: var(--tt-wybrany);
+  box-shadow: inset 3px 0 0 0 var(--tt-akcent);
+}
+
+.tt-panel {
+  background-color: var(--bs-light, #f8f9fa);
+}
+
+.tt-ustawienie {
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: 0.95rem;
+}
+
+.tt-wynik-ustawienia {
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tt-wiersz,
+  .tt-komorka {
+    transition: background-color 120ms ease-in-out;
+  }
+}
