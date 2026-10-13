@@ -49,6 +49,27 @@ def board_columns(config: dict) -> list[str]:
     return ALL_COLUMNS if config.get("test_column") is True or "test" in listed else COLUMNS
 
 
+# Pola etapów (#33): kto testował / przeglądał i stan przeglądu — tylko dla bieżącego przejścia
+STAGE_FIELDS = {"test": ("tested_by",), "review": ("reviewer", "review_fail", "attempts")}
+
+
+def reset_stages(card: Any, columns: list[str], to: str, note: str = "") -> str:
+    """
+    Ruch w lewo (także ponowne otwarcie `done`, #33): pola etapów, które karta przejdzie od nowa
+    (kolumna etapu nie wcześniej niż cel), usunięte z nagłówka; zwraca notatkę do Logu z usuniętymi
+    wartościami (historia zostaje).
+    """
+    frm = card.status
+    if frm not in columns or to not in columns or columns.index(to) >= columns.index(frm):
+        return note
+    removed = []
+    for stage, keys in STAGE_FIELDS.items():
+        if stage in columns and columns.index(stage) >= columns.index(to):
+            removed += [f"{k}: {card.meta.pop(k)}" for k in keys if str(card.meta.get(k) or "")]
+    cleared = tr("kanban.log.stage_reset", fields=", ".join(removed)) if removed else ""
+    return "; ".join(part for part in (note, cleared) if part)
+
+
 def test_first(columns: list[str]) -> bool:
     """Kolejność etapów in-progress → test → review (#29)."""
     return "test" in columns and columns.index("test") < columns.index("review")
@@ -96,7 +117,7 @@ AUTOMATIC_KEYS = (
     "bridge.log.requeued",
 )
 # Metadane zmieniane `kanban.py set` (także w done) — wpis „klucz: stara → nowa” nie jest pracą
-META_KEYS = ("branch", "priority", "batch", "tested_by", "question")
+META_KEYS = ("branch", "priority", "batch", "tested_by", "question", "depends")
 MANUAL_META = re.compile(rf"^(?:{'|'.join(META_KEYS)}): .* → ")  # wartości ze spacjami (question)
 
 

@@ -24,7 +24,7 @@ prompt="$instrukcja_oszczednosci
 
 $prompt"
 
-models="${REVIEWER_MODELS:-claude-sonnet-4-6 gemini-3.8-flash-high}"
+models="${REVIEWER_MODELS:-claude-sonnet-4-6}"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 

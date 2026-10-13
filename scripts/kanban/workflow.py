@@ -15,10 +15,24 @@ from pathlib import Path
 from typing import Any
 
 try:  # w pakiecie swarmboard
-    from .checks import NO_BATCH, batch_decided, batch_of, test_first
+    from .checks import (
+        NO_BATCH,
+        batch_decided,
+        batch_of,
+        dependency_cycle,
+        reset_stages,
+        test_first,
+    )
     from .i18n import tr
 except ImportError:  # kopia w projekcie — katalog skryptu jest już w sys.path (kanban.py)
-    from checks import NO_BATCH, batch_decided, batch_of, test_first  # type: ignore[no-redef]
+    from checks import (  # type: ignore[no-redef]
+        NO_BATCH,
+        batch_decided,
+        batch_of,
+        dependency_cycle,
+        reset_stages,
+        test_first,
+    )
     from i18n import tr  # type: ignore[no-redef]
 
 
@@ -249,7 +263,29 @@ META_VALUES = {
     "batch": re.compile(r"^[\w.-]+$"),  # paczka kart (SB-064); pusta wartość = bez paczki
     "tested_by": re.compile(r"^[\w.@-]+$"),  # kto przetestował (#29)
     "question": re.compile(r"^\S.*$"),  # pytanie do właściciela — karta czeka na człowieka (#31)
+    "depends": re.compile(r"^\[?\s*[\w-]+(\s*,\s*[\w-]+)*\s*\]?$"),  # ID kart (#34)
 }
+
+
+def checked_depends(board: Any, card: Any, value: str) -> tuple[str, list[str]]:
+    """
+    `depends` karty (#34): lista ID (`A,B` albo `[A, B]`) → `[A, B]`; błąd, gdy ID nie istnieje,
+    karta zależy od siebie albo powstaje cykl zależności.
+    """
+    from_cards = [c for c in board.cards() if c.id != card.id]
+    ids = list(dict.fromkeys(i for i in re.split(r"[\s,\[\]]+", value) if i))
+    known = {c.id for c in from_cards}
+    unknown = [i for i in ids if i not in known and i != card.id]
+    if unknown:
+        return value, [tr("kanban.set.depends_unknown", ids=", ".join(unknown))]
+    normalized = f"[{', '.join(ids)}]"
+    old = card.meta.get("depends", "[]")
+    card.meta["depends"] = normalized
+    cycle = (
+        dependency_cycle([*from_cards, card]) if card.id not in ids else f"{card.id} -> {card.id}"
+    )
+    card.meta["depends"] = old
+    return normalized, [tr("kanban.check.cycle", cycle=cycle)] if cycle else []
 
 
 def followup_batch(source: Any) -> str:
@@ -261,7 +297,7 @@ def followup_batch(source: Any) -> str:
     return f"{batch}-followup" if batch else NO_BATCH
 
 
-def create_card(board: Any, args: Any) -> Any:
+def create_card(board: Any, args: Any) -> tuple[Any, list[str]]:
     """
     `new` (#31): z `--from <ID>` karta dziedziczy model, priorytet i paczkę karty źródłowej,
     rozmiar S, `source:` i wpis w Logu; bez — model claude, rozmiar M, priorytet P2.
@@ -270,24 +306,37 @@ def create_card(board: Any, args: Any) -> Any:
     meta = source.meta if source else {}
     model = args.model or meta.get("model") or "claude"
     size = args.size or ("S" if source else "M")
+    depends = ",".join(filter(None, [source.id if source else "", getattr(args, "depends", "")]))
+    if depends:  # walidacja przed utworzeniem — bez pustej karty po błędzie (#34)
+        draft = type("Draft", (), {"id": "", "meta": {}})()
+        _, errors = checked_depends(board, draft, depends)
+        if errors:
+            return None, errors
     card = board.create(args.title, model, size, args.priority or meta.get("priority") or "P2")
+    if depends:
+        card.meta["depends"] = checked_depends(board, card, depends)[0]
+        card.save()
     if source:
         card.meta["batch"] = followup_batch(source)
         card.meta["source"] = f"{source.id} manual -"
         card.append_log(tr("kanban.log.created_from", card_id=source.id))
         card.save()
-    return card
+    return card, []
 
 
 def set_meta(board: Any, card_id: str, key: str, value: str, reason: str = "") -> list[str]:
     """Zmiana metadanej karty z wpisem administracyjnym w Logu (bez bramek; także po done)."""
     if key not in META_VALUES:
         return [tr("kanban.set.bad_key", name=key, keys=", ".join(META_VALUES))]
-    clearable = key in ("batch", "question")  # pusta wartość = bez paczki / pytanie zamknięte
+    clearable = key in ("batch", "question", "depends")  # pusta = bez paczki / pytania / zależności
     if (value or not clearable) and not META_VALUES[key].match(value) or "\n" in reason:
         return [tr("kanban.set.bad_value", name=key, value=value)]
     card = board.card(card_id)
     old = card.meta.get(key, "")
+    if key == "depends":
+        value, errors = checked_depends(board, card, value)
+        if errors:
+            return errors
     card.meta[key] = value
     entry = tr("kanban.log.meta", name=key, old=old or "—", new=value or "—", reason=reason)
     card.append_log(entry.rstrip())
@@ -461,7 +510,8 @@ def move_batch(board: Any, name: str, to: str, reason: str = "", tested_by: str 
     if errors:
         return errors
     for card in batch:
-        card.move(to, tr("kanban.log.batch_moved", batch=name, reason=reason.strip()).strip())
+        note = tr("kanban.log.batch_moved", batch=name, reason=reason.strip()).strip()
+        card.move(to, reset_stages(card, board.columns, to, note))  # ruch w lewo — etapy od nowa
         card.save()
     return []
 
