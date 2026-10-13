@@ -311,14 +311,27 @@ to numer kroku liczony od jednego, w `kroki_sets` pole `operacja` to nazwa opera
 w środku swoich dzieci). Każda bramka to prostokąt z symbolem operatora, każdy przewód
 to `<path>` z grotem (`<marker>`) i wartością słowami w `<title>`. Wartości podformuł
 liczy `formula.evaluate` dla `wartosci`; bramki policzone po bieżącym kroku pokazują `?`.
-Brak wartości którejś zmiennej to `FormulaError`.
+Brak wartości którejś zmiennej to `FormulaError`. **Każdy** prostokąt i **każdy** przewód
+niesie `<title>` z wartością słowami.
+
+**Krok bramek (karta PRZ-141).** Krok `i` zapala **dokładnie jedną** bramkę: prostokąt
+podformuły `subformulas[i]` ma klasę `bramka-aktywna`, a przewody wchodzące do niej —
+`przewod-aktywny`; na tych przewodach wartość stoi słowem (PRAWDA/FAŁSZ), nie cyfrą.
+Bramki policzone wcześniej mają `bramka-policzona`, więc liczba tych klas rośnie z krokiem.
 
 **Zbiory.** Prostokąt to cała przestrzeń, koła to zbiory zmiennych. Obszar liczymy na
 siatce 44 × 36 próbek: próbka należy do koła zmiennej, więc `evaluate` mówi, czy formuła
-jest w niej prawdziwa. Prawdziwe próbki sklejamy w wierszu w prostokąty. Krok pokazuje
-operandy bieżącej operacji jako `obszar-1` i `obszar-2` (dla dopełnienia: zbiór i wszystko
-poza nim), a bez kroku — obszar całej formuły jako `obszar-1`. Ponad `MAX_ZBIOROW` zmiennych
-moduł oddaje komunikat po polsku, a nie rysunek.
+jest w niej prawdziwa. Prawdziwe próbki sklejamy w wierszu w prostokąty. Bez kroku rysujemy
+obszar całej formuły jako `obszar-1`. Ponad `MAX_ZBIOROW` zmiennych moduł oddaje komunikat
+po polsku, a nie rysunek.
+
+**Krok zbiorów (karta PRZ-141).** Obszar kroku `i` jest dzielony na dwie **rozłączne**
+warstwy, których suma to cały obszar tego kroku: `obszar-nowy` (mocny akcent) niesie to,
+co dokłada bieżąca operacja, a `obszar-poprzedni` (słaby akcent) — część wspólną z krokiem
+`i - 1`. Dzięki temu kolejne kroki różnią się widocznie. Nad rysunkiem stoi etykieta
+operacji z jej nazwą („Suma — obszar, który pokrywa p albo q.”); numer kroku zostaje
+w `aria-label` rysunku, nie w widocznej treści. Tryb ciemny obsługują tokeny motywu —
+arkusz nie ma drugiego bloku kolorów.
 
 **Widok i partiale.** `app/blueprints/laws.py` woła oba rysunki dla wzoru prawa, biorąc
 wartościowanie z pierwszego wiersza tablicy prawdy (wszystkie zmienne prawdziwe), i podaje
@@ -327,6 +340,14 @@ Partiale `_gates.html`, `_sets.html` i `_steps.html` składają sekcję rysunkó
 w `_diagramy.html` (`figura`, `zasoby`, `stopka`). Każdy z nich pokazuje **oba** diagramy;
 różni je tylko kolejność figur. Krok przełącza `wizualizacje.js`: gotowe kroki czekają
 w `<template data-wiz-krok>`, a bez JavaScriptu widać pierwszy krok i listę opisów.
+
+**Numer kroku w adresie (karta PRZ-141).** `GET /prawa/<slug>?krok=N` otwiera stronę na
+kroku `N`, także bez JavaScriptu. `strona_prawa` czyta numer przez `_krok_z_adresu`
+(brak wartości albo śmieć = brak numeru) i przekazuje go do `diagramy(law, krok)`. Ta
+funkcja **przestawia** listę kroków (`_od_kroku`) tak, żeby krok `N` stał pierwszy —
+makro `figura` pokazuje pierwszy krok, a `wizualizacje.js` startuje od pierwszego
+szablonu, więc inaczej wybór kroku nie działałby bez zmiany skryptu. Numer poza zakresem
+jest przycinany do ostatniego kroku.
 
 ### Sekcja „Krok po kroku” — kroki prawa (karta PRZ-143)
 

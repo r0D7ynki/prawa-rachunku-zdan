@@ -9,7 +9,9 @@ tak samo jak ``app/blueprints/wstep.py``. Komponenty interaktywne
 
 Od karty PRZ-123 oba rysunki prawa (schemat bramek i diagram zbiorów) liczy
 :mod:`app.logic.diagrams` — serwer, nie przeglądarka. Ten moduł przygotowuje
-gotowe kroki rysunków (``bramki`` i ``zbiory``) dla szablonu.
+gotowe kroki rysunków (``bramki`` i ``zbiory``) dla szablonu. Karta PRZ-141
+dokłada numer kroku z adresu (``/prawa/<slug>?krok=2``): rysunki otwierają się
+wtedy na wskazanym kroku, także bez JavaScriptu.
 
 Sekcję „Krok po kroku" buduje ten moduł (karta PRZ-143): porównuje formułę przed
 krokiem z formułą po kroku, wyróżnia zmieniony fragment znacznikiem ``<mark>``
@@ -22,7 +24,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request
 from markupsafe import Markup, escape
 
 from app.logic.diagrams import gates_svg, kroki_gates, kroki_sets, sets_svg
@@ -111,11 +113,39 @@ def _kroki_rysunku(
     ]
 
 
-def diagramy(law: Law) -> dict[str, dict]:
-    """Oba rysunki prawa razem z krokami, gotowe dla szablonu (karta PRZ-123).
+def _od_kroku(kroki: list[dict], krok: int | None) -> list[dict]:
+    """Przestawia kroki rysunku tak, żeby krok ``krok`` stał pierwszy.
+
+    Strona pokazuje pierwszy krok z listy, a ``wizualizacje.js`` zawsze startuje
+    od pierwszego szablonu — dlatego wybór kroku z adresu to przestawienie listy,
+    a nie osobny rysunek. Lista jest zamknięta w kółko: kroki po wybranym idą
+    dalej w swojej kolejności, a te przed nim na koniec, więc wszystkie zostają
+    na stronie (karta PRZ-141). Numer spoza listy przycinamy do jej końców.
+    """
+    if krok is None or not kroki:
+        return kroki
+    numer = max(0, min(krok, len(kroki) - 1))
+    return kroki[numer:] + kroki[:numer]
+
+
+def _krok_z_adresu(wartosc: str | None) -> int | None:
+    """Numer kroku z adresu (``?krok=2``); brak wartości albo śmieć to „od początku”."""
+    if wartosc is None:
+        return None
+    try:
+        return int(wartosc.strip())
+    except ValueError:
+        return None
+
+
+def diagramy(law: Law, krok: int | None = None) -> dict[str, dict]:
+    """Oba rysunki prawa razem z krokami, gotowe dla szablonu (PRZ-123, PRZ-141).
 
     Gdy wzór prawa się nie parsuje, zwracamy puste listy kroków — strona pokaże wzór
     i komunikat, a nie błąd 500 (tak samo zachowuje się ``formula_to_html``).
+
+    ``krok`` to numer z adresu (``?krok=N``) — otwiera stronę na wskazanym kroku
+    rysunku, bez JavaScriptu. Listę kroków przesuwa :func:`_od_kroku`.
     """
     try:
         node = parse(law.formula)
@@ -124,21 +154,19 @@ def diagramy(law: Law) -> dict[str, dict]:
 
     wartosci = _wartosciowanie(node)
     czesci = subformulas(node)
+    bramki = _kroki_rysunku(
+        czesci,
+        kroki_gates(node),
+        lambda numer: gates_svg(node, wartosci, krok=numer),
+    )
+    zbiory = _kroki_rysunku(
+        czesci,
+        kroki_sets(node),
+        lambda numer: sets_svg(node, krok=numer),
+    )
     return {
-        "bramki": {
-            "kroki": _kroki_rysunku(
-                czesci,
-                kroki_gates(node),
-                lambda numer: gates_svg(node, wartosci, krok=numer),
-            )
-        },
-        "zbiory": {
-            "kroki": _kroki_rysunku(
-                czesci,
-                kroki_sets(node),
-                lambda numer: sets_svg(node, krok=numer),
-            )
-        },
+        "bramki": {"kroki": _od_kroku(bramki, krok)},
+        "zbiory": {"kroki": _od_kroku(zbiory, krok)},
     }
 
 
@@ -503,13 +531,17 @@ def lista_praw():
 
 @bp.get("/prawa/<slug>")
 def strona_prawa(slug: str):
-    """Strona jednego prawa albo komunikat 404, gdy nie ma prawa o tym adresie."""
+    """Strona jednego prawa albo komunikat 404, gdy nie ma prawa o tym adresie.
+
+    ``?krok=N`` otwiera oba rysunki na kroku N — numer spoza zakresu pokazuje
+    ostatni krok. Działa bez JavaScriptu, bo kroki rysuje serwer (karta PRZ-141).
+    """
     law = get(slug)
     if law is None:
         return render_template("nie_ma_prawa.html", slug=slug), 404
 
     poprzednie, nastepne = neighbours(law)
-    rysunki = diagramy(law)
+    rysunki = diagramy(law, _krok_z_adresu(request.args.get("krok")))
     return render_template(
         "prawo.html",
         prawo=law,
