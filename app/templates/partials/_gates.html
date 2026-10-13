@@ -1,5 +1,17 @@
 {# Partial: wizualizacja bramek logicznych. Wypełnia karta PRZ-012.
-   Wejście: `formula` (tekst formuły w Unicode). #}
+   Wejście: `formula` (tekst formuły w Unicode).
+   Skrypt `gates.js` pobiera drzewo formuły z `/api/formula/parse` i rysuje z niego
+   schemat bramek — sam tekst formuły nie wystarcza do rysunku. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/wizualizacje.css') }}" />
 <div class="gates-mount" data-formula="{{ formula }}" data-rola="bramki-logiczne">
-  <p class="text-muted small mb-1">Schemat bramek pojawi się tutaj po wczytaniu skryptu.</p>
+  <noscript>
+    <p class="alert alert-info mb-0">
+      Schemat bramek wymaga włączonego JavaScriptu. Bez rysunku też sprawdzisz prawo:
+      przeczytaj wzór i kroki powyżej oraz tablicę prawdy.
+    </p>
+  </noscript>
+  <p class="wiz-ladowanie text-muted small mb-1">
+    Schemat bramek pojawi się tutaj po wczytaniu skryptu.
+  </p>
 </div>
+<script type="module" src="{{ url_for('static', filename='js/gates.js') }}"></script>

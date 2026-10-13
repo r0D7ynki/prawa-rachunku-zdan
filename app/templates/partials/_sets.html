@@ -1,5 +1,21 @@
-{# Partial: diagramy zbiorów dla praw de Morgana. Wypełnia karta PRZ-012.
-   Wejście: `formula` (tekst formuły w Unicode). #}
-<div class="sets-mount" data-formula="{{ formula }}" data-rola="diagramy-zbiorow">
-  <p class="text-muted small mb-1">Diagram zbiorów pojawi się tutaj po wczytaniu skryptu.</p>
+{# Partial: diagramy zbiorów (koła) dla praw de Morgana i rozdzielności. Karta PRZ-012.
+   Wejście: `formula` (wzór prawa). Gdy w kontekście jest `prawo` z polami `lewa`
+   i `prawa` (strona prawa, karta PRZ-010), diagramy pokazują obie strony tego samego
+   prawa obok siebie; inaczej obie strony to `formula`.
+   Skrypt `sets.js` liczy zamalowane obszary z drzewa formuły z `/api/formula/parse`. #}
+{% set strona_lewa = lewa if lewa is defined else (prawo.lewa if prawo is defined else formula) %}
+{% set strona_prawa = prawa if prawa is defined else (prawo.prawa if prawo is defined else formula) %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/wizualizacje.css') }}" />
+<div class="sets-mount" data-formula="{{ formula }}" data-lewa="{{ strona_lewa }}"
+     data-prawa="{{ strona_prawa }}" data-rola="diagramy-zbiorow">
+  <noscript>
+    <p class="alert alert-info mb-0">
+      Diagram zbiorów wymaga włączonego JavaScriptu. Bez rysunku też sprawdzisz prawo:
+      przeczytaj wzór i kroki powyżej oraz tablicę prawdy.
+    </p>
+  </noscript>
+  <p class="wiz-ladowanie text-muted small mb-1">
+    Diagram zbiorów pojawi się tutaj po wczytaniu skryptu.
+  </p>
 </div>
+<script type="module" src="{{ url_for('static', filename='js/sets.js') }}"></script>
