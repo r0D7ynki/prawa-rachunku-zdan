@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block tytul %}Słowniczek pojęć{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Słowniczek</h1>
+    <p class="lead">
+      Każde pojęcie w dwóch–czterech zdaniach, bez żargonu.
+    </p>
+  </header>
+
+  <nav class="spis-hasel" aria-label="Spis haseł">
+    <h2 class="h6">Skocz do hasła</h2>
+    <ul class="lista-spisu">
+      <li><a href="#zdanie-logiczne">zdanie logiczne</a></li>
+      <li><a href="#zmienna-zdaniowa">zmienna zdaniowa</a></li>
+      <li><a href="#spojnik-logiczny">spójnik logiczny</a></li>
+      <li><a href="#negacja">negacja</a></li>
+      <li><a href="#koniunkcja">koniunkcja</a></li>
+      <li><a href="#alternatywa">alternatywa</a></li>
+      <li><a href="#implikacja">implikacja</a></li>
+      <li><a href="#rownowaznosc">równoważność</a></li>
+      <li><a href="#wartosciowanie">wartościowanie</a></li>
+      <li><a href="#tabela-prawdy">tabela prawdy</a></li>
+      <li><a href="#tautologia">tautologia</a></li>
+      <li><a href="#kontrtautologia">kontrtautologia</a></li>
+      <li><a href="#formula-spelnialna">formuła spełnialna</a></li>
+      <li><a href="#prawo-logiczne">prawo logiczne</a></li>
+      <li><a href="#przeksztalcenie-rownowaznosciowe">przekształcenie równoważnościowe</a></li>
+      <li><a href="#forma-normalna">forma normalna</a></li>
+      <li><a href="#kwantyfikator">kwantyfikator</a></li>
+    </ul>
+  </nav>
+
+  <dl class="slowniczek">
+    <dt id="zdanie-logiczne">zdanie logiczne</dt>
+    <dd>
+      Zdanie logiczne to wypowiedź, o której można powiedzieć, że jest prawdziwa albo fałszywa.
+      Zdanie „Pada deszcz” jest zdaniem logicznym, bo łatwo to sprawdzić.
+      Pytania i rozkazy nie są zdaniami logicznymi, bo nie mają wartości prawdy.
+    </dd>
+
+    <dt id="zmienna-zdaniowa">zmienna zdaniowa</dt>
+    <dd>
+      Zmienna zdaniowa to litera, która zastępuje dowolne zdanie, na przykład <span class="formula">p</span> albo <span class="formula">q</span>.
+      W tablicy prawdy zmienna przyjmuje raz prawdę, raz fałsz.
+      Dzięki temu jeden wzór opisuje wiele różnych sytuacji.
+    </dd>
+
+    <dt id="spojnik-logiczny">spójnik logiczny</dt>
+    <dd>
+      Spójnik logiczny, inaczej funktor, łączy zdania w jedno większe zdanie.
+      Do spójników należą negacja, koniunkcja, alternatywa, implikacja i równoważność.
+      Na stronie rozpoznasz je po symbolach ¬, ∧, ∨, → i ↔.
+    </dd>
+
+    <dt id="negacja">negacja</dt>
+    <dd>
+      Negacja odwraca wartość zdania i zapisujemy ją jako <span class="formula">¬p</span>.
+      Zdanie „nie pada” jest prawdziwe dokładnie wtedy, gdy zdanie „pada” jest fałszywe.
+      Na klawiaturze zapiszesz ją jako <code>~</code> albo <code>!</code>.
+    </dd>
+
+    <dt id="koniunkcja">koniunkcja</dt>
+    <dd>
+      Koniunkcja <span class="formula">p ∧ q</span> jest prawdziwa tylko wtedy, gdy oba zdania są prawdziwe.
+      Czytamy ją jako „p i q”.
+      Jedno fałszywe zdanie wystarczy, żeby cała koniunkcja była fałszywa.
+    </dd>
+
+    <dt id="alternatywa">alternatywa</dt>
+    <dd>
+      Alternatywa <span class="formula">p ∨ q</span> jest fałszywa tylko wtedy, gdy oba zdania są fałszywe.
+      Czytamy ją jako „p lub q”.
+      To „lub” obejmuje także przypadek, gdy prawdziwe są oba zdania naraz.
+    </dd>
+
+    <dt id="implikacja">implikacja</dt>
+    <dd>
+      Implikacja <span class="formula">p → q</span> mówi: jeśli p, to q.
+      Jest fałszywa tylko w jednym przypadku: p jest prawdziwe, a q fałszywe.
+      Gdy p jest fałszywe, cała implikacja jest prawdziwa.
+    </dd>
+
+    <dt id="rownowaznosc">równoważność</dt>
+    <dd>
+      Równoważność <span class="formula">p ↔ q</span> jest prawdziwa, gdy oba zdania mają tę samą wartość.
+      Mówimy wtedy: p wtedy i tylko wtedy, gdy q.
+      Fałsz wychodzi tylko przy dwóch różnych wartościach, czyli prawda–fałsz albo fałsz–prawda.
+    </dd>
+
+    <dt id="wartosciowanie">wartościowanie</dt>
+    <dd>
+      Wartościowanie to przypisanie każdej zmiennej wartości prawda albo fałsz.
+      Jeden wiersz tablicy prawdy to jedno wartościowanie.
+      Formuła jest spełnialna, gdy choć jedno wartościowanie daje prawdę.
+    </dd>
+
+    <dt id="tabela-prawdy">tabela prawdy</dt>
+    <dd>
+      Tabela prawdy wypisuje wartość formuły dla wszystkich możliwych wartościowań.
+      Każda zmienna podwaja liczbę wierszy, więc trzy zmienne dają osiem wierszy.
+      Mówimy też „tablica prawdy” i znaczy to dokładnie to samo.
+      Ostatnia kolumna pokazuje wartość całej formuły.
+    </dd>
+
+    <dt id="tautologia">tautologia</dt>
+    <dd>
+      Tautologia to formuła prawdziwa przy każdym wartościowaniu zmiennych.
+      W jej tablicy prawdy nie znajdziesz wiersza z fałszem.
+      Prosty przykład to <span class="formula">p ∨ ¬p</span>.
+    </dd>
+
+    <dt id="kontrtautologia">kontrtautologia</dt>
+    <dd>
+      Kontrtautologia to formuła fałszywa przy każdym wartościowaniu.
+      Nazywamy ją też sprzecznością.
+      Prosty przykład to <span class="formula">p ∧ ¬p</span>.
+    </dd>
+
+    <dt id="formula-spelnialna">formuła spełnialna</dt>
+    <dd>
+      Formuła spełnialna ma choć jedno wartościowanie, które daje prawdę.
+      Formuła <span class="formula">p ∧ q</span> jest spełnialna, bo prawda wychodzi dla p i q prawdziwych.
+      Każda tautologia jest spełnialna, ale spełnialna formuła nie musi być tautologią.
+    </dd>
+
+    <dt id="prawo-logiczne">prawo logiczne</dt>
+    <dd>
+      Prawo logiczne to tautologia, którą stosujemy w przekształceniach formuł.
+      Mówi o wszystkich zdaniach naraz, a nie o jednym przykładzie.
+      Dlatego wolno zastąpić lewą stronę prawa jego prawą stroną.
+    </dd>
+
+    <dt id="przeksztalcenie-rownowaznosciowe">przekształcenie równoważnościowe</dt>
+    <dd>
+      Przekształcenie równoważnościowe zamienia formułę na inną o tej samej wartości.
+      Każdy krok musi być równoważnością, żeby wynik był pewny.
+      Kroki zapisujemy po kolei, więc łatwo sprawdzić całe rozumowanie.
+    </dd>
+
+    <dt id="forma-normalna">forma normalna (NNF, DNF, CNF)</dt>
+    <dd>
+      Forma normalna to zapis formuły według ustalonej reguły.
+      NNF sprowadza negacje do zmiennych i nie używa znaków → ani ↔.
+      DNF to alternatywa koniunkcji, a CNF to koniunkcja alternatyw.
+    </dd>
+
+    <dt id="kwantyfikator">kwantyfikator</dt>
+    <dd>
+      Kwantyfikator to zwrot „dla każdego” albo „istnieje”.
+      Kwantyfikatory należą do rachunku predykatów, a nie do rachunku zdań — to częste nieporozumienie.
+      W rachunku zdań patrzymy tylko na prawdę i fałsz całych zdań.
+      Dlatego nie znajdziesz kwantyfikatora w żadnym wzorze na tej stronie.
+    </dd>
+  </dl>
+{% endblock %}

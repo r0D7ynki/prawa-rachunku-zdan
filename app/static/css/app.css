@@ -66,6 +66,110 @@ body {
   border-radius: 1rem;
   padding: 1rem 1.25rem;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.karta-prawa:hover,
+.karta-prawa:focus-visible {
+  border-color: var(--kolor-akcent);
+  box-shadow: 0 0.25rem 0.75rem rgb(76 59 207 / 15%);
+}
+
+.karta-prawa-kategoria {
+  color: var(--kolor-akcent);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.karta-prawa-nazwa {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.lista-praw {
+  list-style: none;
+  padding-left: 0;
+}
+
+.naglowek-strony {
+  margin-bottom: 2rem;
+}
+
+.naglowek-strony h1 {
+  margin-bottom: 0.5rem;
+}
+
+.sekcja {
+  margin-bottom: 2.5rem;
+}
+
+.sekcja h2 {
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.sekcja p,
+.sekcja li {
+  max-width: 65ch;
+}
+
+.licznik-praw {
+  font-weight: 600;
+  color: var(--kolor-akcent);
+}
+
+.spis-hasel {
+  background: #fff;
+  border: 1px solid var(--kolor-ramka);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.lista-spisu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.slowniczek dt {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+}
+
+.slowniczek dd {
+  margin: 0.25rem 0 0;
+  max-width: 65ch;
+}
+
+.tablica-symboli td:first-child {
+  white-space: nowrap;
+}
+
+.tablica-prawdy td,
+.tablica-prawdy th {
+  text-align: left;
+}
+
+.podpowiedz-czytanie {
+  border-left: 4px solid var(--kolor-akcent);
+  padding-left: 1rem;
+  color: #3d3a4d;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--kolor-akcent);
+  outline-offset: 2px;
 }
 
 .stopka {
