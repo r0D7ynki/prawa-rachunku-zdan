@@ -1,7 +1,20 @@
 {# Partial: interaktywna tablica prawdy. Wypełnia karta PRZ-011.
-   Wejście: `formula` (tekst formuły w Unicode). #}
-<div class="truth-table-mount" data-formula="{{ formula }}" data-rola="tablica-prawdy">
-  <p class="text-muted small mb-1">
+   Wejście: `formula` (tekst formuły w Unicode).
+   Skrypt `truth-table.js` pobiera tablicę z adresu w `data-adres` i dorysowuje tabelę,
+   filtry oraz panel „Twoje ustawienie”. Partial nie liczy żadnych wartości. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/truth-table.css') }}" />
+<div class="truth-table-mount"
+     data-formula="{{ formula }}"
+     data-adres="{{ url_for('api_formula.formula_table') }}"
+     data-rola="tablica-prawdy">
+  <noscript>
+    <p class="alert alert-info mb-2">
+      Tablica prawdy liczy się w przeglądarce i wymaga włączonego JavaScriptu.
+    </p>
+    <p class="mb-0">Wzór formuły: <span class="formula">{{ formula }}</span>.</p>
+  </noscript>
+  <p class="tt-ladowanie text-muted small mb-1">
     Tablica prawdy pojawi się tutaj po wczytaniu skryptu.
   </p>
 </div>
+<script type="module" src="{{ url_for('static', filename='js/truth-table.js') }}"></script>
