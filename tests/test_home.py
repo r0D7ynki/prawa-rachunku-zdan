@@ -53,7 +53,10 @@ SZABLON_TESTU_BLOKOW = """{% extends "base.html" %}
 {% block skrypty %}<script>window.SKRYPT_TESTOWY = "SKRYPT-TESTOWY";</script>{% endblock %}
 """
 
-WZORZEC_SAFE = re.compile(r"\{\{(?P<wyrazenie>.*?)\|\s*safe\s*\}\}", re.DOTALL)
+#: Wyrażenie wstawiane filtrem ``|safe``. Klasa ``[^}]`` zatrzymuje dopasowanie
+#: w jednym wyrażeniu Jinja — z ``re.DOTALL`` wzorzec pochłaniał treść między
+#: dwoma wyrażeniami i maskował zły ``|safe`` stojący obok poprawnego.
+WZORZEC_SAFE = re.compile(r"\{\{(?P<wyrazenie>[^}]*?)\|\s*safe\s*\}\}")
 
 WZORZEC_TABELI_SYMBOLI = re.compile(
     r'<table[^>]*class="[^"]*tablica-symboli[^"]*"[^>]*>(?P<tabela>.*?)</table>',
@@ -277,6 +280,30 @@ def test_slowniczek_odsyla_kwantyfikator_do_rachunku_predykatow(klient):
 def test_wzorzec_safe_wykrywa_wstawienie_tekstu():
     assert _uzycia_safe("{{ tekst|safe }}") == ["tekst"]
     assert _uzycia_safe("{{ to_html(formula)|safe }}") == ["to_html(formula)"]
+
+
+def _uzycia_safe_bez_to_html(tekst: str) -> list[str]:
+    """Zwraca użycia ``|safe``, które nie pochodzą z ``formula.to_html``."""
+    return [wyrazenie for wyrazenie in _uzycia_safe(tekst) if "to_html" not in wyrazenie]
+
+
+def test_zly_szablon_z_safe_bez_to_html_jest_wykryty():
+    assert _uzycia_safe_bez_to_html("{{ tytul|safe }}") == ["tytul"]
+    # Strażnik musi też łapać zły `|safe` stojący tuż obok poprawnego wyrażenia.
+    assert _uzycia_safe_bez_to_html("{{ formula_to_html(a) }}{{ tytul|safe }}") == ["tytul"]
+
+
+def test_poprawne_uzycie_safe_przechodzi():
+    # Nazwa funkcji jest taka jak w aplikacji (``app/blueprints/wstep.py``).
+    assert _uzycia_safe_bez_to_html("{{ formula_to_html(a)|safe }}") == []
+
+
+def test_dwa_wyrazenia_obok_siebie_nie_maskuja_zlego_safe():
+    dobre = "{{ a }}\n{{ formula_to_html(b)|safe }}"
+    assert _uzycia_safe_bez_to_html(dobre) == []
+
+    zle = "{{ formula_to_html(a) }}\n{{ tytul|safe }}"
+    assert _uzycia_safe_bez_to_html(zle) == ["tytul"]
 
 
 def test_szablony_uzywaja_safe_tylko_na_wyniku_to_html():
