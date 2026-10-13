@@ -1,16 +1,32 @@
-/* Style wizualizacji: schemat bramek logicznych i diagramy zbiorów (karta PRZ-012).
-   Kolor nigdy nie jest jedynym nośnikiem informacji: każdy kształt ma napis i opis
-   w elemencie `<title>`, a pod rysunkiem stoi legenda. */
+/* Style rysunków na stronie prawa: schemat bramek i diagram zbiorów (karta PRZ-012,
+   przeniesione na serwer kartą PRZ-123).
 
-.gates-mount,
-.sets-mount {
-  --wiz-akcent: var(--kolor-akcent, #4c3bcf);
-  --wiz-tlo-kształtu: var(--kolor-akcent-jasny, #ece9ff);
-  --wiz-linia: #475569;
-  --wiz-tekst: #1f2937;
-}
+   Kolor nigdy nie jest jedynym nośnikiem informacji: każdy kształt ma napis, każde
+   pole ma `<title>` i `aria-label`, a opis kroku stoi tekstem pod rysunkiem. */
 
 .wiz-figura {
+  --wiz-akcent: var(--kolor-akcent, #4c3bcf);
+  --wiz-drugi: #b45309;
+  --wiz-tlo-ksztaltu: var(--kolor-akcent-jasny, #ece9ff);
+  --wiz-linia: #475569;
+  --wiz-tekst: #1f2937;
+  --wiz-tlo: #fbfbfe;
+
+  margin-bottom: 1.5rem;
+}
+
+.wiz-figura-tytul {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+/* --- sekcja kroków i strzałki ------------------------------------------ */
+
+.wiz-kroki {
+  margin-bottom: 0.25rem;
+}
+
+.wiz-rysunek {
   overflow-x: auto;
 }
 
@@ -26,11 +42,72 @@
   min-width: 22rem;
 }
 
-/* --- schemat bramek ---------------------------------------------------- */
-
-.wiz-przewody {
-  fill: none;
+.wiz-svg-zbiory {
+  max-width: 34rem;
+  margin-inline: auto;
 }
+
+.wiz-krok-opis {
+  margin: 0.5rem 0 0;
+}
+
+.wiz-krok-wzor {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  white-space: nowrap;
+}
+
+.wiz-strzalki {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+/* Strzałka jest przyciskiem, więc działa z klawiatury i ma 44 px na dotyk. */
+.wiz-strzalka {
+  align-items: center;
+  background: var(--wiz-tlo-ksztaltu);
+  border: 1px solid var(--wiz-akcent);
+  border-radius: 999px;
+  color: var(--wiz-akcent);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 1.5rem;
+  height: 44px;
+  justify-content: center;
+  line-height: 1;
+  width: 44px;
+}
+
+.wiz-strzalka:disabled {
+  background: transparent;
+  border-color: var(--wiz-linia);
+  color: var(--wiz-linia);
+  cursor: default;
+  opacity: 0.6;
+}
+
+.wiz-strzalka:focus-visible {
+  outline: 2px solid var(--wiz-akcent);
+  outline-offset: 2px;
+}
+
+.wiz-opisy {
+  color: var(--wiz-tekst);
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.wiz-opis-biezacy {
+  font-weight: 600;
+  list-style: disc inside;
+}
+
+.wiz-podpis {
+  max-width: 70ch;
+}
+
+/* --- schemat bramek ---------------------------------------------------- */
 
 .wiz-przewod {
   fill: none;
@@ -39,15 +116,47 @@
   stroke-linejoin: round;
 }
 
-.wiz-kształt {
-  fill: var(--wiz-tlo-kształtu);
+/* Wartość 1 niesie gruby przewód, 0 cienki. Grubość wspiera słowo PRAWDA/FAŁSZ. */
+.wiz-przewod.wiz-prawda {
+  stroke-width: 3.5;
+}
+
+.wiz-przewod.wiz-falsz {
+  stroke-width: 1.2;
+}
+
+/* Przewód, którego jeszcze nie policzyliśmy, jest przecięty i opisany znakiem zapytania. */
+.wiz-przewod.wiz-nieznane {
+  stroke-dasharray: 4 3;
+  opacity: 0.6;
+}
+
+.wiz-grot {
+  fill: var(--wiz-linia);
+}
+
+.wiz-grot.wiz-grot-prawda {
+  fill: var(--wiz-akcent);
+}
+
+.wiz-grot.wiz-grot-nieznany {
+  opacity: 0.6;
+}
+
+.wiz-ksztalt {
+  fill: var(--wiz-tlo-ksztaltu);
   stroke: var(--wiz-akcent);
   stroke-width: 2;
   stroke-linejoin: round;
 }
 
-.wiz-zmienna .wiz-kształt {
+.wiz-zmienna .wiz-ksztalt {
   fill: #ffffff;
+}
+
+/* Bramka zapala się po swoim kroku; bieżąca ma grubszą krawędź — widać ją bez koloru. */
+.wiz-biezaca .wiz-ksztalt {
+  stroke-width: 3.5;
 }
 
 .wiz-symbol,
@@ -62,72 +171,6 @@
   font-weight: 700;
 }
 
-.wiz-napis {
-  font-size: 14px;
-}
-
-.wiz-wynik {
-  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
-  font-size: 13px;
-  font-style: italic;
-  fill: var(--wiz-linia);
-}
-
-.wiz-legenda {
-  border: 1px solid var(--kolor-ramka, #dcd8ee);
-  border-radius: 0.5rem;
-  background: #ffffff;
-  padding: 0.75rem 1rem;
-}
-
-.wiz-legenda-tytul {
-  margin-bottom: 0.25rem;
-}
-
-.wiz-legenda-lista dt,
-.wiz-legenda-lista dd {
-  margin-bottom: 0.35rem;
-}
-
-.wiz-legenda-lista dt {
-  font-weight: 600;
-}
-
-/* --- wartości na przewodach, strzałki i kroki (PRZ-074) ---------------- */
-
-/* Grot pokazuje kierunek przepływu sygnału na każdym przewodzie. */
-.wiz-grot {
-  fill: var(--wiz-linia);
-}
-
-.wiz-przewod.wiz-nieznane {
-  stroke-dasharray: 4 3;
-  opacity: 0.6;
-}
-
-/* Wartość 1 niesie gruby przewód, 0 cienki. Grubość wspiera słowo PRAWDA/FAŁSZ. */
-.wiz-przewod.wiz-prawda {
-  stroke-width: 3.5;
-}
-
-.wiz-przewod.wiz-falsz {
-  stroke-width: 1.2;
-}
-
-/* Bramka zapala się po swoim kroku: wcześniej jest tylko obrysem. */
-.wiz-bramka .wiz-kształt {
-  fill: #ffffff;
-}
-
-.wiz-bramka.wiz-znana .wiz-kształt {
-  fill: var(--wiz-tlo-kształtu);
-}
-
-/* Bieżąca bramka ma grubszą krawędź — widać ją także bez koloru. */
-.wiz-bramka.wiz-biezaca .wiz-kształt {
-  stroke-width: 3.5;
-}
-
 .wiz-wartosc {
   font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
   font-size: 10px;
@@ -138,68 +181,16 @@
   stroke-linejoin: round;
 }
 
-.wiz-wartosc-prawda {
-  fill: var(--wiz-akcent);
-  font-weight: 700;
+.wiz-legenda-svg {
+  font-size: 12px;
 }
 
-/* Przełączniki wartości wejść. Wciśnięta wartość różni się nie tylko kolorem —
-   widać też obramowanie i pogrubienie, a stan niesie atrybut aria-pressed. */
-.wiz-wejscia {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-}
-
-.wiz-wejscie {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.wiz-wejscie-nazwa {
-  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
-  font-style: italic;
-  min-width: 1.25rem;
-}
-
-.wiz-przelacznik[aria-pressed="true"] {
-  background: var(--wiz-akcent);
-  border-color: var(--wiz-akcent);
-  color: #ffffff;
-  font-weight: 700;
-}
-
-.wiz-kroki {
-  margin-top: 0.25rem;
-}
-
-/* --- diagramy zbiorów -------------------------------------------------- */
-
-.wiz-diagramy {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.wiz-diagram {
-  flex: 1 1 16rem;
-  min-width: 0;
-}
-
-.wiz-diagram-tytul {
-  overflow-wrap: anywhere;
-}
+/* --- diagram zbiorów --------------------------------------------------- */
 
 .wiz-przestrzen {
-  fill: #fbfbfe;
-  stroke: var(--kolor-ramka, #dcd8ee);
+  fill: var(--wiz-tlo);
+  stroke: var(--wiz-linia);
   stroke-width: 2;
-}
-
-.wiz-obszar {
-  fill: var(--wiz-akcent);
-  opacity: 0.55;
 }
 
 .wiz-obrys {
@@ -208,55 +199,52 @@
   stroke-width: 2;
 }
 
-/* --- kroki diagramów zbiorów (PRZ-075) --------------------------------- */
-
-/* Lista kroków przekazana przez partial: źródło danych dla `sets.js`, nie treść strony. */
-.wiz-kroki-dane,
-.wiz-niewidoczny {
-  display: none;
-}
-
-/* Nazwa operacji bieżącego kroku stoi wprost nad diagramami. */
-.wiz-operacja {
-  color: var(--wiz-tekst);
-}
-
-.wiz-krok-opis {
-  color: var(--wiz-tekst);
-}
-
-/* Strzałka między diagramami: znak równoważności, nie tylko kolor. */
-.wiz-strzalka {
-  display: flex;
-  align-items: center;
-  align-self: center;
-  justify-content: center;
-  min-width: 2.5rem;
-  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--wiz-akcent);
-}
-
-/* Obrys obszaru z wcześniejszego kroku — widać, że obszar się nie zmienił. */
-.wiz-obrys-obszaru {
+.wiz-probka {
   fill: none;
-  stroke: var(--wiz-akcent);
-  stroke-width: 2;
-  stroke-dasharray: 5 3;
 }
 
-.wiz-podpis {
-  font-weight: 500;
+/* Dwa obszary mają różne kolory i własne opisy, więc kolor tylko wspiera treść. */
+.obszar-1 {
+  fill: var(--wiz-akcent);
+  opacity: 0.55;
+}
+
+.obszar-2 {
+  fill: var(--wiz-drugi);
+  opacity: 0.45;
 }
 
 .wiz-blad {
-  /* Komunikat błędu jest w kolorze i opisany tekstem — kolor tylko wspiera treść. */
   border-left: 4px solid currentColor;
+}
+
+/* --- tryb ciemny ------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  .wiz-figura {
+    --wiz-akcent: var(--kolor-akcent, #a5b4fc);
+    --wiz-drugi: #fbbf24;
+    --wiz-tlo-ksztaltu: #2b2b45;
+    --wiz-linia: #cbd5e1;
+    --wiz-tekst: #e2e8f0;
+    --wiz-tlo: #171a2b;
+  }
+
+  .wiz-zmienna .wiz-ksztalt {
+    fill: #10121f;
+  }
+
+  .wiz-wartosc {
+    stroke: #171a2b;
+  }
 }
 
 @media print {
   .wiz-svg {
     max-height: none;
+  }
+
+  .wiz-strzalki {
+    display: none;
   }
 }

@@ -34,6 +34,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/logic/laws_data/dodatkowe.py` | idempotencja i reguła podstawiania | PRZ-024 |
 | `app/logic/simplify.py` | silnik przekształceń ze śladem kroków | PRZ-006 |
 | `app/logic/quiz.py` | generator pytań | PRZ-007 |
+| `app/logic/diagrams.py` | rysunki: schemat bramek i diagram zbiorów (SVG z serwera) | PRZ-123 |
 | `app/logic/rules.py` | rejestr reguł wnioskowania (wykład 2) | PRZ-090 |
 | `app/logic/proofs.py` | dane dowodów założeniowych A–F (wykład 2) | PRZ-091 |
 | `app/logic/resolution.py` | reguła rezolucji: kroki dwóch dowodów (wykład 2) | PRZ-092 |
@@ -66,9 +67,12 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/static/js/dowody.js` | dowód krok po kroku, strzałki i sprzeczność | PRZ-091 |
 | `app/static/css/dowody.css` | style strony `/dowody` | PRZ-091 |
 | `app/templates/partials/_truth_table.html` | komponent tablicy prawdy | PRZ-011 |
-| `app/templates/partials/_gates.html` | komponent bramek | PRZ-012 |
-| `app/templates/partials/_sets.html` | komponent diagramów zbiorów | PRZ-012 |
-| `app/templates/partials/_steps.html` | komponent kroków | PRZ-013 |
+| `app/templates/partials/_gates.html` | komponent bramek | PRZ-012, PRZ-123 |
+| `app/templates/partials/_sets.html` | komponent diagramów zbiorów | PRZ-012, PRZ-123 |
+| `app/templates/partials/_steps.html` | komponent kroków | PRZ-013, PRZ-123 |
+| `app/templates/partials/_diagramy.html` | wspólne makra rysunków strony prawa | PRZ-123 |
+| `app/static/js/wizualizacje.js` | dwie strzałki kroków rysunku | PRZ-123 |
+| `app/static/css/wizualizacje.css` | style rysunków | PRZ-012, PRZ-123 |
 | `app/templates/partials/_stepper.html` | wspólny pasek kroków (stepper) | PRZ-072 |
 
 ## Notacja formuł
@@ -272,6 +276,50 @@ def check(prawo: str | None, seed: int, pytanie_id: str, odpowiedz: int) -> bool
 
 `generate` z tym samym `seed` daje ten sam zestaw. `check` generuje ponownie i porównuje
 odpowiedź — dzięki temu serwer nie wysyła poprawnej odpowiedzi do przeglądarki.
+
+## `app/logic/diagrams.py` — rysunki praw (PRZ-123)
+
+Rysunek powstaje w Pythonie, nie w przeglądarce. Dzięki temu działa bez JavaScriptu,
+a `tests/test_diagrams.py` sprawdza go bez przeglądarki.
+
+```python
+def gates_svg(node: Node, wartosci: dict[str, bool], krok: int | None = None) -> Markup
+def sets_svg(node: Node, krok: int | None = None) -> Markup
+def kroki_gates(node: Node) -> list[dict]   # [{"opis": "…", "bramka": 1}, …]
+def kroki_sets(node: Node) -> list[dict]    # [{"opis": "…", "operacja": "suma"}, …]
+
+MAX_ZBIOROW = 3          # tyle zbiorów mieści diagram
+KOLUMNY_SIATKI = 44      # siatka próbek obszaru: 44 × 36
+WIERSZE_SIATKI = 36
+```
+
+**Kroki.** `kroki_gates` i `kroki_sets` opisują po jednym kroku na podformułę
+(`formula.subformulas`, od najmniejszej), oba w tej samej kolejności. Krok `i` (liczony
+**od zera**) rysuje stan po `i`-tej operacji; `krok=None` znaczy „cała formuła”. Numer
+spoza listy jest przycinany, tak samo jak w pasku kroków. W `kroki_gates` pole `bramka`
+to numer kroku liczony od jednego, w `kroki_sets` pole `operacja` to nazwa operacji
+(`"zbiór"`, `"suma"`, `"część wspólna"`, `"dopełnienie"`, `"implikacja"`, `"równoważność"`).
+
+**Bramki.** Kolumna to głębokość w drzewie, wiersz — kolejność liści (bramka stoi
+w środku swoich dzieci). Każda bramka to prostokąt z symbolem operatora, każdy przewód
+to `<path>` z grotem (`<marker>`) i wartością słowami w `<title>`. Wartości podformuł
+liczy `formula.evaluate` dla `wartosci`; bramki policzone po bieżącym kroku pokazują `?`.
+Brak wartości którejś zmiennej to `FormulaError`.
+
+**Zbiory.** Prostokąt to cała przestrzeń, koła to zbiory zmiennych. Obszar liczymy na
+siatce 44 × 36 próbek: próbka należy do koła zmiennej, więc `evaluate` mówi, czy formuła
+jest w niej prawdziwa. Prawdziwe próbki sklejamy w wierszu w prostokąty. Krok pokazuje
+operandy bieżącej operacji jako `obszar-1` i `obszar-2` (dla dopełnienia: zbiór i wszystko
+poza nim), a bez kroku — obszar całej formuły jako `obszar-1`. Ponad `MAX_ZBIOROW` zmiennych
+moduł oddaje komunikat po polsku, a nie rysunek.
+
+**Widok i partiale.** `app/blueprints/laws.py` woła oba rysunki dla wzoru prawa, biorąc
+wartościowanie z pierwszego wiersza tablicy prawdy (wszystkie zmienne prawdziwe), i podaje
+szablonowi `bramki` i `zbiory` — słowniki z listą kroków `{"opis", "wzor", "svg"}`.
+Partiale `_gates.html`, `_sets.html` i `_steps.html` składają sekcję rysunków z makr
+w `_diagramy.html` (`figura`, `zasoby`, `stopka`). Każdy z nich pokazuje **oba** diagramy;
+różni je tylko kolejność figur. Krok przełącza `wizualizacje.js`: gotowe kroki czekają
+w `<template data-wiz-krok>`, a bez JavaScriptu widać pierwszy krok i listę opisów.
 
 ## `app/logic/rules.py` — reguły wnioskowania
 

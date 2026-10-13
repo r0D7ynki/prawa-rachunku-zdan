@@ -1,43 +1,14 @@
-{# Partial: diagramy zbiorów (koła) prowadzone krok po kroku. Karty PRZ-012 i PRZ-075.
-   Wejście: `formula` (wzór prawa). Gdy w kontekście jest `prawo` z polami `lewa`,
-   `prawa` i `kroki` (strona prawa, karta PRZ-010), diagramy pokazują obie strony tego
-   samego prawa, a pasek kroków bierze opisy z pola `kroki` — te same, co w sekcji
-   „Krok po kroku” na stronie prawa. Bez `prawo` obie strony to `formula`, a kroki
-   powstają w `sets.js` z podformuł obu stron.
-   Skrypt `sets.js` liczy zamalowane obszary z drzewa formuły z `/api/formula/parse`. #}
-{% set strona_lewa = lewa if lewa is defined else (prawo.lewa if prawo is defined else formula) %}
-{% set strona_prawa = prawa if prawa is defined else (prawo.prawa if prawo is defined else formula) %}
-{% set kroki = prawo.kroki if prawo is defined and prawo and prawo.kroki is defined else [] %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/wizualizacje.css') }}" />
-<link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
-<div class="sets-mount" data-formula="{{ formula }}" data-lewa="{{ strona_lewa }}"
-     data-prawa="{{ strona_prawa }}" data-rola="diagramy-zbiorow">
-  {% if kroki %}
-    <ol class="wiz-kroki-dane" data-kroki hidden>
-      {% for krok in kroki %}
-        <li data-opis="{{ krok.opis }}" data-po="{{ krok.po }}"></li>
-      {% endfor %}
-    </ol>
-  {% endif %}
-  <noscript>
-    <p class="wiz-wzor">
-      Wzór: <span class="formula">{{ formula }}</span>
-    </p>
-    <p class="alert alert-info mb-0">
-      Diagramy zbiorów krok po kroku wymagają włączonego JavaScriptu. Bez rysunku też
-      sprawdzisz prawo: przeczytaj wzór i kroki powyżej oraz tablicę prawdy. Rysunek
-      pokazuje co najwyżej trzy zbiory.
-    </p>
-    {% if kroki %}
-      <ol class="wiz-kroki-lista">
-        {% for krok in kroki %}
-          <li>{{ krok.opis }}</li>
-        {% endfor %}
-      </ol>
-    {% endif %}
-  </noscript>
-  <p class="wiz-ladowanie text-muted small mb-1">
-    Diagram zbiorów pojawi się tutaj po wczytaniu skryptu.
-  </p>
-</div>
-<script type="module" src="{{ url_for('static', filename='js/sets.js') }}"></script>
+{# Partial rysunków na stronie prawa — wizualizacja „sets” (PRZ-010, PRZ-123).
+
+   Od PRZ-123 oba rysunki liczy serwer, a strona prawa pokazuje je zawsze razem:
+   diagram zbiorów i schemat bramek. Ten partial stawia pierwszy diagram zbiorów;
+   ``_gates.html`` robi to samo, tylko od schematu bramek — różni je kolejność figur.
+
+   Wejście: ``formula`` (wzór prawa) oraz ``bramki`` i ``zbiory`` ze ``strona_prawa``
+   w ``app/blueprints/laws.py``. #}
+{% from "partials/_diagramy.html" import figura, stopka, zasoby %}
+
+{{ zasoby() }}
+{{ figura(formula, zbiory, "sets-mount", "diagramy-zbiorow", "Diagram zbiorów", "rysunek-zbiorow") }}
+{{ figura(formula, bramki, "gates-mount", "bramki-logiczne", "Schemat bramek", "rysunek-bramek") }}
+{{ stopka() }}

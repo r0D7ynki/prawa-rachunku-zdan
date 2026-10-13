@@ -1,0 +1,82 @@
+{# Części wspólne sekcji rysunków na stronie prawa (karta PRZ-123).
+
+   Ten plik nie wypisuje nic sam z siebie — trzyma makra, z których partiale
+   ``_gates.html``, ``_sets.html`` i ``_steps.html`` składają sekcję rysunków.
+   Dzięki temu schemat bramek i diagram zbiorów wyglądają wszędzie tak samo,
+   a każdy partial może ustawić własną kolejność figur.
+
+   Rysunki liczy serwer (``app/logic/diagrams.py``), więc nie ma tu żadnego
+   żądania do API: gotowe kroki czekają w ``<template>``. #}
+
+{% macro zasoby() %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/wizualizacje.css') }}" />
+{% endmacro %}
+
+{% macro figura(formula, dane, klasa, rola, tytul, rola_rysunku) %}
+  <figure class="wiz-figura">
+    <figcaption class="wiz-figura-tytul">{{ tytul }}</figcaption>
+    <div class="{{ klasa }}" data-formula="{{ formula }}" data-rola="{{ rola }}">
+      {% if dane and dane.kroki %}
+        {% set pierwszy = dane.kroki[0] %}
+        <div class="wiz-kroki" data-wiz-kroki="{{ rola }}">
+          <div class="wiz-rysunek" data-wiz-rysunek data-rola="{{ rola_rysunku }}">
+            {{ pierwszy.svg }}
+          </div>
+          <p class="wiz-krok-opis" data-wiz-opis aria-live="polite">
+            <span class="wiz-krok-wzor">{{ pierwszy.wzor }}</span> {{ pierwszy.opis }}
+          </p>
+          <div class="wiz-strzalki" role="group" aria-label="Kroki: {{ tytul }}">
+            <button
+              type="button"
+              class="wiz-strzalka"
+              data-wiz-poprzedni
+              aria-label="Poprzedni krok"
+              aria-disabled="true"
+              disabled
+            >
+              <span aria-hidden="true">‹</span>
+            </button>
+            <button type="button" class="wiz-strzalka" data-wiz-nastepny aria-label="Następny krok">
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
+          <ol class="wiz-opisy">
+            {% for krok in dane.kroki %}
+              <li{% if loop.first %} class="wiz-opis-biezacy"{% endif %}>{{ krok.opis }}</li>
+            {% endfor %}
+          </ol>
+          <noscript>
+            <p class="wiz-bez-javascriptu alert alert-info mb-0">
+              Rysunek jest gotowy bez JavaScriptu. Strzałki przełączają kroki, a wszystkie
+              opisy kroków wypisano pod rysunkiem.
+            </p>
+          </noscript>
+          {# Gotowe kroki leżą **w panelu**, bo ``wizualizacje.js`` podmienia nimi rysunek
+             i opis tego właśnie panelu (``panel.querySelectorAll``). #}
+          {% for krok in dane.kroki %}
+            <template data-wiz-krok>
+              <div class="wiz-rysunek" data-wiz-rysunek data-rola="{{ rola_rysunku }}">
+                {{ krok.svg }}
+              </div>
+              <p class="wiz-krok-opis" data-wiz-opis aria-live="polite">
+                <span class="wiz-krok-wzor">{{ krok.wzor }}</span> {{ krok.opis }}
+              </p>
+            </template>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="wiz-blad alert alert-warning mb-0">
+          Rysunek pojawi się, gdy wzór prawa będzie poprawny.
+        </p>
+      {% endif %}
+    </div>
+  </figure>
+{% endmacro %}
+
+{% macro stopka() %}
+  <p class="wiz-podpis text-muted small mb-0">
+    Rysunki liczy serwer, więc działają także bez JavaScriptu. Dwie strzałki prowadzą przez
+    kolejne kroki: od zmiennych do całego wzoru. Diagram zbiorów mieści co najwyżej trzy zbiory.
+  </p>
+  <script type="module" src="{{ url_for('static', filename='js/wizualizacje.js') }}"></script>
+{% endmacro %}
