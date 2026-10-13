@@ -337,6 +337,55 @@ def test_skrypty_oglaszaja_wynik_czytnikowi_ekranu(sciezka):
     assert "aria-label" in skrypt
 
 
+def _wywolania_replace_children(skrypt: str) -> list[tuple[int, str]]:
+    """Pozycja i tekst argumentów każdego wywołania ``replaceChildren(...)``.
+
+    Nawiasy liczymy ręcznie, bo argumenty bywają zagnieżdżone
+    (``zbudujLegende(zbierzTypy(...))``) — prosty wzorzec urwałby się na pierwszym ``)``
+    i przeoczył ``status`` stojący na końcu listy argumentów.
+    """
+    wywolania = []
+    for trafienie in re.finditer(r"replaceChildren\(", skrypt):
+        glebokosc = 1
+        koniec = trafienie.end()
+        while glebokosc and koniec < len(skrypt):
+            if skrypt[koniec] == "(":
+                glebokosc += 1
+            elif skrypt[koniec] == ")":
+                glebokosc -= 1
+            koniec += 1
+        wywolania.append((trafienie.start(), skrypt[trafienie.end() : koniec - 1]))
+    return wywolania
+
+
+def _numer_linii(skrypt: str, pozycja: int) -> int:
+    return skrypt.count("\n", 0, pozycja) + 1
+
+
+@pytest.mark.parametrize("sciezka", PLIKI[:2])
+def test_przerysowanie_montazu_zostawia_status_w_dom(sciezka):
+    """Region ``aria-live`` musi zostać w dokumencie, inaczej czytnik ekranu milczy.
+
+    Przegląd PRZ-012 (raport ``35045ee``) wykrył, że ``replaceChildren`` podmieniał dzieci
+    montażu bez elementu ``status``, a ustawienie ``status.textContent`` szło wtedy w węzeł
+    odłączony od dokumentu. Po utworzeniu ``status`` każde przerysowanie montażu musi go
+    dołożyć; wolno je pominąć wyłącznie w początkowym czyszczeniu, zanim ``status`` powstanie.
+    """
+    skrypt = (KATALOG_STATYCZNY / sciezka).read_text(encoding="utf-8")
+    utworzenie = skrypt.index("const status")
+
+    odlaczajace = [
+        f"linia {_numer_linii(skrypt, pozycja)}"
+        for pozycja, argumenty in _wywolania_replace_children(skrypt)
+        if "status" not in argumenty and not (pozycja < utworzenie and not argumenty.strip())
+    ]
+
+    assert not odlaczajace, (
+        f"{sciezka}: {', '.join(odlaczajace)} — `replaceChildren` bez elementu `status` "
+        "odłącza go od DOM, więc czytnik ekranu nie ogłosi wyniku"
+    )
+
+
 def test_style_maja_klasy_uzywane_przez_skrypty(style):
     for klasa in (".wiz-svg", ".wiz-przewod", ".wiz-obszar", ".wiz-obrys", ".wiz-diagramy"):
         assert klasa in style, f"brak stylu {klasa}"
