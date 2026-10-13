@@ -21,15 +21,15 @@
            (arkusz `app.css`, klasy `.lista-praw` i `.formula-blok`). #}
         <div class="lista-praw">
           {% for prawo in prawa %}
-            <article class="karta-prawa">
+            {# Cały kafelek jest odnośnikiem: otwiera stronę prawa kliknięciem w dowolnym
+               miejscu, a z klawiatury — `Tab` i `Enter`. Kategorii nie powtarzamy, bo
+               niesie ją nagłówek sekcji nad listą (karta PRZ-168). #}
+            <a class="karta-prawa" href="/prawa/{{ prawo.slug }}">
               <span class="karta-prawa-nazwa">{{ prawo.nazwa }}</span>
               {# `formula-blok`: długi wzór zostaje w jednej linii i przewija się wewnątrz
                  kafelka, zamiast go rozepchnąć (karta PRZ-140). #}
               <span class="formula formula-blok">{{ formula_to_html(prawo.formula) |safe }}</span>
-              <span class="karta-prawa-kategoria">{{ prawo.kategoria }}</span>
-              <a class="karta-prawa-opis" href="/prawa/{{ prawo.slug }}"
-                 aria-label="Opis prawa: {{ prawo.nazwa }}">opis</a>
-            </article>
+            </a>
           {% endfor %}
         </div>
       </section>
