@@ -6,22 +6,26 @@ zaczyna logikę na studiach.
 
 ## 14 praw
 
+Numeracja i wzory z wykładu. Główny zapis to `∼` (negacja) i `≡` (równoważność).
+
 | # | Prawo | Formuła |
 |---|---|---|
-| 1 | Wyłączonego środka | `p ∨ ¬p` |
+| 1 | Wyłączonego środka | `p ∨ ∼p` |
 | 2 | Identyczności | `p → p` |
-| 3 | Podwójnego przeczenia | `¬¬p ↔ p` |
-| 4 | Definiowania implikacji | `(p → q) ↔ (¬p ∨ q)` |
-| 5 | Kontrapozycji | `(p → q) ↔ (¬q → ¬p)` |
-| 6 | Łączności alternatywy | `(p ∨ q) ∨ r ↔ p ∨ (q ∨ r)` |
-| 7 | Łączności koniunkcji | `(p ∧ q) ∧ r ↔ p ∧ (q ∧ r)` |
-| 8 | Pierwsze rozdzielności | `p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r)` |
-| 9 | Drugie rozdzielności | `p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r)` |
-| 10 | Przemienności alternatywy | `p ∨ q ↔ q ∨ p` |
-| 11 | Przemienności koniunkcji | `p ∧ q ↔ q ∧ p` |
-| 12 | Pierwsze de Morgana | `¬(p ∧ q) ↔ (¬p ∨ ¬q)` |
-| 13 | Drugie de Morgana | `¬(p ∨ q) ↔ (¬p ∧ ¬q)` |
-| 14 | Zastępowania równych | jeśli `A ↔ B`, to `C[A] ↔ C[B]` |
+| 3 | Podwójnego przeczenia | `∼(∼p) ≡ p` |
+| 4 | Definiowania implikacji | `(p → q) ≡ (∼p ∨ q)` |
+| 5 | Kontrapozycji | `(p → q) ≡ (∼q → ∼p)` |
+| 6 | Łączności alternatywy | `((p ∨ q) ∨ r) ≡ (p ∨ (q ∨ r))` |
+| 7 | Łączności koniunkcji | `((p ∧ q) ∧ r) ≡ (p ∧ (q ∧ r))` |
+| 8 | I rozdzielności | `((p ∨ q) ∧ r) ≡ ((p ∧ r) ∨ (q ∧ r))` |
+| 9 | II rozdzielności | `((p ∧ q) ∨ r) ≡ ((p ∨ r) ∧ (q ∨ r))` |
+| 10 | Przemienności alternatywy | `(p ∨ q) ≡ (q ∨ p)` |
+| 11 | Przemienności koniunkcji | `(p ∧ q) ≡ (q ∧ p)` |
+| 12 | I de Morgana | `∼(p ∨ q) ≡ (∼p ∧ ∼q)` |
+| 13 | II de Morgana | `∼(p ∧ q) ≡ (∼p ∨ ∼q)` |
+| 14 | Zastępowania równ. | `(p ≡ q) ≡ ((p → q) ∧ (q → p))` |
+
+W innych książkach spotkasz `¬p` i `p ↔ q` — to ten sam spójnik.
 
 ## Funkcje strony
 
