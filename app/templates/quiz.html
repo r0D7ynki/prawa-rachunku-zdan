@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block tytul %}Quiz — sprawdź się z praw rachunku zdań{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/quiz.css') }}" />
+{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Quiz</h1>
+    <p class="lead">
+      Wybierz zakres i liczbę pytań, a potem odpowiadaj po jednym pytaniu.
+      Po każdej odpowiedzi zobaczysz wyjaśnienie prostym językiem.
+    </p>
+  </header>
+
+  {% if blad %}
+    <div class="alert alert-warning" role="alert">
+      <p class="mb-1">{{ blad }}</p>
+      <p class="mb-0">Wybierz prawo z listy: <a href="/prawa">wszystkie prawa</a>.</p>
+    </div>
+  {% endif %}
+
+  <noscript>
+    <div class="alert alert-info" role="status">
+      Quiz układa pytania na bieżąco, więc potrzebuje włączonego JavaScriptu.
+      Bez niego przejrzyj prawa na stronie <a href="/prawa">wszystkie prawa</a>.
+    </div>
+  </noscript>
+
+  <section class="sekcja" aria-labelledby="naglowek-ustawien">
+    <h2 id="naglowek-ustawien">Ustawienia quizu</h2>
+
+    <form id="formularz-quizu" class="row g-3 align-items-end" method="get" action="/quiz">
+      <div class="col-md-6">
+        <label class="form-label" for="pole-zakres">Zakres materiału</label>
+        <select id="pole-zakres" name="prawo" class="form-select">
+          <option value=""{% if not zakres %} selected{% endif %}>Wszystkie prawa</option>
+          {% for prawo in prawa %}
+            <option value="{{ prawo.slug }}"{% if zakres and zakres.slug == prawo.slug %} selected{% endif %}>{{ prawo.nazwa }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label" for="pole-ile">Liczba pytań</label>
+        <select id="pole-ile" name="ile" class="form-select">
+          {% for liczba in liczby %}
+            <option value="{{ liczba }}"{% if liczba == domyslna %} selected{% endif %}>{{ liczba }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <button type="submit" id="przycisk-start" class="btn btn-primary btn-lg w-100">
+          Zacznij quiz
+        </button>
+      </div>
+    </form>
+
+    <p id="komunikat-quizu" class="alert alert-warning mt-3 mb-0" role="alert" hidden></p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-pytania">
+    <h2 id="naglowek-pytania" class="visually-hidden">Pytanie</h2>
+    <div
+      id="kontener-pytan"
+      class="kontener-pytan"
+      role="region"
+      aria-live="polite"
+      data-zakres="{{ zakres.slug if zakres else '' }}"
+    >
+      <p class="text-muted mb-0">
+        Wybierz zakres i liczbę pytań, a potem naciśnij „Zacznij quiz”.
+      </p>
+    </div>
+  </section>
+
+  <nav
+    class="d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
+    aria-label="Nawigacja między lekcjami"
+  >
+    <a class="btn btn-outline-secondary" href="/plac-zabaw">← Poprzednia lekcja: plac zabaw</a>
+    <a class="btn btn-outline-primary" href="/prawa">Wszystkie prawa</a>
+  </nav>
+{% endblock %}
+
+{% block skrypty %}
+  <script type="module" src="{{ url_for('static', filename='js/quiz.js') }}"></script>
+{% endblock %}
