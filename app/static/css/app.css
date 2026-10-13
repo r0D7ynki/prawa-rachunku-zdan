@@ -252,6 +252,9 @@ main li a {
 .karta-prawa {
   min-width: 0;
   overflow: hidden;
+  /* Szerokość kafelka wynika z jego treści, ale nie wyjdzie poza ekran (karta PRZ-156). */
+  width: auto;
+  max-width: 100%;
   background: var(--kolor-panel);
   border: 1px solid var(--kolor-ramka);
   border-radius: var(--promien);
@@ -294,6 +297,29 @@ main li a {
 .lista-praw {
   list-style: none;
   padding-left: 0;
+}
+
+/* Lista praw na stronie `/prawa` to pionowa kolumna kafelków. `div` w selektorze
+   odróżnia ją od siatki Bootstrapa na stronie głównej, która używa tej samej klasy
+   na `<ul class="row … lista-praw">` i ma zostać siatką. */
+div.lista-praw {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* Bez `stretch`: kafelek nie rozciąga się na całą szerokość, tylko ma szerokość
+     swojej treści — a treścią, która ją wyznacza, jest wzór w jednej linii. */
+  align-items: flex-start;
+}
+
+/* Kafelek na liście praw mieści się w jednej linii: nazwa, wzór, kategoria, „opis”. */
+div.lista-praw .karta-prawa {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.karta-prawa-opis {
+  color: var(--kolor-akcent);
 }
 
 .naglowek-strony {
@@ -455,6 +481,13 @@ main li a {
   .table > :not(caption) > * > * {
     padding: 0.3rem 0.35rem;
     font-size: 0.9rem;
+  }
+
+  /* Kafelek na liście praw nie zmieści czterech części w jednej linii — na telefonie
+     układają się jedna pod drugą, a wzór dostaje całą szerokość kafelka. */
+  div.lista-praw .karta-prawa {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   /* Przyciski „poprzednia / następna” układają się jeden pod drugim. */
