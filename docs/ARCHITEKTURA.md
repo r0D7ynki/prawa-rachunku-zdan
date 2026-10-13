@@ -364,7 +364,8 @@ z wykładu. Widok tylko przygotowuje dane z `resolution.proofs()` dla szablonu:
   `app/static/js/rezolucja.js` czyta ten JSON: dodaje wiersze krok po kroku, rysuje
   strzałkę od `rodzice` do nowej klauzuli (z literałem sklejenia) i podświetla
   sprzeczność. Wiersze sprzeczne mają klasę `wiersz-sprzecznosc` i opis słowny dla
-  czytnika ekranu,
+  czytnika ekranu (parę sprzeczną wyznaczają `rodzice` ostatniego kroku — wiersz pary
+  mówi o drugim wierszu pary, nie o swoim pochodzeniu),
 * bez JavaScriptu cała tabela zostaje w HTML.
 
 ## API

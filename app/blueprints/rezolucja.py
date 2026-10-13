@@ -13,7 +13,8 @@ tylko je przygotowuje dla szablonu:
 
 Wiersze sprzeczne (para ``x``/``∼x`` i wiersz, który ją zamyka) dostają klasę
 ``wiersz-sprzecznosc`` i opis słowny dla czytnika ekranu — kolor nigdy nie jest
-jedynym nośnikiem informacji.
+jedynym nośnikiem informacji. Parę sprzecznych wierszy wyznaczają ``rodzice``
+ostatniego kroku dowodu: to on je zamyka, a nie pochodzenie wiersza.
 """
 
 from __future__ import annotations
@@ -89,6 +90,19 @@ def _sprzeczne(dowod: ResolutionProof) -> set[int]:
     return {ostatni.nr, *ostatni.rodzice}
 
 
+def _para_sprzeczna(dowod: ResolutionProof) -> tuple[int, int] | None:
+    """Para ``x`` i ``∼x``, którą zamyka ostatni krok dowodu (albo ``None``).
+
+    To ``rodzice`` ostatniego kroku. Pary nie wolno szukać w ``rodzice`` samych
+    wierszy sprzecznych: wiersz 8 przykładu 1 powstaje z wierszy 2 i 5, ale jest
+    sprzeczny z wierszem 9.
+    """
+    ostatni = dowod.kroki[-1]
+    if ostatni.rodzaj != RODZAJ_SPRZECZNOSC or len(ostatni.rodzice) != 2:
+        return None
+    return ostatni.rodzice[0], ostatni.rodzice[1]
+
+
 def _skad(krok: ResolutionStep, zrodla: dict[int, str]) -> str:
     """Tekst kolumny „Skąd”: z czego powstał wiersz.
 
@@ -104,22 +118,30 @@ def _skad(krok: ResolutionStep, zrodla: dict[int, str]) -> str:
     return "—"
 
 
-def _opis_sprzecznosci(krok: ResolutionStep, sprzeczne: set[int]) -> str:
-    """Zdanie dla czytnika ekranu przy wierszach tworzących sprzeczność."""
-    if krok.nr not in sprzeczne:
+def _opis_sprzecznosci(krok: ResolutionStep, para: tuple[int, int] | None) -> str:
+    """Zdanie dla czytnika ekranu przy wierszach tworzących sprzeczność.
+
+    Wiersz należący do pary mówi o **drugim wierszu pary**, a nie o swoich
+    ``rodzice``. Wiersz zamykający dowód wymienia oba wiersze pary.
+    """
+    if para is not None:
+        pierwszy, drugi = para
+        if krok.nr == pierwszy:
+            return f"wiersz sprzeczny z wierszem {drugi}"
+        if krok.nr == drugi:
+            return f"wiersz sprzeczny z wierszem {pierwszy}"
+    if krok.rodzaj != RODZAJ_SPRZECZNOSC:
         return ""
-    if krok.rodzaj == RODZAJ_SPRZECZNOSC:
+    if len(krok.rodzice) == 2:
         return f"sprzeczność wierszy {krok.rodzice[0]} i {krok.rodzice[1]}"
-    inny = next((nr for nr in krok.rodzice if nr != krok.nr), None)
-    if inny is None:
-        return "wiersz sprzeczny z ostatnim wierszem dowodu"
-    return f"wiersz sprzeczny z wierszem {inny}"
+    return "wiersz zamykający dowód sprzecznością"
 
 
 def wiersze_dowodu(dowod: ResolutionProof) -> list[dict[str, Any]]:
     """Wiersze dowodu gotowe dla szablonu: klauzula, „Skąd” i opis sprzeczności."""
     zrodla = ZRODLA_ZALOZEN.get(dowod.id, {})
     sprzeczne = _sprzeczne(dowod)
+    para = _para_sprzeczna(dowod)
     return [
         {
             "nr": krok.nr,
@@ -128,7 +150,7 @@ def wiersze_dowodu(dowod: ResolutionProof) -> list[dict[str, Any]]:
             "literal": krok.literal,
             "rodzaj": krok.rodzaj,
             "sprzeczny": krok.nr in sprzeczne,
-            "opis_sprzecznosci": _opis_sprzecznosci(krok, sprzeczne),
+            "opis_sprzecznosci": _opis_sprzecznosci(krok, para),
         }
         for krok in dowod.kroki
     ]
