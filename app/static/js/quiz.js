@@ -137,6 +137,12 @@ async function start() {
     return;
   }
 
+  /* Serwer mówi tu, gdy zakres ma mniej pytań, niż wybrano. Pokazujemy to od razu,
+     żeby mniejszy zestaw nie wyglądał jak zgubione pytania. */
+  if (typeof dane.komunikat === "string" && dane.komunikat) {
+    pokazKomunikat(dane.komunikat);
+  }
+
   stan.seed = dane.seed;
   stan.pytania = dane.pytania;
   stan.indeks = 0;
@@ -218,10 +224,14 @@ function pokazPytanie() {
   stan.odpowiedziano = false;
   const pytanie = stan.pytania[stan.indeks];
 
+  /* Mianownik to liczba pytań już rozstrzygniętych. Przed pierwszą odpowiedzią nie ma
+     czego porównywać, więc pokazujemy sam licznik — inaczej stałoby tam mylące „0 z 0”. */
   const licznik = element(
     "p",
     "licznik-poprawnych text-muted mb-3",
-    `Poprawne odpowiedzi: ${stan.poprawne} z ${stan.indeks}.`,
+    stan.indeks === 0
+      ? `Poprawne odpowiedzi: ${stan.poprawne}.`
+      : `Poprawne odpowiedzi: ${stan.poprawne} z ${stan.indeks}.`,
   );
   const tresc = element("h3", "h4 pytanie-tresc", pytanie.pytanie);
 

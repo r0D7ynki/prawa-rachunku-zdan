@@ -27,6 +27,12 @@ SPRAWDZ = "/api/quiz/check"
 #: Prawo z rejestru, którego używamy w testach zakresu.
 PRAWO = "de-morgan-1"
 
+#: Prawo z najmniejszą liczbą pytań (5) — do sprawdzenia krótszego zestawu.
+PRAWO_MALE = "identycznosci"
+
+#: Ile pytań żądamy od małego prawa: więcej, niż ono ma.
+ILE_WIECEJ_NIZ_PYTAN = 10
+
 #: Slug, którego nie ma w rejestrze.
 NIEZNANE_PRAWO = "nie-ma-takiego-prawa"
 
@@ -191,6 +197,50 @@ def test_generate_odrzuca_nieznane_prawo(klient):
     assert NIEZNANE_PRAWO in wynik["blad"]
 
 
+@pytest.mark.parametrize("ziarno", ["1", -1, 1.5, True])
+def test_generate_odrzuca_ziarno_ktore_nie_jest_liczba_nieujemna(klient, ziarno):
+    """Ziarno spoza zakresu to błąd danych — serwer nie losuje wtedy innego ziarna."""
+    odpowiedz = klient.post(GENERUJ, json={"ile": 3, "seed": ziarno})
+    wynik = odpowiedz.get_json()
+
+    assert odpowiedz.status_code == 200
+    assert wynik["ok"] is False
+    assert "seed" in wynik["blad"]
+    assert "pytania" not in wynik
+
+
+def test_generate_bez_ziarna_losuje_je_i_odsyla(klient):
+    """Brak pola ``seed`` znaczy „wylosuj” — i wtedy serwer musi odesłać wybrane ziarno."""
+    wynik = klient.post(GENERUJ, json={"ile": 3}).get_json()
+
+    assert wynik["ok"] is True
+    assert isinstance(wynik["seed"], int)
+    assert wynik["seed"] >= 0
+
+
+def test_generate_mowi_o_krotszym_zestawie(klient):
+    """Mniej pytań niż wybrano: zgadza się liczba w zestawie i komunikat po polsku."""
+    odpowiedz = klient.post(
+        GENERUJ,
+        json={"prawo": PRAWO_MALE, "ile": ILE_WIECEJ_NIZ_PYTAN, "seed": SEED},
+    )
+    wynik = odpowiedz.get_json()
+
+    assert odpowiedz.status_code == 200
+    assert wynik["ok"] is True
+    assert 0 < len(wynik["pytania"]) < ILE_WIECEJ_NIZ_PYTAN
+    assert str(len(wynik["pytania"])) in wynik["komunikat"]
+    assert str(ILE_WIECEJ_NIZ_PYTAN) in wynik["komunikat"]
+
+
+def test_generate_nie_dodaje_komunikatu_gdy_pytan_wystarczy(klient):
+    wynik = klient.post(GENERUJ, json={"ile": 3, "seed": SEED}).get_json()
+
+    assert wynik["ok"] is True
+    assert len(wynik["pytania"]) == 3
+    assert "komunikat" not in wynik
+
+
 # --- API: sprawdzanie odpowiedzi ---------------------------------------------
 
 
@@ -299,6 +349,20 @@ def test_skrypt_ma_podpowiedz_i_podsumowanie():
     assert "Poprawne odpowiedzi" in zrodlo, "podsumowanie bez liczby poprawnych"
     assert "Do powtórki" in zrodlo, "podsumowanie bez listy błędów"
     assert "/prawa/" in zrodlo, "brak odnośników do praw w podsumowaniu"
+
+
+def test_skrypt_pokazuje_komunikat_o_krotszym_zestawie():
+    """Uwaga z serwera („mniej pytań, niż wybrano”) ma trafić do paska komunikatu."""
+    zrodlo = _zrodlo(JS)
+
+    assert "dane.komunikat" in zrodlo, "skrypt pomija komunikat z generate"
+
+
+def test_skrypt_nie_pokazuje_licznika_0_z_0():
+    """Przed pierwszą odpowiedzią licznik pokazuje sam wynik, nie mylące „0 z 0”."""
+    zrodlo = _zrodlo(JS)
+
+    assert "stan.indeks === 0" in zrodlo, "licznik nie rozróżnia pierwszego pytania"
 
 
 def test_skrypt_obsluguje_blad_ok_false():

@@ -11,8 +11,9 @@ jak w kontrakcie (``docs/ARCHITEKTURA.md``, sekcja „API”):
 
 Zgodnie z kontraktem API błąd danych to ``ok: false`` i komunikat po polsku z kodem
 HTTP 200 — dotyczy to także ciała, które nie jest obiektem JSON, nieznanego prawa,
-nieznanego identyfikatora pytania i odpowiedzi poza zakresem. Wyjaśnienie wraca
-także wtedy, gdy odpowiedź była błędna: to ono pokazuje poprawną odpowiedź.
+niepoprawnego ziarna, nieznanego identyfikatora pytania i odpowiedzi poza zakresem.
+Wyjaśnienie wraca także wtedy, gdy odpowiedź była błędna: to ono pokazuje poprawną
+odpowiedź.
 """
 
 from __future__ import annotations
@@ -65,11 +66,19 @@ def _zakres(wartosc: object) -> tuple[str | None, str | None]:
     return slug, None
 
 
-def _ziarno(wartosc: object) -> int | None:
-    """Sprawdza pole ``seed``: liczba całkowita nieujemna albo ``None``."""
+def _ziarno(wartosc: object) -> tuple[int | None, str | None]:
+    """Sprawdza pole ``seed`` i zwraca ``(ziarno, komunikat błędu)``.
+
+    Brak pola (``None``) znaczy „wylosuj ziarno” i daje ``(None, None)``. Wartość spoza
+    zakresu — tekst, liczba ujemna, wartość logiczna — to błąd danych, a nie brak ziarna:
+    ciche wylosowanie innego ziarna ukryłoby literówkę w żądaniu i rozjechałoby zestaw
+    pytań z tym, który zna przeglądarka.
+    """
+    if wartosc is None:
+        return None, None
     if isinstance(wartosc, bool) or not isinstance(wartosc, int) or wartosc < 0:
-        return None
-    return wartosc
+        return None, "Pole „seed” musi być liczbą całkowitą nieujemną."
+    return wartosc, None
 
 
 def _znajdz(prawo: str | None, seed: int, pytanie_id: str) -> Question | None:
@@ -101,12 +110,24 @@ def generate_quiz():
     if not 1 <= ile <= ILE_MAX:
         return _blad(f"Liczba pytań musi być od 1 do {ILE_MAX}.")
 
-    seed = _ziarno(dane.get("seed"))
+    seed, blad_ziarna = _ziarno(dane.get("seed"))
+    if blad_ziarna:
+        return _blad(blad_ziarna)
     if seed is None:
         seed = secrets.randbelow(2**32)
 
     pytania = generate(prawo=prawo, ile=ile, seed=seed)
-    return jsonify(ok=True, seed=seed, pytania=[pytanie.to_public_dict() for pytanie in pytania])
+    odpowiedz = {
+        "ok": True,
+        "seed": seed,
+        "pytania": [pytanie.to_public_dict() for pytanie in pytania],
+    }
+    if len(pytania) < ile:
+        # Mniejszy rejestr praw daje krótszy zestaw. Mówimy o tym wprost, żeby użytkownik
+        # wiedział, dlaczego dostał mniej pytań, niż wybrał (i żeby wiedział, że skrypt
+        # nie zgubił pytania).
+        odpowiedz["komunikat"] = f"Ten zakres ma mniej pytań, niż wybrano: {len(pytania)} z {ile}."
+    return jsonify(odpowiedz)
 
 
 @bp.post("/quiz/check")
@@ -120,7 +141,9 @@ def check_answer():
     if blad:
         return _blad(blad)
 
-    seed = _ziarno(dane.get("seed"))
+    seed, blad_ziarna = _ziarno(dane.get("seed"))
+    if blad_ziarna:
+        return _blad(blad_ziarna)
     if seed is None:
         return _blad("Pole „seed” musi być liczbą całkowitą z zestawu pytań.")
 
