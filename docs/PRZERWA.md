@@ -1,6 +1,6 @@
 # Przerwa w pracy — jak wznowić
 
-Zatrzymane 2026-10-13 na prośbę właściciela. Nic nie zostało skasowane: worktree, konfiguracja
+Zatrzymane 2026-10-13 na prośbę właściciela (koniec dnia). Nic nie zostało skasowane: worktree, konfiguracja
 roju, karty i historia gita czekają na miejscu.
 
 ## Co jest zatrzymane
@@ -38,13 +38,13 @@ Bramka jakości: `./scripts/gate.sh` (kod wyjścia 0 = zielona).
 
 ## Stan tablicy w chwili zatrzymania
 
-- **Zrobione: 28 kart.** Wykład 1 jest kompletny i działa.
-- **W toku: 2 karty.**
-  - `PRZ-011` — interaktywna tablica prawdy (worker-1, jeden commit na gałęzi, czeka na QA).
-  - `PRZ-069` — nowa nawigacja wykładami (worker-2, praca w toku, bez commita).
-- **Przegląd: 1 karta** — `PRZ-070` (rejestr wykładów i lekcji).
-- **Gotowe do startu: 11 kart**, w tym wizualizacje krok po kroku `PRZ-072` … `PRZ-077`.
-- **Backlog: 26 kart** — drobne uwagi z przeglądów.
+- **Zrobione: 64 karty.** Wykład 1 i wykład 2 są kompletne, wszystkie poprawki właściciela scalone.
+- **W toku: 0 kart.** Wszystko, o co prosił właściciel, jest zrobione i na `main`.
+- **Przegląd: 0 kart.**
+- **Gotowe do startu: 0 kart.**
+- **Backlog: 88 kart** — wyłącznie drobne uwagi z przeglądów, świadomie odłożone przez właściciela.
+
+Wersja `sb`: **0.6.34** (zaktualizowana z repo `tom3k5/swarmboard`).
 
 ## O czym pamiętać przy wznowieniu
 
