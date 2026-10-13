@@ -1,15 +1,19 @@
-"""Testy komponentu interaktywnej tablicy prawdy (karty PRZ-011 i PRZ-073).
+"""Testy komponentu interaktywnej tablicy prawdy (karty PRZ-011, PRZ-073 i PRZ-121).
 
 Tablica powstaje w przeglądarce z danych API, więc testy nie mogą jej narysować.
-Sprawdzają to, co da się sprawdzić bez przeglądarki:
+Sprawdzają to, co da się sprawdzić bez przeglądarki (patrz ``AGENTS.md``, zasada 6):
 
 * co partial oddaje serwerowi (atrybuty kontenera, pliki statyczne, ``<noscript>``,
   brak liczenia wartości w Jinja),
 * czy API zwraca dane w kształcie, na którym opiera się skrypt (pole ``znaki``),
 * jak zbudowany jest skrypt — czy adres bierze z atrybutu, czy pokazuje słowa
   ``PRAWDA``/``FAŁSZ`` obok koloru, czy obsługuje klawiaturę i błędy po polsku,
-* czy tablica rośnie krok po kroku: import wspólnego ``createStepper``, kropka
-  w nieodkrytej komórce, ``aria-current`` na bieżącej i przycisk „Pokaż całą tabelę”.
+* czy tablica rośnie krok po kroku: import wspólnego ``createStepper``,
+  ``aria-current`` na bieżącej komórce i przycisk „Pokaż odpowiedź”,
+* czy da się wpisywać wartości (karta PRZ-121): pole ``input`` w zakrytej komórce,
+  klasy oceny ``komorka-dobrze`` i ``komorka-zle``, wynik „Sprawdź całą tabelę”
+  słowami oraz klawisze ``Enter`` i ``Backspace`` w polu,
+* czy z widoku zniknęły guziki kroków („Odtwórz”, „Pauza”, „Od nowa”) i kropki kroków.
 
 Wzorzec testu źródłowego jest ten sam, co w ``tests/test_czesc_kroki.py``.
 """
@@ -35,6 +39,10 @@ WZORZEC_WYBIERZ_WIERSZ = re.compile(
     r"\}\s*"
     r"odswiez\(\);\s*\};"
 )
+#: Napisy, których w widoku tablicy być nie może (karta PRZ-121 usuwa guziki kroków).
+NAPISY_GUZIKOW = ("Odtwórz", "Pauza", "Od nowa")
+#: Licznik kroków w widoku: „krok 3 z 7”. Wolno go mieć tylko w tekście dla czytnika.
+WZORZEC_LICZNIKA = re.compile(r"krok \d+ z")
 KATALOG_STATYCZNY = Path(__file__).resolve().parents[1] / "app" / "static"
 PARTIAL = (
     Path(__file__).resolve().parents[1] / "app" / "templates" / "partials" / "_truth_table.html"
@@ -54,6 +62,24 @@ def klient(aplikacja):
 def _renderuj(aplikacja, **zmienne):
     with aplikacja.test_request_context():
         return render_template("partials/_truth_table.html", **zmienne)
+
+
+def _blok(kod: str, poczatek: str) -> str:
+    """Zwraca fragment kodu od napisu ``poczatek`` do zamykającego nawiasu klamrowego.
+
+    Liczymy nawiasy, bo interesują nas całe ciała funkcji i obsługi zdarzeń —
+    po samym wcięciu test pękałby przy każdej zmianie formatowania.
+    """
+    start = kod.index(poczatek)
+    glebokosc = 0
+    for pozycja, znak in enumerate(kod[start:], start=start):
+        if znak == "{":
+            glebokosc += 1
+        elif znak == "}":
+            glebokosc -= 1
+            if glebokosc == 0:
+                return kod[start : pozycja + 1]
+    raise AssertionError(f"brak zamknięcia bloku: {poczatek}")
 
 
 # ---------------------------------------------------------------------------
@@ -144,6 +170,18 @@ def test_partial_ma_noscript_z_formula(aplikacja):
     assert FORMULA in html
 
 
+def test_partial_nie_ma_guzikow_ani_kropek_krokow(aplikacja):
+    """Karta PRZ-121 usuwa z widoku odtwarzanie, reset, kropki kroków i licznik."""
+    html = _renderuj(aplikacja, formula=FORMULA)
+    zrodlo = PARTIAL.read_text(encoding="utf-8")
+
+    for napis in NAPISY_GUZIKOW:
+        assert napis not in html
+        assert napis not in zrodlo
+    assert "stepper-kropka" not in html
+    assert not WZORZEC_LICZNIKA.search(html)
+
+
 def test_partial_bez_surowego_szablonu_w_wyniku(aplikacja):
     html = _renderuj(aplikacja, formula=FORMULA)
 
@@ -191,7 +229,7 @@ def styl():
 
 
 # ---------------------------------------------------------------------------
-# Skrypt
+# Skrypt — dane, bezpieczeństwo i filtry (karta PRZ-011)
 # ---------------------------------------------------------------------------
 
 
@@ -303,7 +341,7 @@ def test_skrypt_ma_uwage_o_ostatniej_kolumnie(skrypt):
 
 
 # ---------------------------------------------------------------------------
-# Prowadzenie krok po kroku (karta PRZ-073)
+# Prowadzenie krok po kroku (karta PRZ-073, pasek uproszczony przez PRZ-124)
 # ---------------------------------------------------------------------------
 
 
@@ -320,6 +358,21 @@ def test_skrypt_oddaje_stepperowi_wlasny_kontener(skrypt):
     assert "mount: montazKrokow" in skrypt
 
 
+def test_skrypt_pasek_ma_tylko_dwie_strzalki(skrypt):
+    """Pasek to wspólny komponent: dwie strzałki i opis, bez guzików kroków.
+
+    Karta PRZ-121 nie dokłada własnego paska ani nie nadpisuje jego napisów —
+    robi to komponent (karty PRZ-072 i PRZ-124), a karta przekazuje mu tylko kroki.
+    """
+    assert "labels:" not in skrypt
+    assert "stepper-strzalka" not in skrypt
+    for napis in NAPISY_GUZIKOW:
+        assert napis not in skrypt
+    assert "stepper-kropka" not in skrypt
+    assert "stepper-wskaznik" not in skrypt
+    assert not WZORZEC_LICZNIKA.search(skrypt)
+
+
 def test_skrypt_buduje_kroki_z_odpowiedzi_api(skrypt):
     """Kroki powstają z danych API: kolumna wynikowa, wiersz po wierszu."""
     assert "function zbudujKroki" in skrypt
@@ -328,7 +381,7 @@ def test_skrypt_buduje_kroki_z_odpowiedzi_api(skrypt):
 
 
 def test_numer_kroku_jest_numerem_komorki(skrypt):
-    """Bez tego „Dalej” odkrywałoby raz jedną, raz kilka komórek."""
+    """Bez tego „Dalej” odsłaniałoby raz jedną, raz kilka komórek."""
     assert "numerKolumny.get(kolumna) * liczbaWierszy + wiersz" in skrypt
     assert "komorka.numer <= indeks" in skrypt
     assert "komorka.numer === indeks" in skrypt
@@ -342,19 +395,11 @@ def test_kroki_pomijaja_kolumny_zmiennych(skrypt):
     assert "for (const [pozycja, kolumna] of kolumnyKrokow.entries())" in skrypt
 
 
-def test_skrypt_ukrywa_nieodkryte_komorki_kropka(skrypt):
-    """Student ma widzieć, jak tabela rośnie — przyszłe komórki pokazują kropkę."""
-    assert 'ukryta: "·"' in skrypt
-    assert 'element("span", "tt-ukryte", TEKSTY.ukryta)' in skrypt
-    assert 'classList.toggle("tt-odkryta", odkryta)' in skrypt
-
-
 def test_skrypt_oznacza_biezaca_komorke_arie_current(skrypt):
     """Bieżąca komórka musi być opisana, nie tylko obramowana kolorem."""
     assert 'setAttribute("aria-current", "true")' in skrypt
     assert 'removeAttribute("aria-current")' in skrypt
     assert "function opisKomorki" in skrypt
-    assert "TEKSTY.nieodkryta" in skrypt
 
 
 def test_skrypt_wyroznia_biezaca_kolumne_naglowkiem(skrypt):
@@ -362,10 +407,10 @@ def test_skrypt_wyroznia_biezaca_kolumne_naglowkiem(skrypt):
     assert 'classList.toggle("tt-biezaca", jestBiezaca)' in skrypt
 
 
-def test_skrypt_ma_przycisk_pokaz_cala_tabele(skrypt):
-    """Przycisk przydaje się przy sprawdzaniu: przeskakuje na ostatni krok."""
-    assert 'pokazWszystko: "Pokaż całą tabelę"' in skrypt
-    assert 'element("button", "btn btn-outline-primary btn-sm", TEKSTY.pokazWszystko)' in skrypt
+def test_skrypt_ma_przycisk_pokaz_odpowiedz(skrypt):
+    """Przycisk odsłania całą tabelę — to ocena, nie krok."""
+    assert 'pokazOdpowiedz: "Pokaż odpowiedź"' in skrypt
+    assert 'element("button", "btn btn-outline-primary btn-sm", TEKSTY.pokazOdpowiedz)' in skrypt
     assert "stepper.go(stepper.length - 1)" in skrypt
 
 
@@ -381,6 +426,15 @@ def test_kroki_maja_tytul_i_opis_dla_steppera(skrypt):
     """`createStepper` czyta pola `tytul` i `opis` — bez nich pasek byłby pusty."""
     assert "steps: kroki" in skrypt
     assert "onStep: (indeks) => pokazKrok(indeks)" in skrypt
+
+
+def test_numer_kroku_zostaje_dla_czytnika_ekranu(skrypt):
+    """Licznik kroków znika z widoku, ale czytnik ekranu ma go usłyszeć."""
+    assert 'element("p", "tt-krok-opis visually-hidden")' in skrypt
+    assert 'zdanieKroku.setAttribute("role", "status")' in skrypt
+    assert 'zdanieKroku.setAttribute("aria-live", "polite")' in skrypt
+    assert "${TEKSTY.krok} ${indeks + 1} z ${kroki.length}" in skrypt
+    assert 'krok: "Krok"' in skrypt
 
 
 def test_skrypt_zachowuje_filtrowanie_po_komorkach_zmiennych(skrypt):
@@ -399,6 +453,120 @@ def test_skrypt_nie_wstawia_danych_z_api_przez_innerhtml(skrypt):
 
 
 # ---------------------------------------------------------------------------
+# Wpisywanie wartości i ocena (karta PRZ-121)
+# ---------------------------------------------------------------------------
+
+
+def test_skrypt_tworzy_pole_wpisywania_w_komorce(skrypt):
+    """Zakryta komórka wynikowa pokazuje pole na jedną cyfrę."""
+    assert 'element("input", "tt-wejscie")' in skrypt
+    assert 'wejscie.setAttribute("inputmode", "numeric")' in skrypt
+    assert 'wejscie.setAttribute("maxlength", "1")' in skrypt
+    assert 'const DOZWOLONE = ["0", "1"];' in skrypt
+
+
+def test_skrypt_wstawia_pole_do_komorki_wyniku(skrypt):
+    """Pole trafia do komórki wyniku razem ze znaczkiem oceny i wartością z tabeli."""
+    assert 'element("span", "tt-ocena")' in skrypt
+    assert "komorka.append(zbudujWejscie(pole), pole.znaczek, wartosc(znak));" in skrypt
+
+
+def test_skrypt_ocenia_wpis_na_zero_albo_jeden(skrypt):
+    """Ocenę liczymy z wartości z API — skrypt nie zgaduje wyniku sam."""
+    assert "function ocena(komorka)" in skrypt
+    assert "DOZWOLONE.includes(wpis)" in skrypt
+    assert 'return wpis === String(oczekiwana(komorka)) ? "dobrze" : "zle";' in skrypt
+    assert "function oczekiwana(komorka)" in skrypt
+    assert "POLE_WARTOSCI" in _blok(skrypt, "function oczekiwana(")
+
+
+def test_skrypt_nadaje_klasy_oceny(skrypt):
+    """Zgodę z opisem karty: nazwy klas muszą być dokładnie takie jak w kryteriach."""
+    assert 'const KLASA_DOBRZE = "komorka-dobrze";' in skrypt
+    assert 'const KLASA_ZLE = "komorka-zle";' in skrypt
+    assert 'classList.toggle(KLASA_DOBRZE, stan === "dobrze")' in skrypt
+    assert 'classList.toggle(KLASA_ZLE, stan === "zle")' in skrypt
+
+
+def test_skrypt_bez_oceny_dla_pustego_pola(skrypt):
+    """Puste pole albo inny znak to brak oceny — żadnej klasy wtedy nie ma."""
+    ocena = _blok(skrypt, "function ocena(")
+    assert "return null;" in ocena
+    pokaz = _blok(skrypt, "function pokazOcene(")
+    assert "komorka.odkryta ? null : ocena(komorka)" in pokaz
+
+
+def test_skrypt_mowi_slowami_co_ocenil(skrypt):
+    """Kolor nie jest jedynym nośnikiem: tę samą ocenę niesie ``aria-label``."""
+    assert 'ocenaDobrze: "dobrze"' in skrypt
+    assert 'ocenaZle: "źle, poprawna wartość to"' in skrypt
+    opis = _blok(skrypt, "function opisKomorki(")
+    assert "${TEKSTY.ocenaDobrze}" in opis
+    assert "${TEKSTY.ocenaZle} ${oczekiwana(komorka)}" in opis
+
+
+def test_skrypt_etykietuje_kazda_komorke_kolumna_i_zmiennymi(skrypt):
+    """Bez nazwy kolumny i ustawienia zmiennych tabela dla czytnika jest zagadką."""
+    assert "function poczatekOpisu(komorka)" in skrypt
+    assert "Kolumna ${kolumny[komorka.kolumna]}, wiersz ${komorka.wiersz + 1}" in skrypt
+    assert "${nazwa} = ${wiersze[numerWiersza][nazwa]}" in skrypt
+    pokaz = _blok(skrypt, "function pokazOcene(")
+    assert 'komorka.element.setAttribute("aria-label", opis)' in pokaz
+    assert 'komorka.wejscie.setAttribute("aria-label", opis)' in pokaz
+
+
+def test_skrypt_ma_przycisk_sprawdz_cala_tabele(skrypt):
+    """Przycisk ocenia wszystkie wpisy i podaje wynik słowami — to nie jest krok."""
+    assert 'sprawdzTabele: "Sprawdź całą tabelę"' in skrypt
+    assert 'addEventListener("click", sprawdzCalaTabele)' in skrypt
+    assert "function sprawdzCalaTabele()" in skrypt
+
+
+def test_skrypt_liczy_dobre_odpowiedzi_slowami(skrypt):
+    """Wynik sprawdzenia to zdanie: „Dobrze: 7 z 8” albo „Wszystko dobrze!”."""
+    assert 'wynikDobry: "Dobrze:"' in skrypt
+    assert 'wszystkoDobrze: "Wszystko dobrze!"' in skrypt
+    assert 'brakWpisow: "Wpisz 0 albo 1 w zakryte komórki, żeby sprawdzić tabelę."' in skrypt
+    assert "${TEKSTY.wynikDobry} ${dobre} z ${wpisane}" in skrypt
+    assert 'wynikSprawdzenia.setAttribute("aria-live", "polite")' in skrypt
+
+
+def test_sprawdzenie_liczy_tylko_zakryte_komorki(skrypt):
+    """Odkryta komórka pokazuje już wartość z tabeli, więc nie jest odpowiedzią studenta."""
+    sprawdzenie = _blok(skrypt, "function sprawdzCalaTabele(")
+    assert "komorka.odkryta ? null : ocena(komorka)" in sprawdzenie
+    assert "wpisane" in sprawdzenie
+    assert "dobre" in sprawdzenie
+
+
+def test_skrypt_enter_przechodzi_do_nastepnej_komorki(skrypt):
+    """Enter w polu ma prowadzić do następnej komórki, nie wybierać wiersza."""
+    obsluga = _blok(skrypt, 'wejscie.addEventListener("keydown"')
+    assert 'if (zdarzenie.key === "Enter")' in obsluga
+    assert "przejdzDo(komorka, 1)" in obsluga
+    przejscie = _blok(skrypt, "function przejdzDo(")
+    assert ".focus()" in przejscie
+    assert "if (!nastepna.odkryta)" in przejscie
+
+
+def test_skrypt_backspace_czysci_komorke(skrypt):
+    obsluga = _blok(skrypt, 'wejscie.addEventListener("keydown"')
+    assert 'if (zdarzenie.key === "Backspace")' in obsluga
+    assert "wyczysc(komorka)" in obsluga
+    czyszczenie = _blok(skrypt, "function wyczysc(")
+    assert 'komorka.wejscie.value = "";' in czyszczenie
+
+
+def test_pole_nie_przechwytuje_strzalek(skrypt):
+    """Strzałki w polu mają chodzić po znaku, a nie zmieniać kroku tabeli."""
+    obsluga = _blok(skrypt, 'wejscie.addEventListener("keydown"')
+    assert "stopPropagation" in obsluga
+    assert '"Arrow' not in skrypt
+    assert '"Home"' not in skrypt
+    assert '"End"' not in skrypt
+
+
+# ---------------------------------------------------------------------------
 # Style
 # ---------------------------------------------------------------------------
 
@@ -414,11 +582,28 @@ def test_styl_zachowuje_widocznosc_fokusu(styl):
     assert ":focus-visible" in styl
 
 
-def test_styl_ukrywa_nieodkryte_komorki(styl):
-    """Kropka zamiast wartości: wartość pokazuje się dopiero z klasą `tt-odkryta`."""
-    assert ".tt-komorka-wyniku .tt-ukryte" in styl
+def test_styl_pokazuje_pole_w_zakrytej_komorce(styl):
+    """Pole wpisywania widać tylko przed odkryciem — potem pokazuje się wartość."""
+    assert ".tt-komorka-wyniku .tt-wejscie" in styl
+    assert ".tt-komorka-wyniku.tt-odkryta .tt-wejscie," in styl
     assert ".tt-komorka-wyniku .tt-wartosc" in styl
     assert ".tt-komorka-wyniku.tt-odkryta .tt-wartosc" in styl
+
+
+def test_styl_ocenia_wpis_kolorem(styl):
+    """Dobrze — zielone tło i ramka, źle — czerwone tło; oba z klasy karty."""
+    assert ".tt-komorka-wyniku.komorka-dobrze {" in styl
+    assert "background-color: var(--bs-success-bg-subtle, #d1e7dd);" in styl
+    assert "box-shadow: inset 0 0 0 2px var(--bs-success, #198754);" in styl
+    assert ".tt-komorka-wyniku.komorka-zle {" in styl
+    assert "background-color: var(--bs-danger-bg-subtle, #f8d7da);" in styl
+
+
+def test_styl_pokazuje_znaczek_oceny_obok_wpisu(styl):
+    """Znaczek „✓”/„✕” odróżnia oceny także dla kogoś, kto nie rozróżnia barw."""
+    assert ".tt-komorka-wyniku .tt-ocena {" in styl
+    assert ".tt-komorka-wyniku.komorka-dobrze .tt-ocena," in styl
+    assert ".tt-komorka-wyniku.tt-odkryta .tt-ocena {" in styl
 
 
 def test_styl_nie_zdradza_wyniku_tlem_przed_odkryciem(styl):

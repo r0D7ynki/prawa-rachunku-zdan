@@ -1,4 +1,4 @@
-/* Interaktywna tablica prawdy budowana krok po kroku (karty PRZ-011 i PRZ-073).
+/* Interaktywna tablica prawdy z wpisywaniem wartości (karty PRZ-011, PRZ-073, PRZ-121).
    Dla każdego elementu `.truth-table-mount` pobiera tablicę z endpointu podanego
    w atrybucie `data-adres` i dorysowuje tabelę, filtry, panel „Twoje ustawienie”
    oraz pasek kroków ze wspólnego komponentu `stepper.js` (karta PRZ-072).
@@ -9,12 +9,23 @@
 
    Prowadzenie krok po kroku (karta PRZ-073): kroki powstają z odpowiedzi API — jedna
    kolumna wynikowa to blok kroków, wiersz po wierszu, a na końcu idzie podsumowanie
-   z klasyfikacją formuły. Numer kroku jest numerem komórki, dlatego „Dalej” odkrywa
-   dokładnie jedną komórkę, a „Od nowa” przywraca stan początkowy.
+   z klasyfikacją formuły. Numer kroku jest numerem komórki, dlatego strzałka „›”
+   odsłania dokładnie jedną komórkę z gotową wartością, a „‹” cofa się o jedną.
+   (Znaki przycisków ustala wspólny komponent — karta PRZ-124.)
+
+   Wpisywanie wartości (karta PRZ-121): komórka jeszcze nieodkryta pokazuje pole na
+   jeden znak. Student wpisuje `0` albo `1` i od razu widzi ocenę — zielone tło
+   i obramowanie (`komorka-dobrze`) albo czerwone (`komorka-zle`), a tę samą ocenę
+   niosą słowa w `aria-label`, bo kolor nie jest jedynym nośnikiem informacji.
+   „Sprawdź całą tabelę” maluje wszystkie wpisy i podaje wynik słowami, a „Pokaż
+   odpowiedź” odsłania całą tabelę.
+
+   Numer kroku zostaje w tekście dla czytników ekranu pod tabelą (widok go nie pokazuje).
 
    Nie ma tu podsłuchu na zdarzenia klawiatury dla przycisków: element `<button>`
    sam obsługuje Enter i spację (przeglądarka wysyła wtedy `click`). Własny `keydown`
-   ma tylko klikalny wiersz tabeli, bo `<tr>` nie jest przyciskiem. */
+   ma tylko klikalny wiersz tabeli (`<tr>` nie jest przyciskiem) oraz pole wpisywania
+   (Enter przechodzi do następnej komórki, Backspace czyści). */
 
 import { createStepper } from "/static/js/stepper.js";
 
@@ -24,14 +35,28 @@ const ADRES_ZAPASOWY = "/api/formula/table";
 const PRAWDA = "PRAWDA";
 const FAŁSZ = "FAŁSZ";
 
+/* Znaki oceny wpisu. Oba są `aria-hidden`: ten sam wynik niosą słowa w etykiecie
+   komórki („dobrze” albo „źle, poprawna wartość to 1”). */
+const ZNAK_DOBRZE = "✓";
+const ZNAK_ZLE = "✕";
+
+/* Co przyjmuje pole wpisywania. Puste pole albo inny znak to brak oceny. */
+const DOZWOLONE = ["0", "1"];
+
+/* Klasy oceny komórki — umowa ze stylem `app/static/css/truth-table.css`. */
+const KLASA_DOBRZE = "komorka-dobrze";
+const KLASA_ZLE = "komorka-zle";
+
 const TEKSTY = {
   ladowanie: "Wczytuję tablicę prawdy…",
   siec: "Nie udało się połączyć z serwerem. Sprawdź połączenie i odśwież stronę.",
   brakTablicy: "Nie udało się wczytać tablicy prawdy.",
-  podpowiedz: "Kliknij wartość zmiennej, żeby ją ustawić. Kliknij wiersz, żeby wybrać całe ustawienie.",
+  podpowiedz:
+    "Kliknij wartość zmiennej, żeby ją ustawić. Kliknij wiersz, żeby wybrać całe ustawienie. " +
+    "W zakrytą komórkę wpisz sam 0 albo 1 — od razu zobaczysz, czy dobrze.",
   legenda:
     "Jedynka znaczy PRAWDA, zero znaczy FAŁSZ. Ostatnia kolumna to cała formuła. " +
-    "Kropka to wartość, którą odsłoni kolejny krok.",
+    "Strzałki pod tabelą odsłaniają kolejne komórki z gotowymi wartościami.",
   ustawienie: "Twoje ustawienie",
   nieustawiona: "?",
   wynik: "Wynik całej formuły",
@@ -40,9 +65,15 @@ const TEKSTY = {
   wybierzWiersz: "Wybierz ustawienie z tego wiersza",
   wiersz: "Wiersz",
   podsumowanie: "Podsumowanie",
-  pokazWszystko: "Pokaż całą tabelę",
-  ukryta: "·",
-  nieodkryta: "wartość jeszcze nieodkryta — przejdź do tego kroku",
+  pokazOdpowiedz: "Pokaż odpowiedź",
+  sprawdzTabele: "Sprawdź całą tabelę",
+  wpisz: "wpisz 0 albo 1",
+  ocenaDobrze: "dobrze",
+  ocenaZle: "źle, poprawna wartość to",
+  wynikDobry: "Dobrze:",
+  wszystkoDobrze: "Wszystko dobrze!",
+  brakWpisow: "Wpisz 0 albo 1 w zakryte komórki, żeby sprawdzić tabelę.",
+  krok: "Krok",
   ileJedynek: "Wierszy z jedynką",
 };
 
@@ -119,7 +150,7 @@ function zbudujNaglowek(zmienne, kolumny) {
 /** Kroki prowadzenia: jedna kolumna wynikowa to blok kroków, na końcu podsumowanie.
  *
  *  Numer kroku (od zera) jest numerem komórki licząc kolumna po kolumnie, dlatego
- *  „Dalej” zawsze odkrywa dokładnie jedną komórkę. Ostatni krok nie ma komórki:
+ *  „Dalej” zawsze odsłania dokładnie jedną komórkę. Ostatni krok nie ma komórki:
  *  zbiera wynik całej formuły w jedno zdanie z klasyfikacją i liczbą jedynek. */
 function zbudujKroki(zmienne, kolumny, kolumnyKrokow, wiersze, klasyfikacja) {
   const kroki = [];
@@ -157,7 +188,7 @@ function zbudujKroki(zmienne, kolumny, kolumnyKrokow, wiersze, klasyfikacja) {
   return kroki;
 }
 
-/** Rysuje gotową tablicę, prowadzenie krok po kroku, panel „Twoje ustawienie” i filtry. */
+/** Rysuje gotową tablicę, prowadzenie krok po kroku, wpisywanie i filtry. */
 function rysuj(montaz, formula, dane, status) {
   const zmienne = dane.tabela.variables || [];
   const kolumny = dane.tabela.columns || [];
@@ -178,6 +209,8 @@ function rysuj(montaz, formula, dane, status) {
   const wierszeDOM = [];
   /* Komórki wynikowe w siatce [wiersz][kolumna] — potrzebne do odkrywania po kroku. */
   const komorkiWyniku = [];
+  /* Te same komórki w kolejności dokumentu — po nich chodzą Enter i Backspace. */
+  const polaWynikow = [];
   const naglowkiWynikow = [];
 
   const liczbaWierszy = wiersze.length;
@@ -192,6 +225,125 @@ function rysuj(montaz, formula, dane, status) {
      Komórka kolumny zmiennej nie ma numeru — jest odkryta od początku. */
   const numerKomorki = (kolumna, wiersz) =>
     numerKolumny.has(kolumna) ? numerKolumny.get(kolumna) * liczbaWierszy + wiersz : null;
+
+  /** Ustawienie zmiennych w wierszu komórki, po polsku: „p = 0, q = 1”. */
+  function ustawienieWiersza(numerWiersza) {
+    return zmienne.map((nazwa) => `${nazwa} = ${wiersze[numerWiersza][nazwa]}`).join(", ");
+  }
+
+  /** Rozpoczyna opis komórki: nazwa kolumny, numer wiersza i wartości zmiennych. */
+  function poczatekOpisu(komorka) {
+    return (
+      `Kolumna ${kolumny[komorka.kolumna]}, wiersz ${komorka.wiersz + 1}` +
+      ` (${ustawienieWiersza(komorka.wiersz)})`
+    );
+  }
+
+  /** Wartość, której oczekuje tabela w tej komórce. */
+  function oczekiwana(komorka) {
+    return (wiersze[komorka.wiersz][POLE_WARTOSCI] || [])[komorka.kolumna];
+  }
+
+  /** Ocena wpisu: „dobrze”, „zle” albo null, gdy pole jest puste albo ma inny znak. */
+  function ocena(komorka) {
+    const wpis = komorka.wejscie.value;
+    if (!DOZWOLONE.includes(wpis)) {
+      return null;
+    }
+    return wpis === String(oczekiwana(komorka)) ? "dobrze" : "zle";
+  }
+
+  /** Opis komórki dla czytnika ekranu — zawsze słowami, nigdy samym kolorem. */
+  function opisKomorki(komorka) {
+    const poczatek = poczatekOpisu(komorka);
+    if (komorka.odkryta) {
+      const znak = oczekiwana(komorka);
+      return `${poczatek}: ${znak}, czyli ${slownie(znak)}.`;
+    }
+    const stan = ocena(komorka);
+    if (stan === "dobrze") {
+      return `${poczatek}: ${TEKSTY.ocenaDobrze}.`;
+    }
+    if (stan === "zle") {
+      return `${poczatek}: ${TEKSTY.ocenaZle} ${oczekiwana(komorka)}.`;
+    }
+    return `${poczatek}: ${TEKSTY.wpisz}.`;
+  }
+
+  /** Maluje ocenę komórki: klasy, znaczek i etykiety.
+   *
+   *  Odkryta komórka pokazuje wartość z tabeli, więc ocena w niej traci sens — dlatego
+   *  klasy oceny zakładamy tylko w komórkach jeszcze zakrytych. Wpis studenta zostaje
+   *  w polu, więc cofnięcie kroku przywraca jego odpowiedź razem z oceną. */
+  function pokazOcene(komorka) {
+    const stan = komorka.odkryta ? null : ocena(komorka);
+    komorka.element.classList.toggle(KLASA_DOBRZE, stan === "dobrze");
+    komorka.element.classList.toggle(KLASA_ZLE, stan === "zle");
+    if (stan === "dobrze") {
+      komorka.znaczek.textContent = ZNAK_DOBRZE;
+    } else if (stan === "zle") {
+      komorka.znaczek.textContent = ZNAK_ZLE;
+    } else {
+      komorka.znaczek.textContent = "";
+    }
+    const opis = opisKomorki(komorka);
+    komorka.element.setAttribute("aria-label", opis);
+    komorka.wejscie.setAttribute("aria-label", opis);
+  }
+
+  /** Przechodzi do najbliższego pola w danym kierunku, które da się jeszcze wpisać. */
+  function przejdzDo(komorka, kierunek) {
+    const start = polaWynikow.indexOf(komorka);
+    for (let pozycja = start + kierunek; polaWynikow[pozycja]; pozycja += kierunek) {
+      const nastepna = polaWynikow[pozycja];
+      if (!nastepna.odkryta) {
+        nastepna.wejscie.focus();
+        return;
+      }
+    }
+  }
+
+  /** Backspace: czyści wpis, a w pustym polu cofa do poprzedniej komórki. */
+  function wyczysc(komorka) {
+    if (komorka.wejscie.value === "") {
+      przejdzDo(komorka, -1);
+      return;
+    }
+    komorka.wejscie.value = "";
+    pokazOcene(komorka);
+  }
+
+  /** Pole wpisywania w komórce wyniku: jeden znak, `0` albo `1`. */
+  function zbudujWejscie(komorka) {
+    const wejscie = element("input", "tt-wejscie");
+    komorka.wejscie = wejscie; // ocena() czyta wartość tego pola
+    /* Nie `type="number"`: przeglądarka dorzuca wtedy własne strzałki, a my chcemy
+       zwykłe pole na jedną cyfrę (klawiaturę cyfrową daje `inputmode`). */
+    wejscie.type = "text";
+    wejscie.setAttribute("inputmode", "numeric");
+    wejscie.setAttribute("maxlength", "1");
+    wejscie.setAttribute("autocomplete", "off");
+    wejscie.setAttribute("aria-label", opisKomorki(komorka));
+
+    wejscie.addEventListener("input", () => pokazOcene(komorka));
+    /* Kliknięcie w pole nie może wybierać całego wiersza ani go filtrować. */
+    wejscie.addEventListener("click", (zdarzenie) => zdarzenie.stopPropagation());
+    wejscie.addEventListener("keydown", (zdarzenie) => {
+      /* Klawisze pola nie mogą dojść do wiersza: Enter wybiera tam całe ustawienie. */
+      zdarzenie.stopPropagation();
+      if (zdarzenie.key === "Enter") {
+        zdarzenie.preventDefault();
+        przejdzDo(komorka, 1);
+        return;
+      }
+      if (zdarzenie.key === "Backspace") {
+        zdarzenie.preventDefault();
+        wyczysc(komorka);
+      }
+      /* Strzałki zostają polu: kursor chodzi po znaku, a krok się nie zmienia. */
+    });
+    return wejscie;
+  }
 
   const podpowiedz = element("p", "tt-podpowiedz text-muted small mb-1", TEKSTY.podpowiedz);
   const legenda = element("p", "tt-legenda text-muted small mb-2", TEKSTY.legenda);
@@ -248,14 +400,27 @@ function rysuj(montaz, formula, dane, status) {
       tr.append(komorka);
     }
 
-    /* Kolumna zmiennych jest odkryta od początku. Wyniki czekają na swoją kolej:
-       zamiast wartości pokazują kropkę, żeby student widział, jak tabela rośnie. */
+    /* Kolumny zmiennych są odkryte od początku. Wyniki czekają na swoją kolej:
+       zakryta komórka pokazuje pole, w które student sam wpisuje `0` albo `1`,
+       a odkryta — gotową wartość z tabeli. Pole zostaje w komórce także po
+       odkryciu (tyle że ukryte), żeby cofnięcie kroku nie gubiło odpowiedzi. */
     const rzad = [];
     for (const [kolumna, znak] of (wiersz[POLE_WARTOSCI] || []).entries()) {
       const komorka = element("td", `tt-komorka-wyniku tt-wynik-${znak}`);
-      komorka.append(element("span", "tt-ukryte", TEKSTY.ukryta), wartosc(znak));
+      const pole = {
+        element: komorka,
+        kolumna,
+        wiersz: indeksWiersza,
+        numer: numerKomorki(kolumna, indeksWiersza),
+        odkryta: false,
+      };
+      pole.znaczek = element("span", "tt-ocena");
+      pole.znaczek.setAttribute("aria-hidden", "true");
+      komorka.append(zbudujWejscie(pole), pole.znaczek, wartosc(znak));
       tr.append(komorka);
-      rzad.push({ element: komorka, kolumna, wiersz: indeksWiersza, numer: numerKomorki(kolumna, indeksWiersza) });
+      rzad.push(pole);
+      polaWynikow.push(pole);
+      pokazOcene(pole);
     }
     komorkiWyniku.push(rzad);
 
@@ -267,14 +432,30 @@ function rysuj(montaz, formula, dane, status) {
   const przewijanie = element("div", "tt-przewijanie table-responsive mb-2");
   przewijanie.append(tabela);
 
-  /* Pasek kroków (karta PRZ-072) stoi pod tabelą, a przycisk „Pokaż całą tabelę” —
-     obok, ale poza kontenerem paska, bo `createStepper` podmienia jego zawartość. */
+  /* Pasek kroków (karta PRZ-072) stoi pod tabelą, a przyciski oceny — obok, ale poza
+     kontenerem paska, bo `createStepper` podmienia zawartość swojego kontenera. */
   const pasek = element("div", "tt-kroki");
   const montazKrokow = element("div", "tt-kroki-pasek");
   montazKrokow.setAttribute("data-stepper", "");
-  const pokazCalosc = element("button", "btn btn-outline-primary btn-sm", TEKSTY.pokazWszystko);
-  pokazCalosc.type = "button";
-  pasek.append(montazKrokow, pokazCalosc);
+  const przyciskiOceny = element("div", "tt-przyciski-oceny mb-2");
+
+  const sprawdzTabele = element("button", "btn btn-primary btn-sm", TEKSTY.sprawdzTabele);
+  sprawdzTabele.type = "button";
+  const pokazOdpowiedz = element("button", "btn btn-outline-primary btn-sm", TEKSTY.pokazOdpowiedz);
+  pokazOdpowiedz.type = "button";
+  przyciskiOceny.append(sprawdzTabele, pokazOdpowiedz);
+
+  /* Wynik sprawdzenia to zdanie po polsku — widoczne i ogłaszane przez `aria-live`. */
+  const wynikSprawdzenia = element("p", "tt-wynik-sprawdzenia mb-0");
+  wynikSprawdzenia.setAttribute("role", "status");
+  wynikSprawdzenia.setAttribute("aria-live", "polite");
+
+  /* Numer kroku chowamy przed wzrokiem, ale nie przed czytnikiem ekranu (karta PRZ-121). */
+  const zdanieKroku = element("p", "tt-krok-opis visually-hidden");
+  zdanieKroku.setAttribute("role", "status");
+  zdanieKroku.setAttribute("aria-live", "polite");
+
+  pasek.append(montazKrokow, przyciskiOceny, wynikSprawdzenia, zdanieKroku);
 
   const panel = element("div", "tt-panel alert alert-light border");
   const tytul = element("h3", "tt-tytul-ustawienia h6 mb-1", TEKSTY.ustawienie);
@@ -290,16 +471,6 @@ function rysuj(montaz, formula, dane, status) {
     odswiez();
   });
   panel.append(tytul, opisUstawienia, opisWyniku, opisKlasyfikacji, czysc);
-
-  /** Opis komórki dla czytnika ekranu: odkryta zdradza wartość, zakryta czeka na krok. */
-  function opisKomorki(komorka, odkryta) {
-    const naglowek = `Kolumna ${kolumny[komorka.kolumna]}, wiersz ${komorka.wiersz + 1}`;
-    if (!odkryta) {
-      return `${naglowek}: ${TEKSTY.nieodkryta}.`;
-    }
-    const znak = (wiersze[komorka.wiersz][POLE_WARTOSCI] || [])[komorka.kolumna];
-    return `${naglowek}: ${znak}, czyli ${slownie(znak)}.`;
-  }
 
   /** Przelicza widok po każdej zmianie ustawienia: filtry, podświetlenie i panel. */
   function odswiez() {
@@ -354,13 +525,42 @@ function rysuj(montaz, formula, dane, status) {
     czysc.disabled = ustawienie.size === 0;
   }
 
+  /** „Sprawdź całą tabelę”: maluje wpisy i mówi słowami, ile z nich jest dobrych.
+   *
+   *  Liczą się komórki jeszcze zakryte, w które student wpisał `0` albo `1` — odkryte
+   *  pokazują już wartość z tabeli, więc nie są jego odpowiedzią. */
+  function sprawdzCalaTabele() {
+    let dobre = 0;
+    let wpisane = 0;
+    for (const komorka of polaWynikow) {
+      pokazOcene(komorka);
+      const stan = komorka.odkryta ? null : ocena(komorka);
+      if (stan === null) {
+        continue;
+      }
+      wpisane += 1;
+      if (stan === "dobrze") {
+        dobre += 1;
+      }
+    }
+    if (wpisane === 0) {
+      wynikSprawdzenia.textContent = TEKSTY.brakWpisow;
+    } else if (dobre === wpisane) {
+      wynikSprawdzenia.textContent = TEKSTY.wszystkoDobrze;
+    } else {
+      wynikSprawdzenia.textContent = `${TEKSTY.wynikDobry} ${dobre} z ${wpisane}`;
+    }
+  }
+
+  sprawdzTabele.addEventListener("click", sprawdzCalaTabele);
+
   const kroki = zbudujKroki(zmienne, kolumny, kolumnyKrokow, wiersze, dane.klasyfikacja);
   let stepper = null;
 
   /** Pokazuje stan po wejściu w krok o numerze `indeks` (liczonym od zera).
    *
    *  Numer kroku jest numerem komórki, więc komórka o numerze `n` jest odkryta, gdy
-   *  `n <= indeks` — każde „Dalej” odkrywa dokładnie jedną. Komórki kolumn zmiennych
+   *  `n <= indeks` — każde „›” odsłania dokładnie jedną. Komórki kolumn zmiennych
    *  nie mają numeru i są odkryte od początku. Krok podsumowania (numer równy liczbie
    *  komórek) pokazuje już całą tabelę i nie ma własnej kolumny. */
   function pokazKrok(indeks) {
@@ -371,9 +571,10 @@ function rysuj(montaz, formula, dane, status) {
       for (const komorka of rzad) {
         const odkryta = komorka.numer === null || komorka.numer <= indeks;
         const jestBiezaca = komorka.numer !== null && komorka.numer === indeks;
+        komorka.odkryta = odkryta;
         komorka.element.classList.toggle("tt-odkryta", odkryta);
         komorka.element.classList.toggle("tt-biezaca", jestBiezaca);
-        komorka.element.setAttribute("aria-label", opisKomorki(komorka, odkryta));
+        pokazOcene(komorka);
         if (jestBiezaca) {
           komorka.element.setAttribute("aria-current", "true");
         } else {
@@ -386,11 +587,13 @@ function rysuj(montaz, formula, dane, status) {
       naglowek.classList.toggle("tt-biezaca-kolumna", biezaca !== null && kolumna === biezaca.kolumna);
     });
 
-    /* Na ostatnim kroku nie ma czego odkrywać — przycisk traci sens. */
-    pokazCalosc.disabled = indeks >= kroki.length - 1;
+    /* Na ostatnim kroku nie ma czego odsłaniać — przycisk traci sens. */
+    pokazOdpowiedz.disabled = indeks >= kroki.length - 1;
+
+    zdanieKroku.textContent = `${TEKSTY.krok} ${indeks + 1} z ${kroki.length}. ${krok.opis || ""}`;
   }
 
-  pokazCalosc.addEventListener("click", () => {
+  pokazOdpowiedz.addEventListener("click", () => {
     if (stepper) {
       stepper.go(stepper.length - 1);
     }
@@ -398,10 +601,13 @@ function rysuj(montaz, formula, dane, status) {
 
   montaz.replaceChildren(podpowiedz, legenda, przewijanie, pasek, panel, status);
   odswiez();
+  /* Pasek kroków to wspólny komponent (karty PRZ-072 i PRZ-124): dokładnie dwie
+     strzałki „‹” i „›” i opis kroku między nimi, bez numerków i guzików. Karta nie
+     nadpisuje napisów paska — numer kroku trafia tylko do czytnika ekranu
+     (`zdanieKroku`). */
   stepper = createStepper({
     mount: montazKrokow,
     steps: kroki,
-    labels: { prev: "Wstecz", next: "Dalej", play: "Odtwórz", pause: "Pauza", reset: "Od nowa" },
     onStep: (indeks) => pokazKrok(indeks),
   });
 }
