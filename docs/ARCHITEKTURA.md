@@ -346,6 +346,9 @@ z tego drzewa, więc nie zgaduje struktury z tekstu.
 
 `api_simplify.py` (blueprint `api_simplify`): `POST /api/formula/simplify`
 `{"formula": str, "cel": "auto"|"nnf"|"dnf"|"cnf"}` → `ok`, `slad`, `blad`.
+Każdy krok w `slad.kroki` ma dodatkowo pole `fragment` — tekst podformuły, którą ten krok
+zastępuje (`""`, gdy nie ma czego wskazać). Pole dokłada endpoint, bo silnik
+`app/logic/simplify.py` opisuje krok bez wskazania zmienianego fragmentu (karta PRZ-077).
 
 `api_quiz.py` (blueprint `api_quiz`):
 

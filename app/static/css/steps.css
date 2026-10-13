@@ -1,11 +1,14 @@
-/* Style komponentu krokowego przekształcania (karta PRZ-013).
+/* Style komponentu krokowego przekształcania (karty PRZ-013 i PRZ-077).
    Kolor nigdy nie jest jedynym nośnikiem informacji: aktywny krok ma dodatkowo
-   etykietę „Krok n", pogrubienie i lewą krawędź. */
+   etykietę „Krok n”, obramowanie i pogrubienie, a wyróżniony fragment formuły —
+   `aria-label` oraz podkreślenie obok tła. */
 
 .steps-mount {
   --steps-akcent: var(--bs-primary, #0d6efd);
   --steps-tlo-aktywne: var(--bs-primary-bg-subtle, #cfe2ff);
   --steps-tlo-widoczne: var(--bs-secondary-bg, #e9ecef);
+  --steps-tlo-fragmentu: var(--bs-warning-bg-subtle, #fff3cd);
+  --steps-ramka-fragmentu: var(--bs-warning-border-subtle, #ffe69c);
 }
 
 .steps-lista {
@@ -18,33 +21,36 @@
   border-radius: 0.25rem;
 }
 
-/* Krok aktywny: ostatnio pokazany. */
+/* Kroki czekające na wejście są zdjęte z widoku (atrybut `hidden` z `steps.js`). */
+.krok[hidden] {
+  display: none;
+}
+
+/* Krok bieżący: rozwinięty, z opisem. */
 .krok-aktywny {
   border-left-color: var(--steps-akcent);
   background-color: var(--steps-tlo-aktywne);
 }
 
-/* Kroki już pokazane, ale nieaktywne — wygaszone tło. */
-.krok-widoczny {
+/* Kroki już minięte: zwinięte do jednej linii, wygaszone. */
+.krok-zwiniety {
   background-color: var(--steps-tlo-widoczne);
 }
 
-.krok-naglowek {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  align-items: baseline;
-  width: 100%;
-  padding: 0.6rem 0.75rem;
-  border: 0;
-  background: none;
-  text-align: left;
-  cursor: pointer;
+.krok-zwiniety .krok-linia {
+  opacity: 0.75;
 }
 
-.krok-naglowek:focus-visible {
-  outline: 2px solid var(--steps-akcent);
-  outline-offset: 2px;
+.krok-linia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.6rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.krok-aktywny .krok-linia {
+  padding-bottom: 0;
 }
 
 .krok-numer {
@@ -52,17 +58,32 @@
   white-space: nowrap;
 }
 
-.krok-przejscie {
+.krok-wzor {
   font-size: 1.05rem;
   letter-spacing: 0.02em;
 }
 
-.krok-prawo {
-  color: var(--bs-secondary-color, #6c757d);
+.krok-strzalka {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.krok-plakietka {
+  white-space: normal;
+  text-align: left;
+}
+
+/* Fragment, który zmienia ten krok. Tło idzie razem z podkreśleniem,
+   żeby wyróżnienie było widoczne także bez koloru. */
+.krok-fragment {
+  padding: 0 0.15em;
+  background-color: var(--steps-tlo-fragmentu);
+  border-bottom: 2px solid var(--steps-ramka-fragmentu);
+  border-radius: 0.2rem;
 }
 
 .krok-tresc {
-  padding: 0 0.75rem 0.6rem 0.75rem;
+  padding: 0.35rem 0.75rem 0.6rem 0.75rem;
 }
 
 .krok-pozycja {
@@ -73,12 +94,9 @@
   font-weight: 500;
 }
 
-.steps-sterowanie .btn:disabled {
-  cursor: not-allowed;
-}
-
 @media (prefers-reduced-motion: no-preference) {
-  .krok {
+  .krok,
+  .krok-fragment {
     transition: background-color 120ms ease-in-out;
   }
 }
