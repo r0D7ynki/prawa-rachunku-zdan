@@ -53,6 +53,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/templates/partials/_gates.html` | komponent bramek | PRZ-012 |
 | `app/templates/partials/_sets.html` | komponent diagramów zbiorów | PRZ-012 |
 | `app/templates/partials/_steps.html` | komponent kroków | PRZ-013 |
+| `app/templates/partials/_stepper.html` | wspólny pasek kroków (stepper) | PRZ-072 |
 
 ## Notacja formuł
 
@@ -357,6 +358,92 @@ Dzięki temu szablony nie wołają funkcji Pythona — czytają `NAV.lesson.tytu
 `NAV.previous.sciezka` albo `NAV.tools`. Szablon sprawdza `None` (`{% if NAV.previous %}`),
 bo strony spoza kursu (np. `/slowniczek`) też dostają `NAV`, tyle że bez lekcji.
 
+
+## Komponent kroków: `stepper.js`, `_stepper.html`, `stepper.css`
+
+Jeden pasek prowadzi użytkownika krok po kroku. Korzystają z niego tablica prawdy,
+bramki, diagramy zbiorów i dowód tautologii — dzięki temu zachowanie jest wszędzie takie samo.
+
+Pliki: `app/static/js/stepper.js` (moduł ES), `app/static/css/stepper.css`,
+`app/templates/partials/_stepper.html`.
+
+### Kontrakt `createStepper`
+
+```js
+import { createStepper } from "/static/js/stepper.js";
+
+const stepper = createStepper({
+  mount: document.querySelector("#kroki"),   // element, w którym powstaje pasek (wymagany)
+  steps: [{ tytul: "...", opis: "..." }],    // co najmniej 1 krok
+  onStep: (index, step) => { ... },          // co pokazać po wejściu w krok
+  autoMs: 1500,                              // tempo odtwarzania (domyślnie 1500 ms)
+  labels: { prev: "Wstecz", next: "Dalej", play: "Odtwórz", pause: "Pauza", reset: "Od nowa" },
+});
+```
+
+Pola `onStep`, `autoMs` i `labels` są opcjonalne. `labels` nadpisuje pojedyncze napisy —
+brakujące zostają domyślne. Krok `step` to obiekt z polami `tytul` i `opis` (oba napisy po polsku);
+komponent czyta tylko te dwa pola i przekazuje cały obiekt dalej do `onStep`.
+
+Zwrócony obiekt:
+
+| Pole | Znaczenie |
+|---|---|
+| `index` | numer bieżącego kroku, **liczony od zera** |
+| `length` | liczba kroków |
+| `playing` | `true`, gdy trwa odtwarzanie |
+| `go(index)` | przejście do kroku o indeksie od zera; numer spoza listy jest przycinany |
+| `next()` / `prev()` | krok dalej / wstecz; na końcach listy nic się nie dzieje |
+| `play()` / `pause()` | włączenie i zatrzymanie odtwarzania |
+| `reset()` | zatrzymanie odtwarzania i powrót do pierwszego kroku |
+| `destroy()` | zatrzymanie odtwarzania, zdjęcie nasłuchów i usunięcie paska |
+
+**Numeracja.** `index`, argument `go` i pierwszy argument `onStep` liczą kroki od zera
+(`stepper.go(2)` to trzeci krok). Widoczny wskaźnik pokazuje numer od jednego („Krok 3 z 7”).
+
+**Kto rysuje co.** Komponent pisze wyłącznie do własnego kontenera `mount` (podmienia jego
+zawartość na pasek) i do swojego elementu opisu. Resztę rysuje karta, która go używa —
+w `onStep(index, step)`. `onStep` jest wołane od razu przy tworzeniu (krok pierwszy)
+i przy każdej zmianie kroku; samo odświeżenie paska go nie powtarza.
+
+**Autoodtwarzanie.** `play()` przechodzi do kolejnego kroku co `autoMs`. Na ostatnim kroku
+odtwarzanie samo się zatrzymuje i przycisk wraca do napisu „Odtwórz”. `play()` na ostatnim
+kroku zaczyna od pierwszego. Ręczne `go`, `next` i `prev` nie zatrzymują odtwarzania.
+
+**Klawiatura.** Pasek ma `tabindex="0"`; strzałki `ArrowLeft`/`ArrowRight`, `Home` i `End`
+przechodzą między krokami, a spacja włącza i zatrzymuje odtwarzanie. Spacja na przycisku
+jest pomijana — tam klawisz ma już swoje znaczenie (klik).
+
+**Dostępność.** Kropki kroków są przyciskami `<button>`; bieżąca ma `aria-current="step"`,
+a jej etykieta to „Krok n: tytuł”. Treść kroku jest ogłaszana przez `aria-live="polite"`.
+Bieżący krok widać nie tylko po kolorze, ale też po obramowaniu i pogrubieniu.
+
+**Brak JavaScriptu.** Partial pokazuje w `<noscript>` pełną listę kroków jako `<ol>`
+(gdy w kontekście przekazano `steps`), a bez kroków — jedno zdanie po polsku.
+
+**Brak kroków.** `createStepper` nie rzuca błędu: bez `steps` pokazuje w kontenerze komunikat
+po polsku, bez `mount` nie dotyka dokumentu. W obu razach zwrócony obiekt ma te same metody
+(nic nie robią), więc karta, która go używa, nie musi ich sprawdzać.
+
+### Użycie partialu
+
+```jinja
+{% include "partials/_stepper.html" %}
+```
+
+Partial renderuje kontener `[data-stepper]` i dołącza `stepper.css` oraz `stepper.js`
+(moduł ES) przez `url_for('static', ...)`. Strona podaje mu opcjonalnie `steps` wyłącznie
+po to, żeby `<noscript>` miał co pokazać — pasek i tak rysuje `createStepper` z konfiguracji
+podanej w JavaScripcie:
+
+```js
+const kroki = [{ tytul: "Założenie", opis: "Zapisujemy wzór wyjściowy." }, /* ... */];
+createStepper({
+  mount: document.querySelector("[data-stepper]"),
+  steps: kroki,
+  onStep: (index, step) => { /* karta rysuje swoją wizualizację kroku */ },
+});
+```
 
 ## Frontend
 
