@@ -13,8 +13,13 @@ tablicę routingu. Regiony nawigacji rozpoznajemy po klasach z ``base.html``:
 
 Uwaga o zakresie: szablony lekcji mają własne odnośniki na dole treści (np. ``/wstep``
 odsyła do „strona główna” jako poprzedniej lekcji). Karta PRZ-069 zabrania ich zmiany,
-więc kryteria „brak poprzedniej na ``/wstep``” i „brak następnej na ``/quiz``”
+więc kryteria „brak poprzedniej na ``/wstep``” i „brak następnej na ostatniej lekcji”
 sprawdzamy w regionach nowej nawigacji z ``base.html``.
+
+Karta PRZ-093 dołożyła do rejestru wykład 2 (cztery lekcje). Od tego czasu testy czytają
+wykłady i lekcje z ``app/lessons.py``, a nie z list wpisanych ręcznie: okruszki pokazują
+wykład bieżącej lekcji, boczny spis lekcji — lekcje tego wykładu, a „wkrótce” widzą tylko
+wykłady z ``gotowy=False``.
 """
 
 from __future__ import annotations
@@ -28,7 +33,7 @@ from flask import render_template
 from jinja2 import ChoiceLoader, DictLoader
 
 from app import create_app
-from app.lessons import lessons, previous
+from app.lessons import lecture, lectures, lesson, lessons, previous
 from app.lessons import next as nastepna
 
 KATALOG = Path(__file__).resolve().parents[1]
@@ -50,20 +55,23 @@ SCIEZKA = [
 
 ADRESY_SCIEZKI = [adres for adres, _ in SCIEZKA]
 
-#: Osiem ścieżek z rejestru lekcji — to samo, co ścieżka nauki (kolejność z `app/lessons.py`).
+#: Wszystkie wykłady rejestru (gotowe i zapowiedzi) — kolejność numerów.
+NAV_LECTURES = lectures()
+
+#: Wszystkie ścieżki z rejestru lekcji (kolejność z `app/lessons.py`).
 ADRESY_LEKCJI = [lekcja.sciezka for lekcja in lessons()]
 
 #: Pozycje menu sprzed karty PRZ-023 — nie mogą zniknąć.
 MENU_WCZEŚNIEJSZE = ["/prawa", "/plac-zabaw", "/quiz", "/jak-czytac", "/slowniczek"]
 
-#: Odnośniki lekcji w rozwijanej pozycji **Wykłady**.
-MENU_LEKCJE = ["/wstep", "/formuly", "/tautologie", "/przeksztalcanie", "/kpn"]
+#: Odnośniki lekcji w rozwijanej pozycji **Wykłady** — wszystkie lekcje rejestru.
+MENU_LEKCJE = ADRESY_LEKCJI
 
 #: Narzędzia z rejestru — rozwijana pozycja **Narzędzia**.
 NARZEDZIA = ["/prawa", "/plac-zabaw", "/quiz", "/slowniczek", "/jak-czytac"]
 
-#: Wykłady-zapowiedzi, które nie są jeszcze gotowe (``gotowy=False``).
-ZAPOWIEDZI = ["Rachunek predykatów", "Elementy teorii zbiorów i relacji"]
+#: Tytuły wykładów-zapowiedzi (``gotowy=False``) — nieklikalne pozycje menu.
+ZAPOWIEDZI = [wyklad.tytul for wyklad in NAV_LECTURES if not wyklad.gotowy]
 
 #: Bloki, które ``base.html`` musi nadal wystawiać.
 BLOKI = ["tytul", "head", "tresc", "skrypty"]
@@ -237,7 +245,7 @@ def test_base_buduje_nawigacje_z_rejestru():
         assert wyrazenie in zrodlo, f"base.html nie buduje odnośnika: {wyrazenie}"
 
 
-def test_menu_zawiera_wszystkie_osiem_lekcji_poza_strona_glowna(strona_glowna):
+def test_menu_zawiera_wszystkie_lekcje_poza_strona_glowna(strona_glowna):
     menu = _menu(strona_glowna)
     brakujace = [adres for adres in ADRESY_LEKCJI if f'href="{adres}"' not in menu]
     assert not brakujace, f"lekcje poza menu: {brakujace}"
@@ -277,7 +285,7 @@ def test_menu_ma_rozwijane_wyklady_i_narzedzia(strona_glowna):
 
 
 def test_menu_wyklady_pokazuja_zapowiedzi(strona_glowna):
-    """Dwa wykłady-zapowiedzi są widoczne, ale nieklikalne (dopisek „wkrótce”)."""
+    """Wykłady-zapowiedzi są widoczne, ale nieklikalne (dopisek „wkrótce”)."""
     menu = _menu(strona_glowna)
     for tytul in ZAPOWIEDZI:
         assert tytul in menu, f"brak zapowiedzi {tytul!r} w menu"
@@ -286,7 +294,7 @@ def test_menu_wyklady_pokazuja_zapowiedzi(strona_glowna):
     assert menu.count('<span class="dropdown-item disabled" aria-disabled="true">') == len(
         ZAPOWIEDZI
     ), "zapowiedź wykładu jest klikalna"
-    # Osiem lekcji wykładu 1 i pięć narzędzi — tylko one są odnośnikami.
+    # Wszystkie lekcje rejestru i pięć narzędzi — tylko one są odnośnikami.
     odnosniki = re.findall(r'<a\b[^>]*class="dropdown-item', menu)
     assert len(odnosniki) == len(ADRESY_LEKCJI) + len(NARZEDZIA), (
         f"lista rozwijana ma {len(odnosniki)} odnośników"
@@ -328,11 +336,13 @@ def test_css_nawigacji_ma_regule(klasa):
 def test_okruszki_sa_na_kazdej_lekcji(klient, adres):
     html = _html(klient, adres)
     okruszki = _region(html, "okruszki")
+    wyklad = lecture(lesson(adres).wyklad)
 
     assert 'aria-label="Ścieżka nawigacji"' in okruszki
     assert 'class="breadcrumb"' in okruszki
     assert len(re.findall(r'aria-current="page"', okruszki)) == 1, "okruszki bez znacznika strony"
-    assert "Wykład 1" in _tekst(okruszki), f"{adres}: okruszki nie mówią o wykładzie 1"
+    assert f"Wykład {wyklad.numer}" in _tekst(okruszki), f"{adres}: okruszki nie mówią o wykładzie"
+    assert wyklad.tytul in _tekst(okruszki), f"{adres}: okruszki bez tytułu wykładu"
 
 
 def test_okruszki_formuly_pokazuja_wyklad_i_lekcje(klient):
@@ -351,18 +361,22 @@ def test_okruszki_poza_lekcjami_sa_ukryte(klient, adres):
 
 
 @pytest.mark.parametrize("adres", ADRESY_LEKCJI)
-def test_boczny_spis_lekcji_jest_na_lekcjach(klient, adres):
+def test_boczny_spis_lekcji_pokazuje_lekcje_biezacego_wykladu(klient, adres):
     html = _html(klient, adres)
     spis = _region(html, "spis-lekcji")
+    wyklad = lecture(lesson(adres).wyklad)
 
     assert 'aria-label="Lekcje wykładu"' in spis
-    for lekcja in ADRESY_LEKCJI:
-        assert f'href="{lekcja}"' in spis, f"{adres}: spis lekcji bez {lekcja}"
+    assert f"Lekcje wykładu {wyklad.numer}" in _tekst(spis)
+    for lekcja in wyklad.lekcje:
+        assert f'href="{lekcja.sciezka}"' in spis, f"{adres}: spis lekcji bez {lekcja.sciezka}"
 
     oznaczone = re.findall(r'<a\b[^>]*aria-current="page"[^>]*>', spis)
     assert len(oznaczone) == 1, f"{adres}: {len(oznaczone)} oznaczeń bieżącej lekcji w spisie"
     assert f'href="{adres}"' in oznaczone[0], f"{adres}: spis wyróżnia inną lekcję"
 
+    # Spis pokazuje lekcje jednego wykładu i dwa skróty poza ścieżką lekcji.
+    assert len(_odnosniki(spis)) == len(wyklad.lekcje) + 2
     assert "Prawa rachunku zdań" in _tekst(spis)
     assert "Plac zabaw" in _tekst(spis)
 
@@ -419,12 +433,24 @@ def test_wstep_nie_ma_poprzedniej_lekcji(klient):
         assert "Następna" in tekst, f"/wstep: {klasa} bez następnej lekcji"
 
 
-def test_quiz_nie_ma_nastepnej_lekcji(klient):
-    html = _html(klient, "/quiz")
+def test_ostatnia_lekcja_nie_ma_nastepnej(klient):
+    """Ostatnia lekcja rejestru kończy kurs — nie ma odnośnika „następna”."""
+    ostatnia = lessons()[-1]
+    assert nastepna(ostatnia.sciezka) is None
+
+    html = _html(klient, ostatnia.sciezka)
     for klasa in ("nawigacja-lekcji-gora", "nawigacja-lekcji-dol"):
         tekst = _tekst(_region(html, klasa))
-        assert "Poprzednia" in tekst, f"/quiz: {klasa} bez poprzedniej lekcji"
-        assert "Następna" not in tekst, f"/quiz: {klasa} pokazuje następną lekcję"
+        assert "Poprzednia" in tekst, f"{ostatnia.sciezka}: {klasa} bez poprzedniej lekcji"
+        assert "Następna" not in tekst, f"{ostatnia.sciezka}: {klasa} pokazuje następną lekcję"
+
+
+def test_quiz_prowadzi_do_pierwszej_lekcji_wykladu_2(klient):
+    """Koniec wykładu 1 prowadzi do początku wykładu 2 (karta PRZ-093)."""
+    karty = _region(_html(klient, "/quiz"), "nawigacja-lekcji-dol")
+
+    assert 'href="/konsekwencja"' in karty, "/quiz nie prowadzi do /konsekwencja"
+    assert "Wynikanie logiczne" in _tekst(karty), "/quiz nie pokazuje tytułu następnej lekcji"
 
 
 @pytest.mark.parametrize("adres", ["/", "/slowniczek", "/spis-tresci"])
@@ -441,15 +467,21 @@ def test_spis_tresci_wymienia_wyklady_i_lekcje(klient):
     html = _html(klient, "/spis-tresci")
     sekcje = {int(d["numer"]): d["tresc"] for d in WZORZEC_WYKLADU.finditer(_tresc(html))}
 
-    assert sorted(sekcje) == [1, 2, 3], f"spis treści pokazuje wykłady {sorted(sekcje)}"
+    assert sorted(sekcje) == [wyklad.numer for wyklad in NAV_LECTURES]
 
-    for adres in ADRESY_LEKCJI:
-        assert f'href="{adres}"' in sekcje[1], f"wykład 1 bez lekcji {adres}"
+    for wyklad in NAV_LECTURES:
+        sekcja = sekcje[wyklad.numer]
+        for lekcja in wyklad.lekcje:
+            assert f'href="{lekcja.sciezka}"' in sekcja, (
+                f"wykład {wyklad.numer} bez lekcji {lekcja.sciezka}"
+            )
 
-    assert "wkrótce" not in sekcje[1], "gotowy wykład nie może być zapowiedzią"
-    for numer in (2, 3):
-        assert "wkrótce" in sekcje[numer], f"wykład {numer} bez dopisku „wkrótce”"
-        assert _odnosniki(sekcje[numer]) == [], f"wykład {numer} ma odnośniki do lekcji"
+        if wyklad.gotowy:
+            assert "wkrótce" not in sekcja, "gotowy wykład nie może być zapowiedzią"
+            assert len(_odnosniki(sekcja)) == len(wyklad.lekcje)
+        else:
+            assert "wkrótce" in sekcja, f"wykład {wyklad.numer} bez dopisku „wkrótce”"
+            assert _odnosniki(sekcja) == [], f"wykład {wyklad.numer} ma odnośniki do lekcji"
 
 
 def test_spis_tresci_pokazuje_tytuly_zapowiedzi(klient):

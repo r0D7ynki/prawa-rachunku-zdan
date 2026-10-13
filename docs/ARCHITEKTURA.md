@@ -510,9 +510,11 @@ Widoki HTML: `home.py` → `/`, `/slowniczek`, `/jak-czytac`; `laws.py` → `/pr
 `rezolucja.py` → `/rezolucja`.
 
 Kolejność nauki na stronie (ścieżka kursu): `/wstep` → `/formuly` → `/tautologie` →
-`/przeksztalcanie` → `/kpn` → `/prawa` → `/plac-zabaw` → `/quiz`. Każda strona kursu kończy
-się odnośnikiem „następna lekcja” i „poprzednia lekcja” (zwykłe `href`, nie `url_for`).
-Kolejność tę wypisuje rejestr lekcji — patrz niżej.
+`/przeksztalcanie` → `/kpn` → `/prawa` → `/plac-zabaw` → `/quiz` → `/konsekwencja` →
+`/reguly` → `/dowody` → `/rezolucja`. Osiem pierwszych pozycji to wykład 1, cztery ostatnie —
+wykład 2 (karta PRZ-093). Każda strona kursu kończy się odnośnikiem „następna lekcja”
+i „poprzednia lekcja” (zwykłe `href`, nie `url_for`). Kolejność tę wypisuje rejestr lekcji —
+patrz niżej.
 
 ## `app/lessons.py` — rejestr wykładów i lekcji
 
@@ -549,9 +551,17 @@ def next(sciezka: str) -> Lesson | None       # sąsiad w płaskiej liście
 def tool_links() -> list[dict]         # {"sciezka", "tytul", "ikona"}; pozycje narzędziowe
 ```
 
-Rejestr zawiera wykład 1 (klasyczny rachunek zdań, osiem lekcji) oraz wykłady 2 i 3 jako
-zapowiedź (`gotowy=False`, pusta lista lekcji). Pozycje narzędziowe to Prawa `/prawa`,
-Plac zabaw `/plac-zabaw`, Quiz `/quiz`, Słowniczek `/slowniczek` i Jak czytać `/jak-czytac`.
+Rejestr zawiera trzy wykłady. **Wykład 1** „Klasyczny rachunek zdań” ma osiem lekcji
+(`/wstep` → `/quiz`), a **wykład 2** „Konsekwencja logiczna i dowody” (karta PRZ-093) cztery,
+w kolejności nauki: `/konsekwencja` (Wynikanie logiczne), `/reguly` (Reguły wnioskowania),
+`/dowody` (Dowody założeniowe) i `/rezolucja` (Rezolucja). Oba są `gotowy=True`, a ich lekcje
+tworzą jedną płaską listę: `lessons()` zwraca najpierw osiem lekcji wykładu 1, potem cztery
+wykładu 2. Dlatego `next("/quiz")` to początek wykładu 2 („Wynikanie logiczne”), a odnośniki
+„poprzednia/następna lekcja” prowadzą przez granicę wykładów. Rysunek wykładu 2 wymaga czterech
+tras (`/konsekwencja`, `/reguly`, `/dowody`, `/rezolucja`) i huba `/wyklad/2`.
+**Wykład 3** „Elementy teorii zbiorów i relacji” zostaje zapowiedzią (`gotowy=False`, pusta
+lista lekcji). Pozycje narzędziowe to Prawa `/prawa`, Plac zabaw `/plac-zabaw`, Quiz `/quiz`,
+Słowniczek `/slowniczek` i Jak czytać `/jak-czytac`.
 
 `create_app` (karta PRZ-070 — jedyny wyjątek od zasady „nikt nie edytuje `app/__init__.py`”)
 dodaje `app.context_processor`, który wstrzykuje do **każdego** szablonu:

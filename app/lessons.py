@@ -103,7 +103,43 @@ _LEKCJE_WYKLADU_1: tuple[Lesson, ...] = (
     ),
 )
 
-#: Trzy wykłady kursu. Wykłady 2 i 3 to zapowiedź na przyszłość.
+#: Cztery lekcje wykładu 2 — kolejność jest kolejnością nauki.
+_LEKCJE_WYKLADU_2: tuple[Lesson, ...] = (
+    Lesson(
+        slug="konsekwencja",
+        sciezka="/konsekwencja",
+        tytul="Wynikanie logiczne",
+        opis="Kiedy teza wynika z założeń i co to znaczy, że założenia są sprzeczne.",
+        wyklad=2,
+        ikona="⊨",
+    ),
+    Lesson(
+        slug="reguly",
+        sciezka="/reguly",
+        tytul="Reguły wnioskowania",
+        opis="Dziesięć reguł: od odrywania po kontrapozycję, każda ze schematem i przykładem.",
+        wyklad=2,
+        ikona="⊢",
+    ),
+    Lesson(
+        slug="dowody",
+        sciezka="/dowody",
+        tytul="Dowody założeniowe",
+        opis="Dowód wprost i nie wprost, krok po kroku, ze strzałkami od użytych wierszy.",
+        wyklad=2,
+        ikona="⇓",
+    ),
+    Lesson(
+        slug="rezolucja",
+        sciezka="/rezolucja",
+        tytul="Rezolucja",
+        opis="Sklejanie klauzul: od KPN, przez kolejne rezolucje, do sprzeczności.",
+        wyklad=2,
+        ikona="□",
+    ),
+)
+
+#: Trzy wykłady kursu. Wykład 3 to jeszcze zapowiedź na przyszłość.
 _WYKLADY: tuple[Lecture, ...] = (
     Lecture(
         numer=1,
@@ -114,10 +150,10 @@ _WYKLADY: tuple[Lecture, ...] = (
     ),
     Lecture(
         numer=2,
-        tytul="Rachunek predykatów",
-        opis="Kwantyfikatory, zmienne i formuły zależne od obiektów. Materiał w przygotowaniu.",
-        lekcje=(),
-        gotowy=False,
+        tytul="Konsekwencja logiczna i dowody",
+        opis="Wynikanie, reguły wnioskowania, dowody założeniowe i rezolucja.",
+        lekcje=_LEKCJE_WYKLADU_2,
+        gotowy=True,
     ),
     Lecture(
         numer=3,
