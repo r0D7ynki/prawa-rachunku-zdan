@@ -9,6 +9,8 @@ Trzy workery pracują równolegle. Dlatego:
 
 1. **Każda karta tworzy własne pliki.** Nie edytuje plików innej karty.
 2. `app/__init__.py` sam znajduje widoki w `app/blueprints/`. Nikt go nie edytuje.
+   Jedyny wyjątek: `app.context_processor` z `NAV` (karta PRZ-070) — patrz sekcja
+   „`app/lessons.py` — rejestr wykładów i lekcji”.
 3. `app/logic/laws.py` sam znajduje treść praw w `app/logic/laws_data/`. Nikt go nie edytuje.
 4. Szablony współdzielone (`base.html`, partiale) mają jednego właściciela.
 5. Odnośniki w menu to zwykłe ścieżki (`/prawa`), nie `url_for`. Dzięki temu brak widoku
@@ -32,6 +34,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/logic/laws_data/dodatkowe.py` | idempotencja i reguła podstawiania | PRZ-024 |
 | `app/logic/simplify.py` | silnik przekształceń ze śladem kroków | PRZ-006 |
 | `app/logic/quiz.py` | generator pytań | PRZ-007 |
+| `app/lessons.py` | rejestr wykładów i lekcji (nawigacja) | PRZ-070 |
 | `app/blueprints/home.py` | `/`, `/slowniczek`, `/jak-czytac` | PRZ-008 |
 | `app/blueprints/api_formula.py` | `/api/formula/*`, `/api/equivalence` | PRZ-009 |
 | `app/blueprints/api_laws.py` | `/api/prawa` | PRZ-010 |
@@ -296,6 +299,63 @@ Widoki HTML: `home.py` → `/`, `/slowniczek`, `/jak-czytac`; `laws.py` → `/pr
 Kolejność nauki na stronie (ścieżka kursu): `/wstep` → `/formuly` → `/tautologie` →
 `/przeksztalcanie` → `/kpn` → `/prawa` → `/plac-zabaw` → `/quiz`. Każda strona kursu kończy
 się odnośnikiem „następna lekcja” i „poprzednia lekcja” (zwykłe `href`, nie `url_for`).
+Kolejność tę wypisuje rejestr lekcji — patrz niżej.
+
+## `app/lessons.py` — rejestr wykładów i lekcji
+
+Jedno źródło prawdy dla nawigacji (karta PRZ-070). Menu, spis treści, okruszki i odnośniki
+„poprzednia/następna lekcja” czytają dane z tego modułu, a nie z szablonów. Nowy wykład
+albo nowa lekcja to wpis w tym jednym pliku.
+
+```python
+@dataclass(frozen=True)
+class Lesson:
+    slug: str          # "formuly"
+    sciezka: str       # "/formuly"
+    tytul: str         # "Formuły i wartościowanie"
+    opis: str          # jedno zdanie, do 20 słów
+    wyklad: int        # numer wykładu
+    ikona: str         # krótki znak, np. "≡"
+
+@dataclass(frozen=True)
+class Lecture:
+    numer: int
+    tytul: str
+    opis: str
+    lekcje: tuple[Lesson, ...]
+    gotowy: bool       # False = „wkrótce”
+```
+
+```python
+def lectures() -> list[Lecture]        # w kolejności numerów
+def lessons() -> list[Lesson]          # wszystkie lekcje po kolei (płaska lista)
+def lesson(sciezka: str) -> Lesson | None
+def lecture(numer: int) -> Lecture | None
+def previous(sciezka: str) -> Lesson | None   # sąsiad w płaskiej liście
+def next(sciezka: str) -> Lesson | None       # sąsiad w płaskiej liście
+def tool_links() -> list[dict]         # {"sciezka", "tytul", "ikona"}; pozycje narzędziowe
+```
+
+Rejestr zawiera wykład 1 (klasyczny rachunek zdań, osiem lekcji) oraz wykłady 2 i 3 jako
+zapowiedź (`gotowy=False`, pusta lista lekcji). Pozycje narzędziowe to Prawa `/prawa`,
+Plac zabaw `/plac-zabaw`, Quiz `/quiz`, Słowniczek `/slowniczek` i Jak czytać `/jak-czytac`.
+
+`create_app` (karta PRZ-070 — jedyny wyjątek od zasady „nikt nie edytuje `app/__init__.py`”)
+dodaje `app.context_processor`, który wstrzykuje do **każdego** szablonu:
+
+```python
+NAV = {
+    "lectures": lectures(),
+    "lesson": lesson(request.path),      # None poza kursem
+    "previous": previous(request.path),  # None na początku i poza kursem
+    "next": next(request.path),          # None na końcu i poza kursem
+    "tools": tool_links(),
+}
+```
+
+Dzięki temu szablony nie wołają funkcji Pythona — czytają `NAV.lesson.tytul`,
+`NAV.previous.sciezka` albo `NAV.tools`. Szablon sprawdza `None` (`{% if NAV.previous %}`),
+bo strony spoza kursu (np. `/slowniczek`) też dostają `NAV`, tyle że bez lekcji.
 
 
 ## Frontend

@@ -10,7 +10,9 @@ from __future__ import annotations
 import importlib
 import pkgutil
 
-from flask import Flask
+from flask import Flask, request
+
+from app import lessons
 
 BLUEPRINTS_PACKAGE = "app.blueprints"
 
@@ -44,4 +46,23 @@ def create_app(config: dict | None = None) -> Flask:
         app.register_blueprint(blueprint)
         registered.append(name)
     app.config["BLUEPRINTS"] = registered
+
+    @app.context_processor
+    def navigation() -> dict:
+        """Wstrzykuje do każdego szablonu rejestr nawigacji ``NAV``.
+
+        Szablony czytają gotowe dane (``NAV.lesson``, ``NAV.previous`` itd.), więc nie
+        wołają funkcji Pythona. Adres bieżącej strony bierzemy z ``request.path``.
+        """
+        sciezka = request.path
+        return {
+            "NAV": {
+                "lectures": lessons.lectures(),
+                "lesson": lessons.lesson(sciezka),
+                "previous": lessons.previous(sciezka),
+                "next": lessons.next(sciezka),
+                "tools": lessons.tool_links(),
+            }
+        }
+
     return app
