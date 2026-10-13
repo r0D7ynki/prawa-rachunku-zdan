@@ -208,6 +208,44 @@
   stroke-width: 2;
 }
 
+/* --- kroki diagramów zbiorów (PRZ-075) --------------------------------- */
+
+/* Lista kroków przekazana przez partial: źródło danych dla `sets.js`, nie treść strony. */
+.wiz-kroki-dane,
+.wiz-niewidoczny {
+  display: none;
+}
+
+/* Nazwa operacji bieżącego kroku stoi wprost nad diagramami. */
+.wiz-operacja {
+  color: var(--wiz-tekst);
+}
+
+.wiz-krok-opis {
+  color: var(--wiz-tekst);
+}
+
+/* Strzałka między diagramami: znak równoważności, nie tylko kolor. */
+.wiz-strzalka {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--wiz-akcent);
+}
+
+/* Obrys obszaru z wcześniejszego kroku — widać, że obszar się nie zmienił. */
+.wiz-obrys-obszaru {
+  fill: none;
+  stroke: var(--wiz-akcent);
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+}
+
 .wiz-podpis {
   font-weight: 500;
 }
