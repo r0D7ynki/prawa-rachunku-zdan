@@ -1,0 +1,189 @@
+{#
+  Szablon lekcji /tautologie (karta PRZ-020). Wszystkie tablice przychodzą policzone
+  z `app/blueprints/tautologie.py` — tutaj nie ma ani jednej wartości wpisanej ręcznie.
+
+  Każdy wzór przechodzi przez `formula_to_html` albo `naglowek_to_html` (czyli
+  `formula.to_html`) i jest wstawiany przez `|safe`. Litery α, β, γ, δ są nazwami
+  podformuł z wykładu — moduł buduje je jako drzewa formuł, więc także ich nagłówki
+  rysuje `to_html`, a nie szablon.
+#}
+{% extends "base.html" %}
+
+{% block tytul %}Tautologie rachunku zdań{% endblock %}
+
+{% macro tablica_html(dane, opis) %}
+  <div class="table-responsive">
+    <table class="table table-sm tablica-prawdy align-middle">
+      <caption>{{ opis }} Wartości to 1 (prawda) i 0 (fałsz).</caption>
+      <thead>
+        <tr>
+          {% for zmienna in dane.zmienne %}
+            <th scope="col">{{ formula_to_html(zmienna) |safe }}</th>
+          {% endfor %}
+          {% for kolumna in dane.kolumny %}
+            <th scope="col">{{ naglowek_to_html(kolumna) |safe }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for wiersz in dane.wiersze %}
+          <tr>
+            {% for wartosc in wiersz.zmienne %}
+              <td>{{ wartosc }}</td>
+            {% endfor %}
+            {% for wartosc in wiersz.wyniki %}
+              <td class="{{ 'prawda' if wartosc == '1' else 'falsz' }}">{{ wartosc }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Tautologie rachunku zdań</h1>
+    <p class="lead">
+      Ta lekcja odpowiada na pytanie, czym jest tautologia. Nauczysz się sprawdzać
+      tautologię pełną tablicą prawdy i metodą skróconą.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-definicja">
+    <h2 id="naglowek-definicja">Czym jest tautologia</h2>
+    <p>
+      Formuła logiczna jest <strong>tautologią</strong>, jeżeli jest prawdziwa dla
+      każdego wartościowania zmiennych zdaniowych.
+    </p>
+    <p>
+      Tautologia jest zawsze prawdziwa — niezależnie od tego, jakie zdania podstawimy
+      pod zmienne. Wynik nie zależy ani od pogody, ani od liczb, o których mówi zdanie.
+    </p>
+    <p>
+      Dlatego tautologie opisują poprawne schematy wnioskowania. Jeżeli zaakceptujesz
+      przesłanki, a schemat jest tautologią, to wniosek musi być prawdziwy.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-srodek">
+    <h2 id="naglowek-srodek">Najprostszy przykład: prawo wyłączonego środka</h2>
+    <p>
+      Zacznijmy od najmniejszej tautologii. Ta formuła mówi, że zawsze prawdą jest,
+      że p albo nie p.
+    </p>
+    <p class="formula formula-wyrozniona">{{ formula_to_html(wylaczony_srodek) |safe }}</p>
+    <p>Zmienna p ma tylko dwie możliwe wartości, więc cała tablica ma dwa wiersze.</p>
+    {{ tablica_html(tabela_srodka, "Tablica prawdy dla prawa wyłączonego środka.") }}
+    <p>{{ wniosek_srodka }}</p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-dowod">
+    <h2 id="naglowek-dowod">Dowód pełną tablicą</h2>
+    <p>
+      Sprawdźmy teraz formułę, w której trzeba policzyć podformuły. Dowód pełną tablicą
+      to wypisanie wszystkich wartościowań i policzenie wyniku w każdym z nich.
+    </p>
+    <p class="formula formula-wyrozniona">{{ formula_to_html(formula_dowodu) |safe }}</p>
+    <p>
+      Kolumna α to podformuła, czyli to, co stoi przed ostatnią implikacją. Ostatnia
+      kolumna to cała formuła.
+    </p>
+    {{
+      tablica_html(
+        tabela_dowodu,
+        "Pełna tablica prawdy: cztery wiersze dla zmiennych p i q."
+      )
+    }}
+    <p>{{ wniosek_dowodu }}</p>
+    <h3>Policz sam</h3>
+    <p>
+      Tablica poniżej liczy się w przeglądarce. Kliknij wartość zmiennej, żeby zobaczyć
+      wynik dla wybranego ustawienia.
+    </p>
+    {% include "partials/_truth_table.html" %}
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-metoda">
+    <h2 id="naglowek-metoda">Metoda skrócona</h2>
+    <p>
+      Trzy zmienne to już osiem wierszy. Możemy jednak policzyć tylko te wiersze,
+      w których formuła <strong>mogłaby</strong> być fałszywa. Zbadajmy tak formułę:
+    </p>
+    <p class="formula formula-wyrozniona">{{ formula_to_html(formula_metody) |safe }}</p>
+    <ol class="kroki-metody">
+      {% for krok in kroki_metody %}
+        <li>
+          {% if krok.wzor %}
+            <span class="formula">{{ formula_to_html(krok.wzor) |safe }}</span> —
+          {% endif %}
+          {{ krok.opis }}
+        </li>
+      {% endfor %}
+    </ol>
+    {{ tablica_html(tabela_metody, "Dwa przypadki, w których formuła mogłaby być fałszywa.") }}
+    <p>{{ wniosek_metody }}</p>
+    <p>
+      Po to jest ta metoda: zamiast <code>2^n</code> wierszy sprawdzasz tylko te,
+      w których formuła mogłaby być fałszywa.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-spis">
+    <h2 id="naglowek-spis">Tautologie z wykładu: T1–T14</h2>
+    <p>
+      Wykład wymienia czternaście tautologii, które warto znać na pamięć. Każda nazwa
+      prowadzi do własnej strony z wyjaśnieniem, tablicą prawdy i przekształceniami.
+    </p>
+    <div class="table-responsive">
+      <table class="table tablica-tautologii align-middle">
+        <caption>Spis tautologii z wykładu: numer, wzór i nazwa.</caption>
+        <thead>
+          <tr>
+            <th scope="col">numer</th>
+            <th scope="col">wzór</th>
+            <th scope="col">nazwa</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for prawo in tautologie %}
+            <tr>
+              <th scope="row">{{ prawo.numer }}</th>
+              <td class="formula">{{ formula_to_html(prawo.formula) |safe }}</td>
+              <td><a href="/prawa/{{ prawo.slug }}">{{ prawo.nazwa }}</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if prawa_dodatkowe %}
+    <section class="sekcja" aria-labelledby="naglowek-dodatkowe">
+      <h2 id="naglowek-dodatkowe">Prawa dodatkowe</h2>
+      <p>
+        Te prawa nie należą do wykładowego spisu T1–T14, ale też są tautologiami.
+      </p>
+      <ul class="lista-praw-dodatkowych">
+        {% for prawo in prawa_dodatkowe %}
+          <li>
+            <span class="formula">{{ formula_to_html(prawo.formula) |safe }}</span> —
+            <a href="/prawa/{{ prawo.slug }}">{{ prawo.nazwa }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <nav
+    class="d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
+    aria-label="Nawigacja między lekcjami"
+  >
+    <a class="btn btn-outline-secondary" href="/formuly">
+      ← Poprzednia lekcja: formuły logiczne
+    </a>
+    <a class="btn btn-primary" href="/przeksztalcanie">
+      Następna lekcja: przekształcanie formuł →
+    </a>
+  </nav>
+{% endblock %}
