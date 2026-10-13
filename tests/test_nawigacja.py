@@ -313,9 +313,18 @@ def test_bootstrap_jest_zaladowany(strona_glowna):
 
 
 def test_menu_nie_dolozyl_wlasnego_javascriptu(strona_glowna):
+    """Karta PRZ-138: jedyny własny skrypt ``base.html`` to przełącznik motywu.
+
+    Do karty PRZ-138 ``base.html`` nie mógł ładować żadnego pliku z ``/static/js/``.
+    Przełącznik motywu wymaga skryptu (zapis wyboru i reakcja na ustawienie systemu),
+    więc pilnujemy teraz tego, że jest to **jedyny** lokalny skrypt: inline w ``<head>``
+    (bez mignięcia), Bootstrap z CDN i ``motyw.js``.
+    """
     zrodlo = SZABLON_BAZY.read_text(encoding="utf-8")
-    assert "/static/js/" not in zrodlo, "base.html nie może ładować lokalnego skryptu"
-    assert zrodlo.count("<script") == 1, "base.html ładuje tylko Bootstrap z CDN"
+    wlasne = re.findall(r"""filename=['"]js/(?P<plik>[\w.-]+)['"]""", zrodlo)
+    assert wlasne == ["motyw.js"], f"base.html ładuje lokalne skrypty: {wlasne}"
+    assert zrodlo.count("<script") == 3, "skrypt inline motywu + Bootstrap + motyw.js"
+    assert "/static/js/motyw.js" in strona_glowna, "strona nie ładuje skryptu motywu"
     assert "<script" not in _menu(strona_glowna), "menu nie potrzebuje własnego skryptu"
 
 
