@@ -58,11 +58,11 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/blueprints/konsekwencja.py` | `/konsekwencja` | PRZ-083 |
 | `app/blueprints/rezolucja.py` | `/rezolucja` | PRZ-092 |
 | `app/blueprints/api_wynikanie.py` | `/api/wynikanie` | PRZ-083 |
-| `app/templates/base.html` | szkielet strony, menu, okruszki, nawigacja lekcji, stopka, przełącznik motywu | PRZ-008, PRZ-069, PRZ-138 |
+| `app/templates/base.html` | szkielet strony, menu, okruszki, nawigacja lekcji, stopka, przełącznik motywu | PRZ-008, PRZ-069, PRZ-138, PRZ-155 |
 | `app/templates/spis_tresci.html` | spis treści kursu (wykłady i lekcje) | PRZ-069 |
 | `app/static/css/nawigacja.css` | style menu, okruszków, spisu lekcji i kart sąsiadów | PRZ-069 |
-| `app/static/css/motyw.css` | paleta jasna i ciemna dla wybranego motywu, przełącznik w menu | PRZ-138 |
-| `app/static/js/motyw.js` | wybór motywu: zapis w `localStorage`, reakcja na system | PRZ-138 |
+| `app/static/css/motyw.css` | paleta jasna i ciemna dla wybranego motywu, suwak motywu w menu | PRZ-138, PRZ-155 |
+| `app/static/js/motyw.js` | wybór motywu: zapis w `localStorage`, reakcja na system | PRZ-138, PRZ-155 |
 | `app/templates/reguly.html` | karty reguł wnioskowania | PRZ-090 |
 | `app/static/css/reguly.css` | style kart reguł | PRZ-090 |
 | `app/templates/dowody.html` | tabela dowodu, pasek kroków, kontrprzykład | PRZ-091 |
@@ -823,10 +823,11 @@ więc blok ciemny przełącza także zmienne `--bs-*` (`--bs-body-bg`, `--bs-bod
 `--bs-border-color`, `--bs-link-color-rgb` i pary `*-bg-subtle`). Dzięki temu menu,
 tabele i pola formularzy są ciemne bez własnego skryptu.
 
-#### Motyw wybrany przez użytkownika: `motyw.js` i `motyw.css` (PRZ-138)
+#### Motyw wybrany przez użytkownika: `motyw.js` i `motyw.css` (PRZ-138, PRZ-155)
 
-Strona ma trzy stany motywu: **auto** (domyślny — brak klucza), **jasny** i **ciemny**.
-Wybór siedzi w `localStorage["motyw"]` (`"light"` albo `"dark"`).
+Motyw ma dwa stany do wyboru: **jasny** i **ciemny**. Dopóki nikt niczego nie wybrał,
+motyw idzie za ustawieniem systemu (`prefers-color-scheme`). Wybór siedzi
+w `localStorage["motyw"]` (`"light"` albo `"dark"`); klucz zapisuje pierwsze przełączenie.
 
 - `base.html` ustawia `data-theme` i `data-bs-theme` na `<html>` **skryptem inline
   w `<head>`, przed arkuszami CSS** — dzięki temu strona nie mignie jasnym tłem.
@@ -838,11 +839,17 @@ Wybór siedzi w `localStorage["motyw"]` (`"light"` albo `"dark"`).
   obu zestawów pilnuje `tests/test_motyw.py`. Tokeny motywu (sekcja wyżej) przełącza
   dodatkowo blok `:root[data-theme="dark"]` w `app.css` — dzięki temu wybór
   użytkownika działa także dla nich, bez kopiowania ich do `motyw.css`.
-- Przełącznik to grupa trzech przycisków (`data-motyw="auto|light|dark"`,
-  `aria-pressed`) w prawym narożniku menu. `motyw.js` zapisuje wybór („Auto” usuwa
-  klucz), zaznacza wybrany przycisk i słucha zmiany `prefers-color-scheme` — dopóki
-  wyborem jest „Auto”.
-- Bez JavaScriptu przełącznik jest niewidoczny (`.bez-js .motyw-przelacznik`), a strona
+- Przełącznik to **jeden suwak** w prawym narożniku menu: `<input type="checkbox"
+  role="switch">` z klasami `form-check-input przelacznik-motywu`, między ikonami ☀ i ☾
+  (karta PRZ-155). Opcji „Auto” nie ma w widoku — brak zapisanego wyboru znaczy „jak
+  w systemie”. `motyw.js` ustawia suwak (`checked`) na motyw, który właśnie działa,
+  a po zdarzeniu `change` zapisuje wybór w `localStorage["motyw"]` i zmienia
+  `data-theme` oraz `data-bs-theme`. Zmiana `prefers-color-scheme` przestawia motyw
+  tylko dopóki nie ma zapisanego wyboru. Wyglądu nie rysuje Bootstrap: suwak ma
+  `appearance: none`, a tor i gałkę malują tokeny motywu (`--tlo-panel-2`,
+  `--tekst-muted`, a po włączeniu `--akcent` z `--akcent-tekst`). Wysokość suwaka to
+  `--min-dotyk` (44 px) — tyle wymaga cel dotyku.
+- Bez JavaScriptu przełącznik jest niewidoczny (`.bez-js .przelacznik-motywu-pole`), a strona
   zostaje na warstwie z `app.css` — dlatego serwer **nie wpisuje** `data-theme` w HTML.
 - Motyw nie ma własnego widoku ani API; to warstwa `base.html` + dwa pliki statyczne.
 

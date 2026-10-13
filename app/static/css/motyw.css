@@ -1,4 +1,5 @@
-/* Motyw wybrany przez użytkownika: jasny, ciemny i „jak w systemie” (karta PRZ-138).
+/* Motyw wybrany przez użytkownika: jasny, ciemny i „jak w systemie” (karty PRZ-138
+   i PRZ-155 — przełącznikiem jest jeden suwak, patrz koniec pliku).
 
    `app.css` zostaje warstwą bez JavaScriptu: paletę przełącza tam
    `@media (prefers-color-scheme: dark)`. Ten arkusz wchodzi do gry wtedy, gdy wybór
@@ -125,44 +126,86 @@
   background: var(--kolor-panel);
 }
 
-/* --- przełącznik w menu ------------------------------------------------ */
+/* --- przełącznik motywu w menu (karta PRZ-155) ------------------------- */
 
-/* Bez JavaScriptu przełącznik nie działa, więc go chowamy: motywem rządzi wtedy
+/* Bez JavaScriptu suwak nie działa, więc go chowamy: motywem rządzi wtedy
    `@media (prefers-color-scheme: dark)` z `app.css`. Klasę `bez-js` zdejmuje
    skrypt inline w `<head>` (karta PRZ-138). */
-.bez-js .motyw-przelacznik {
+.bez-js .przelacznik-motywu-pole {
   display: none;
 }
 
-.motyw-przelacznik {
+/* ☀ stoi z lewej, ☾ z prawej — suwak leży między nimi. Ikony są dekoracją
+   (`aria-hidden` w szablonie), więc czytnik ogłasza samą nazwę suwaka. Kolor bierze
+   się z tokenu motywu, dlatego widać je i w jasnym, i w ciemnym. */
+.przelacznik-motywu-pole {
   display: inline-flex;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-/* Trzy przyciski obok siebie to trzy stany motywu. */
-.motyw-przycisk {
+.przelacznik-motywu-ikona {
+  color: var(--tekst-muted);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+/* Sam suwak. `appearance: none` cofa checkbox Bootstrapa (ptaszek i niebieskie tło),
+   więc rysujemy go tokenami motywu: tor to `background-color`, gałka to `::before`.
+   Wysokość `--min-dotyk` (44 px) daje cel dotyku, a `border-radius: 999px` — kształt
+   kapsuły. Atrybut `[type="checkbox"]` w selektorze dorównuje swoistością regule
+   Bootstrapa `.form-check-input[type=checkbox]`, a nasz arkusz idzie po niej.
+   Bez przejść (`transition`): suwak ustawia się od razu na motyw z ustawień systemu,
+   więc nie przelatuje z lewej na prawą przy każdym otwarciu strony. */
+.przelacznik-motywu[type="checkbox"] {
+  position: relative;
+  flex: none;
+  width: 3.5rem;
   min-height: var(--min-dotyk);
-  min-width: var(--min-dotyk);
-  padding: 0.25rem 0.6rem;
-  border: 1px solid var(--kolor-ramka);
-  border-radius: 0.5rem;
-  background: var(--kolor-panel);
-  color: var(--kolor-tekst);
-  font-size: 0.95rem;
-  line-height: 1.2;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  border: 1px solid var(--ramka);
+  border-radius: 999px;
+  background-color: var(--tlo-panel-2);
+  background-image: none;
+  box-shadow: none;
+  cursor: pointer;
 }
 
-.motyw-przycisk:hover {
-  border-color: var(--kolor-akcent);
-  color: var(--kolor-akcent);
+/* Gałka: koło w kolorze tekstu pomocniczego. `left` przesuwa je na prawą stronę,
+   gdy motyw ciemny jest włączony — ruch widać także bez koloru. */
+.przelacznik-motywu[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.3rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background-color: var(--tekst-muted);
+  transform: translateY(-50%);
 }
 
-/* Stan wybrany niesie `aria-pressed`, a dla oka obwódka i pogrubienie —
-   sam kolor nigdy nie jest jedynym nośnikiem informacji. */
-.motyw-przycisk[aria-pressed="true"] {
-  border-color: var(--kolor-akcent);
-  box-shadow: inset 0 0 0 1px var(--kolor-akcent);
-  background: var(--kolor-akcent-jasny);
-  color: var(--kolor-akcent);
-  font-weight: 600;
+.przelacznik-motywu[type="checkbox"]:hover,
+.przelacznik-motywu[type="checkbox"]:focus {
+  border-color: var(--akcent);
+}
+
+/* Klawiatura: obwódka fokusu zamiast niebieskiego obwodu Bootstrapa. */
+.przelacznik-motywu[type="checkbox"]:focus-visible {
+  outline: var(--ramka-focus) solid var(--akcent);
+  outline-offset: 2px;
+}
+
+/* Motyw ciemny włączony: tor i gałka biorą parę kolorów `--akcent` / `--akcent-tekst`,
+   sprawdzoną na kontrast w `tests/test_kontrast.py`. */
+.przelacznik-motywu[type="checkbox"]:checked {
+  border-color: var(--akcent);
+  background-color: var(--akcent);
+}
+
+.przelacznik-motywu[type="checkbox"]:checked::before {
+  left: calc(100% - 1.8rem);
+  background-color: var(--akcent-tekst);
 }

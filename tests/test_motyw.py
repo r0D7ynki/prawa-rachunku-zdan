@@ -1,8 +1,12 @@
-"""Przełącznik motywu: „Auto” (jak w systemie), „Jasny” i „Ciemny” (karta PRZ-138).
+"""Jeden przełącznik motywu: suwak jasny/ciemny (karta PRZ-155).
 
 Projekt nie ma runnera JavaScript (``AGENTS.md``, zasada 6), więc zachowanie skryptu
 sprawdzamy statycznie: czytamy ``base.html``, ``motyw.js`` i ``motyw.css`` i pilnujemy
 umowy między nimi. Stronę renderujemy przez ``flask.test_client()``.
+
+Przełącznik ma **jeden** stan do wyboru — jasny albo ciemny. Opcji „Auto” nie ma
+w widoku: brak zapisanego wyboru znaczy „jak w systemie”, a pierwsze przełączenie
+zapisuje wybór i od tej chwili system nie zmienia już motywu.
 
 Druga część testu broni palety. Wybrany motyw to kopia palety z ``app.css`` (tam jest
 źródło), więc gdyby oba zestawy się rozjechały, strona z wybranym motywem malowałaby
@@ -22,17 +26,15 @@ SKRYPT_MOTYWU = KATALOG / "app" / "static" / "js" / "motyw.js"
 ARKUSZ_MOTYWU = KATALOG / "app" / "static" / "css" / "motyw.css"
 ARKUSZ_APP = KATALOG / "app" / "static" / "css" / "app.css"
 
-#: Trzy stany przełącznika — wartość ``data-motyw`` przycisku.
-WYBORY = ["auto", "light", "dark"]
-
-#: Etykiety widoczne na przyciskach (obok ikony ukrytej przed czytnikiem).
-ETYKIETY = ["Auto", "Jasny", "Ciemny"]
+#: Etykiety starego przełącznika (trzy przyciski) — nie może ich już być w menu.
+STARE_ETYKIETY = ["Auto", "Jasny", "Ciemny"]
 
 WZORZEC_INLINE = re.compile(r"<script>(?P<tresc>.*?)</script>", re.DOTALL)
-WZORZEC_GRUPY = re.compile(r'<div class="motyw-przelacznik".*?</div>', re.DOTALL)
 WZORZEC_MENU = re.compile(r'<nav\b[^>]*id="nawigacja-glowna".*?</nav>', re.DOTALL)
-WZORZEC_PRZYCISKU = re.compile(r"<button\b[^>]*>")
+WZORZEC_SUWAKA = re.compile(r'<input\b[^>]*role="switch"[^>]*>', re.DOTALL)
+WZORZEC_POLA = re.compile(r'<div class="przelacznik-motywu-pole".*?</div>', re.DOTALL)
 WZORZEC_DEKLARACJI = re.compile(r"(--[\w-]+)\s*:\s*([^;]+);")
+WZORZEC_ZNACZNIKA = re.compile(r"<[^>]+>")
 
 
 def _zrodlo(sciezka: Path) -> str:
@@ -85,6 +87,17 @@ def _klient():
     return create_app({"TESTING": True}).test_client()
 
 
+def _strona() -> str:
+    return _klient().get("/").get_data(as_text=True)
+
+
+def _suwak() -> str:
+    """Znacznik ``<input role="switch">`` z wyrenderowanej strony głównej."""
+    dopasowanie = WZORZEC_SUWAKA.search(_strona())
+    assert dopasowanie, "strona nie ma suwaka motywu (input z role=switch)"
+    return dopasowanie.group()
+
+
 # ---------------------------------------------------------------------------
 # Ustawienie motywu przed pierwszym malowaniem
 # ---------------------------------------------------------------------------
@@ -115,44 +128,65 @@ def test_motyw_nie_czeka_na_wczytanie_dokumentu():
 
 
 # ---------------------------------------------------------------------------
-# Przełącznik w menu
+# Suwak w menu
 # ---------------------------------------------------------------------------
 
 
-def test_strona_ma_trzy_przyciski_motywu():
-    html = _klient().get("/").get_data(as_text=True)
-    grupa = WZORZEC_GRUPY.search(html)
+def test_strona_ma_jeden_suwak_motywu():
+    suwaki = WZORZEC_SUWAKA.findall(_strona())
 
-    assert grupa, "brak grupy przycisków motywu"
-    assert 'role="group"' in grupa.group(), "grupa przycisków bez roli dla czytnika"
-    assert 'aria-label="Motyw strony"' in grupa.group(), "grupa przycisków bez nazwy"
+    assert len(suwaki) == 1, f"strona ma {len(suwaki)} elementów role=switch, a ma być jeden"
+    suwak = suwaki[0]
+    assert 'type="checkbox"' in suwak, "suwak motywu nie jest checkboxem"
+    assert 'class="form-check-input przelacznik-motywu"' in suwak, (
+        "suwak bez klasy Bootstrapa i własnej klasy przelacznik-motywu"
+    )
 
-    przyciski = WZORZEC_PRZYCISKU.findall(grupa.group())
-    assert len(przyciski) == 3, f"przełącznik ma {len(przyciski)} przycisków, a nie trzy"
-    assert sorted(re.findall(r'data-motyw="([^"]+)"', grupa.group())) == sorted(WYBORY)
 
-    zaznaczone = [przycisk for przycisk in przyciski if 'aria-pressed="true"' in przycisk]
-    assert len(zaznaczone) == 1, "dokładnie jeden przycisk ma być zaznaczony"
-    assert 'data-motyw="auto"' in zaznaczone[0], "na start zaznaczony jest „Auto”"
-    for przycisk in przyciski:
-        assert "aria-pressed=" in przycisk, f"przycisk bez stanu: {przycisk}"
-        assert 'type="button"' in przycisk, f"przycisk bez typu: {przycisk}"
+def test_suwak_nie_ma_starych_przyciskow_ani_opcji_auto():
+    html = _strona()
+    menu = WZORZEC_MENU.search(html)
 
-    for etykieta in ETYKIETY:
-        assert etykieta in grupa.group(), f"brak etykiety {etykieta!r} na przycisku"
-    # Ikony są dekoracją — czytnik czyta samą etykietę.
-    assert 'aria-hidden="true"' in grupa.group()
+    assert menu, "strona nie ma paska menu"
+    assert "data-motyw" not in html, "została obsługa trzech przycisków (data-motyw)"
+    assert "motyw-przycisk" not in html, "zostały stare przyciski motywu"
+    assert "Motyw strony" not in menu.group(), "została grupa przycisków motywu"
+    assert "aria-pressed" not in menu.group(), "suwak nie ma już stanu `aria-pressed`"
+
+    # Etykiety czytamy z tekstu menu (bez znaczników), żeby nie złapać atrybutów.
+    tekst_menu = WZORZEC_ZNACZNIKA.sub(" ", menu.group())
+    for etykieta in STARE_ETYKIETY:
+        assert etykieta not in tekst_menu, f"w menu została etykieta {etykieta!r}"
+
+
+def test_ikony_sa_po_bokach_suwaka():
+    pole = WZORZEC_POLA.search(_strona())
+
+    assert pole, "brak pola przełącznika motywu"
+    zawartosc = pole.group()
+    assert zawartosc.index("☀") < zawartosc.index("<input") < zawartosc.index("☾"), (
+        "ikony mają stać w kolejności: ☀ z lewej, suwak w środku, ☾ z prawej"
+    )
+    assert zawartosc.count('aria-hidden="true"') == 2, "ikony to dekoracja dla czytnika"
 
 
 def test_przelacznik_motywu_jest_w_menu():
-    menu = WZORZEC_MENU.search(_klient().get("/").get_data(as_text=True))
+    menu = WZORZEC_MENU.search(_strona())
 
     assert menu, "base.html nie ma paska menu"
-    assert "motyw-przelacznik" in menu.group(), "przełącznik motywu poza menu"
+    assert "przelacznik-motywu" in menu.group(), "przełącznik motywu poza menu"
+
+
+def test_suwak_jest_dostepny_z_klawiatury():
+    suwak = _suwak()
+
+    assert 'aria-label="Tryb ciemny"' in suwak, "suwak bez nazwy dla czytnika ekranu"
+    for atrybut in ("tabindex", "disabled", "hidden"):
+        assert atrybut not in suwak, f"suwak nie może mieć {atrybut!r}"
 
 
 def test_strona_ma_arkusz_i_skrypt_motywu():
-    html = _klient().get("/").get_data(as_text=True)
+    html = _strona()
 
     assert "/static/css/motyw.css" in html, "strona bez arkusza motywu"
     assert "/static/js/motyw.js" in html, "strona bez skryptu motywu"
@@ -169,7 +203,30 @@ def test_skrypt_zapisuje_wybor_w_pamieci_przegladarki():
     assert 'const KLUCZ = "motyw"' in tekst, "klucz wyboru to „motyw”"
     assert "localStorage.getItem(KLUCZ)" in tekst, "skrypt nie czyta zapisanego wyboru"
     assert "localStorage.setItem(KLUCZ, wybor)" in tekst, "skrypt nie zapisuje wyboru"
-    assert "localStorage.removeItem(KLUCZ)" in tekst, "„Auto” ma usuwać klucz"
+    # Bez opcji „Auto” klucz nigdy nie znika — nie ma do czego wracać.
+    assert "removeItem" not in tekst, "suwak nie ma stanu „jak w systemie” do wyboru"
+
+
+def test_skrypt_reaguje_na_przelaczenie_suwaka():
+    tekst = _zrodlo(SKRYPT_MOTYWU)
+
+    assert 'document.querySelector(".przelacznik-motywu")' in tekst, "skrypt nie szuka suwaka"
+    assert 'SUWAK.addEventListener("change"' in tekst, "skrypt nie słucha przełączenia suwaka"
+    assert "SUWAK.checked" in tekst, "skrypt nie czyta stanu suwaka"
+
+
+def test_bez_zapisanego_wyboru_motyw_idzie_za_systemem():
+    tekst = _zrodlo(SKRYPT_MOTYWU)
+
+    assert 'matchMedia("(prefers-color-scheme: dark)")' in tekst, (
+        "brak pytania o ustawienie systemu"
+    )
+    assert 'SYSTEM_CIEMNY.matches ? "dark" : "light"' in tekst, "brak motywu z ustawienia systemu"
+    assert "const motyw = wybor ?? motywSystemu();" in tekst, (
+        "bez zapisanego wyboru motyw ma brać ustawienie systemu"
+    )
+    assert "let wybor = zapisanyWybor()" in tekst, "skrypt nie czyta wyboru przy wczytaniu"
+    assert "wybor === null" in tekst, "system ma zmieniać motyw tylko bez zapisanego wyboru"
 
 
 def test_skrypt_ustawia_atrybuty_na_stronie():
@@ -178,16 +235,7 @@ def test_skrypt_ustawia_atrybuty_na_stronie():
     assert 'setAttribute("data-theme", motyw)' in tekst, "skrypt nie ustawia data-theme"
     assert 'setAttribute("data-bs-theme", motyw)' in tekst, "skrypt nie ustawia data-bs-theme"
     assert "innerHTML" not in tekst, "skrypt motywu nie potrzebuje innerHTML"
-
-
-def test_skrypt_reaguje_na_zmiane_ustawienia_systemu():
-    tekst = _zrodlo(SKRYPT_MOTYWU)
-
-    assert 'matchMedia("(prefers-color-scheme: dark)")' in tekst, (
-        "brak pytania o ustawienie systemu"
-    )
-    assert 'addEventListener("change"' in tekst, "skrypt nie słucha zmiany ustawienia systemu"
-    assert "SYSTEM_CIEMNY" in tekst, "brak obsługi trybu systemowego"
+    assert "eval" not in tekst, "skrypt motywu nie używa eval"
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +257,7 @@ def test_bez_javascriptu_zostaje_media_query():
 def test_przelacznik_znika_bez_javascriptu():
     css = _zrodlo(ARKUSZ_MOTYWU)
 
-    assert re.search(r"\.bez-js\s+\.motyw-przelacznik\s*\{[^}]*display:\s*none", css), (
+    assert re.search(r"\.bez-js\s+\.przelacznik-motywu-pole\s*\{[^}]*display:\s*none", css), (
         "motyw.css nie ukrywa przełącznika bez JavaScriptu"
     )
     assert 'classList.remove("bez-js")' in _zrodlo(SZABLON_BAZY), (
@@ -248,9 +296,36 @@ def test_wybrany_motyw_ma_te_sama_palete_co_app_css():
         assert jasne_motyw.get(nazwa) == jasne_app[nazwa], f"{nazwa} różni się od app.css"
 
 
-def test_przyciski_motywu_maja_cel_dotyku():
-    blok = _blok(_zrodlo(ARKUSZ_MOTYWU), r"\.motyw-przycisk\b")
+# ---------------------------------------------------------------------------
+# Wygląd suwaka
+# ---------------------------------------------------------------------------
 
-    assert blok, "motyw.css nie ma reguły .motyw-przycisk"
-    assert "min-height: var(--min-dotyk)" in blok, "przycisk niższy niż cel dotyku 44px"
-    assert "min-width: var(--min-dotyk)" in blok, "przycisk węższy niż cel dotyku 44px"
+
+def test_suwak_motywu_ma_cel_dotyku():
+    blok = _blok(_zrodlo(ARKUSZ_MOTYWU), r'\.przelacznik-motywu\[type="checkbox"\]')
+
+    assert blok, "motyw.css nie ma reguły .przelacznik-motywu"
+    assert "min-height: var(--min-dotyk)" in blok, "suwak niższy niż cel dotyku 44px"
+    assert "background-color: var(--tlo-panel-2)" in blok, "tor suwaka nie bierze tokenu motywu"
+
+
+def test_suwak_pokazuje_stan_takze_bez_koloru():
+    """Stan niesie pozycja gałki, nie sam kolor (zasada dostępności 5)."""
+    css = _zrodlo(ARKUSZ_MOTYWU)
+    zaznaczony = _blok(css, r'\.przelacznik-motywu\[type="checkbox"\]:checked')
+    galka = _blok(css, r'\.przelacznik-motywu\[type="checkbox"\]:checked::before')
+
+    assert zaznaczony, "brak reguły stanu zaznaczonego suwaka"
+    assert "background-color: var(--akcent)" in zaznaczony, "zaznaczony tor poza paletą motywu"
+    assert "left: calc(100%" in galka, "gałka nie przechodzi na drugą stronę po włączeniu"
+    assert "background-color: var(--akcent-tekst)" in galka, "gałka poza paletą motywu"
+
+
+def test_suwak_ma_obwodke_fokusu():
+    css = _zrodlo(ARKUSZ_MOTYWU)
+
+    assert re.search(
+        r'\.przelacznik-motywu\[type="checkbox"\]:focus-visible\s*\{'
+        r"[^}]*outline:\s*var\(--ramka-focus\)\s+solid\s+var\(--akcent\)",
+        css,
+    ), "suwak bez widocznej obwódki fokusu z tokenów motywu"

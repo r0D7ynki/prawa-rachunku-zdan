@@ -1,19 +1,22 @@
 /**
- * Przełącznik motywu: „Auto” (jak w systemie), „Jasny” i „Ciemny” (karta PRZ-138).
+ * Przełącznik motywu: jeden suwak jasny/ciemny (karta PRZ-155).
  *
  * Atrybuty `data-theme` i `data-bs-theme` na `<html>` ustawia już skrypt inline
  * w `<head>` (żeby strona nie mignęła jasnym tłem), więc ten moduł tylko:
  *
- *   * zaznacza wybrany przycisk (`aria-pressed`),
- *   * zapisuje wybór w `localStorage["motyw"]`, a dla „Auto” usuwa klucz,
- *   * przełącza motyw, gdy system zmieni `prefers-color-scheme`, a wyborem jest „Auto”.
+ *   * ustawia suwak tak, żeby pokazywał motyw, który właśnie działa,
+ *   * po przełączeniu zapisuje wybór w `localStorage["motyw"]` i zmienia atrybuty,
+ *   * dopóki nikt nic nie wybrał, idzie za `prefers-color-scheme`; po zapisanym
+ *     wyborze system przestaje zmieniać motyw.
  *
- * Warstwą bez JavaScriptu zajmuje się `@media (prefers-color-scheme: dark)`
- * w `app.css` — wtedy przełącznik jest ukryty klasą `bez-js` na `<html>`.
+ * Opcji „Auto” nie ma — brak klucza w localStorage znaczy „jak w systemie”, a każde
+ * przełączenie zapisuje `"light"` albo `"dark"`. Warstwą bez JavaScriptu zajmuje się
+ * `@media (prefers-color-scheme: dark)` w `app.css`; tam suwak jest ukryty klasą
+ * `bez-js` na `<html>`.
  */
 
 const KLUCZ = "motyw";
-const PRZYCISKI = document.querySelectorAll("[data-motyw]");
+const SUWAK = document.querySelector(".przelacznik-motywu");
 const SYSTEM_CIEMNY = window.matchMedia("(prefers-color-scheme: dark)");
 
 /** Zwraca zapisany wybór: `"light"`, `"dark"` albo `null`, gdy motyw idzie za systemem. */
@@ -27,46 +30,41 @@ function zapisanyWybor() {
   }
 }
 
-/** Zapisuje wybór użytkownika; „Auto” (null) usuwa klucz i wraca do ustawienia systemu. */
-function zapiszWybor(wybor) {
-  try {
-    if (wybor === null) {
-      localStorage.removeItem(KLUCZ);
-    } else {
-      localStorage.setItem(KLUCZ, wybor);
-    }
-  } catch (blad) {
-    // Jak wyżej: brak zapisu nie może zepsuć samego przełączania.
-  }
+/** Motyw, który podpowiada system — używany, gdy nikt nic nie wybrał. */
+function motywSystemu() {
+  return SYSTEM_CIEMNY.matches ? "dark" : "light";
 }
 
 let wybor = zapisanyWybor();
 
-/** Ustawia motyw na `<html>` i zaznacza odpowiedni przycisk. */
+/** Ustawia motyw na `<html>` i przestawia suwak na ten motyw. */
 function zastosujMotyw() {
-  const motyw = wybor ?? (SYSTEM_CIEMNY.matches ? "dark" : "light");
+  const motyw = wybor ?? motywSystemu();
   document.documentElement.setAttribute("data-theme", motyw);
   document.documentElement.setAttribute("data-bs-theme", motyw);
 
-  for (const przycisk of PRZYCISKI) {
-    const wybrany = przycisk.dataset.motyw === (wybor ?? "auto");
-    przycisk.setAttribute("aria-pressed", wybrany ? "true" : "false");
+  if (SUWAK) {
+    SUWAK.checked = motyw === "dark";
   }
 }
 
-// Motyw stosujemy od razu przy wczytaniu modułu: skrypt jest odroczony, więc przyciski
-// już istnieją, a skrypt inline w `<head>` zdążył ustawić atrybuty.
+// Motyw stosujemy od razu przy wczytaniu modułu: skrypt jest odroczony, więc suwak już
+// istnieje, a skrypt inline w `<head>` zdążył ustawić atrybuty.
 zastosujMotyw();
 
-for (const przycisk of PRZYCISKI) {
-  przycisk.addEventListener("click", () => {
-    const wartosc = przycisk.dataset.motyw;
-    wybor = wartosc === "auto" ? null : wartosc;
-    zapiszWybor(wybor);
+if (SUWAK) {
+  SUWAK.addEventListener("change", () => {
+    wybor = SUWAK.checked ? "dark" : "light";
+    try {
+      localStorage.setItem(KLUCZ, wybor);
+    } catch (blad) {
+      // Brak zapisu nie może zepsuć samego przełączania.
+    }
     zastosujMotyw();
   });
 }
 
+// Zmiana ustawienia systemu działa tylko dopóki użytkownik niczego nie wybrał.
 SYSTEM_CIEMNY.addEventListener("change", () => {
   if (wybor === null) {
     zastosujMotyw();
