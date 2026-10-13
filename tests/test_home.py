@@ -65,10 +65,14 @@ WZORZEC_TABELI_SYMBOLI = re.compile(
 
 WZORZEC_WIERSZA = re.compile(r"<tr>")
 
+#: Atrybuty na ``<dd>`` (np. ``class``) nie mogą gubić hasła — stąd ``[^>]*``.
 WZORZEC_HASLA = re.compile(
-    r'<dt id="(?P<kotwica>[^"]+)"[^>]*>.*?</dt>\s*<dd>(?P<tresc>.*?)</dd>',
+    r'<dt id="(?P<kotwica>[^"]+)"[^>]*>.*?</dt>\s*<dd[^>]*>(?P<tresc>.*?)</dd>',
     re.DOTALL,
 )
+
+#: Zapis skrótowy w słowniczku: cyfra i jej znaczenie w jednym zdaniu.
+WZORZEC_ZAPISU_WARTOSCI = re.compile(r"\b(?P<cyfra>[01]) to (?P<znaczenie>PRAWDA|FAŁSZ)\b")
 
 
 @pytest.fixture(scope="module")
@@ -111,6 +115,12 @@ def _tresc_hasla(html: str, kotwica: str) -> str:
         if dopasowanie["kotwica"] == kotwica:
             return dopasowanie["tresc"]
     raise AssertionError(f"brak hasła o kotwicy {kotwica}")
+
+
+def _tekst_hasla(html: str, kotwica: str) -> str:
+    """Zwraca treść hasła jako tekst bez znaczników, z pojedynczymi odstępami."""
+    tresc = _tresc_hasla(html, kotwica)
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", tresc)).strip()
 
 
 @pytest.mark.parametrize("adres", STRONY)
@@ -292,11 +302,16 @@ def test_jak_czytac_odsyla_inne_ksiazki_do_notacji_popularnej(klient):
 
 def test_slowniczek_tabela_prawdy_uzywa_wartosci_1_i_0(klient):
     html = klient.get("/slowniczek").get_data(as_text=True)
-    tresc = _tresc_hasla(html, "tabela-prawdy")
-    assert "1" in tresc, "hasło „tabela prawdy” nie pokazuje wartości 1"
-    assert "0" in tresc, "hasło „tabela prawdy” nie pokazuje wartości 0"
-    assert "PRAWDA" in tresc
-    assert "FAŁSZ" in tresc
+    tresc = _tekst_hasla(html, "tabela-prawdy")
+
+    zapisy = {
+        dopasowanie["cyfra"]: dopasowanie["znaczenie"]
+        for dopasowanie in WZORZEC_ZAPISU_WARTOSCI.finditer(tresc)
+    }
+    assert zapisy == {"1": "PRAWDA", "0": "FAŁSZ"}, (
+        f"hasło „tabela prawdy” łączy cyfry ze znaczeniem tak: {zapisy}, "
+        f"oczekiwano 1 → PRAWDA i 0 → FAŁSZ; treść hasła: {tresc!r}"
+    )
 
 
 # --- słowniczek --------------------------------------------------------------
