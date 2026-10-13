@@ -11,6 +11,7 @@ import importlib
 import inspect
 from dataclasses import replace
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -81,6 +82,15 @@ def test_rejestr_nie_zna_nazw_plikow_tresci():
     zrodlo = inspect.getsource(laws)
     for nazwa in _pliki_tresci():
         assert nazwa not in zrodlo, f"laws.py wspomina plik treści '{nazwa}' po nazwie"
+
+
+def test_kolejnosc_true_to_brak_kolejnosci(monkeypatch: pytest.MonkeyPatch):
+    """``True`` jest liczbą, ale nie znaczy "1" — moduł idzie na koniec kolejności."""
+    monkeypatch.setattr(podstawowe, "kolejnosc", True)
+    assert laws._module_order(podstawowe) == laws.DEFAULT_ORDER
+
+    porzadek = laws._content_modules()
+    assert porzadek[-2] is podstawowe, "moduł z kolejnosc = True nie może udawać modułu z numerem 1"
 
 
 # ---------------------------------------------------------------------------
@@ -185,6 +195,34 @@ def test_validate_zglasza_zbyt_malo_krokow(monkeypatch: pytest.MonkeyPatch):
     problemy = validate()
     assert problemy
     assert any("kroki" in problem for problem in problemy)
+
+
+def test_validate_zglasza_dwa_kroki(monkeypatch: pytest.MonkeyPatch):
+    """Kryterium treści mówi o 3–6 krokach, więc dwa kroki to jeszcze za mało."""
+    _podmien_pierwsze_prawo(monkeypatch, kroki=podstawowe.LAWS[0].kroki[:2])
+    problemy = validate()
+    assert problemy
+    assert any("kroki" in problem for problem in problemy)
+
+
+def test_validate_zglasza_modul_tresci_bez_laws(monkeypatch: pytest.MonkeyPatch):
+    """Moduł bez ``LAWS`` cicho gubi swoje prawa — ``validate`` ma go zgłosić."""
+    bez_laws = ModuleType(f"{laws.DATA_PACKAGE}.bez_laws")
+    znalezione = laws._content_modules()
+    monkeypatch.setattr(laws, "_content_modules", lambda: [*znalezione, bez_laws])
+
+    problemy = validate()
+
+    assert problemy
+    assert any("LAWS" in problem for problem in problemy)
+
+
+def test_validate_zglasza_pusta_liste_laws(monkeypatch: pytest.MonkeyPatch):
+    """Pusta lista ``LAWS`` to ten sam problem co brak atrybutu."""
+    monkeypatch.setattr(podstawowe, "LAWS", [])
+    problemy = validate()
+    assert problemy
+    assert any("LAWS" in problem for problem in problemy)
 
 
 # ---------------------------------------------------------------------------

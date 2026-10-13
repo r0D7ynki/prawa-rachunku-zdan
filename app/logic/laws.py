@@ -72,9 +72,15 @@ _REQUIRED_QUIZ_TEXT = ("pytanie", "podpowiedz", "wyjasnienie")
 
 
 def _module_order(module: ModuleType) -> int:
-    """Zwraca ``kolejnosc`` modułu, a gdy jej nie ma albo jest błędna — 100."""
+    """Zwraca ``kolejnosc`` modułu, a gdy jej nie ma albo jest błędna — 100.
+
+    ``True`` i ``False`` też są liczbami (``isinstance(True, int)`` to prawda),
+    ale nie znaczą "pierwszy" i "zerowy" — traktujemy je jak brak kolejności.
+    """
     order = getattr(module, "kolejnosc", DEFAULT_ORDER)
-    return order if isinstance(order, int) else DEFAULT_ORDER
+    if isinstance(order, int) and not isinstance(order, bool):
+        return order
+    return DEFAULT_ORDER
 
 
 def _content_modules() -> list[ModuleType]:
@@ -95,12 +101,22 @@ def _content_modules() -> list[ModuleType]:
     return modules
 
 
+def _laws_from(modules: list[ModuleType]) -> list[Law]:
+    """Zbiera prawa z modułów treści, pomijając moduły bez poprawnej listy ``LAWS``.
+
+    Pominięcie jest ciche — brak ``LAWS`` wyłapuje dopiero :func:`validate`.
+    """
+    laws: list[Law] = []
+    for module in modules:
+        collected = getattr(module, "LAWS", ())
+        if isinstance(collected, (list, tuple)):
+            laws.extend(collected)
+    return laws
+
+
 def all_laws() -> list[Law]:
     """Zwraca wszystkie prawa w kolejności nauki."""
-    laws: list[Law] = []
-    for module in _content_modules():
-        laws.extend(getattr(module, "LAWS", ()))
-    return laws
+    return _laws_from(_content_modules())
 
 
 def get(slug: str) -> Law | None:
@@ -132,14 +148,17 @@ def categories() -> list[str]:
 def validate() -> list[str]:
     """Zwraca listę problemów w treści praw; pusta lista znaczy treść poprawną.
 
-    Sprawdzamy tylko to, co da się ocenić bez znajomości logiki: obecność pól,
-    wzorzec ``slug``, znany rysunek, liczbę kroków i indeks poprawnej odpowiedzi.
+    Sprawdzamy tylko to, co da się ocenić bez znajomości logiki: niepustą listę
+    ``LAWS`` w każdym module treści, obecność pól, wzorzec ``slug``, znany rysunek,
+    liczbę kroków (od 3 do 6) i indeks poprawnej odpowiedzi.
     Listy dozwolonych kategorii **nie** ma — nowa kategoria to decyzja autora
     treści, a nie błąd rejestru.
     """
     problems: list[str] = []
+    modules = _content_modules()
+    problems.extend(_validate_modules(modules))
     seen_slugs: set[str] = set()
-    for law in all_laws():
+    for law in _laws_from(modules):
         if not isinstance(law, Law):
             problems.append(f"treść prawa nie jest obiektem Law: {law!r}")
             continue
@@ -149,6 +168,21 @@ def validate() -> list[str]:
         seen_slugs.add(law.slug)
         problems.extend(_validate_steps(law))
         problems.extend(_validate_quiz(law))
+    return problems
+
+
+def _validate_modules(modules: list[ModuleType]) -> list[str]:
+    """Sprawdza, że każdy moduł treści wystawia niepustą listę ``LAWS``.
+
+    Moduł bez ``LAWS`` nie wywala strony — jego prawa po prostu znikają.
+    Dlatego taki moduł zgłaszamy tutaj, a nie tylko w teście.
+    """
+    problems: list[str] = []
+    for module in modules:
+        name = module.__name__.rpartition(".")[2]
+        exposed = getattr(module, "LAWS", None)
+        if not isinstance(exposed, list) or not exposed:
+            problems.append(f"moduł treści '{name}' musi wystawiać niepustą listę LAWS")
     return problems
 
 
@@ -173,8 +207,8 @@ def _validate_steps(law: Law) -> list[str]:
     problems: list[str] = []
     if not isinstance(law.kroki, (list, tuple)):
         return [f"{law.slug}: pole 'kroki' musi być listą"]
-    if len(law.kroki) < 2:
-        problems.append(f"{law.slug}: 'kroki' ma {len(law.kroki)} kroki, a musi mieć co najmniej 2")
+    if len(law.kroki) < 3:
+        problems.append(f"{law.slug}: 'kroki' ma {len(law.kroki)} kroki, a musi mieć od 3 do 6")
     for number, step in enumerate(law.kroki, start=1):
         if not isinstance(step, Step):
             problems.append(f"{law.slug}: krok {number} nie jest obiektem Step")
