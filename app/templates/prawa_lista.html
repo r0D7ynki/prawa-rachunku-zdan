@@ -16,18 +16,22 @@
     {% for kategoria, prawa in grupy.items() %}
       <section class="sekcja" aria-labelledby="kategoria-{{ loop.index }}">
         <h2 id="kategoria-{{ loop.index }}">{{ kategoria }}</h2>
-        <ul class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 lista-praw">
+        {# Pionowa kolumna kafelków, bez siatki Bootstrapa: szerokość kafelka bierze
+           się z jego treści, a wzór wyznacza ją swoim `white-space: nowrap`
+           (arkusz `app.css`, klasy `.lista-praw` i `.formula-blok`). #}
+        <div class="lista-praw">
           {% for prawo in prawa %}
-            <li class="col">
-              <a class="karta-prawa" href="/prawa/{{ prawo.slug }}">
-                <span class="karta-prawa-nazwa">{{ prawo.nazwa }}</span>
-                {# `formula-blok`: długi wzór zostaje w jednej linii i przewija się wewnątrz
-                   kafelka, zamiast go rozepchnąć (karta PRZ-140). #}
-                <span class="formula formula-blok">{{ formula_to_html(prawo.formula) |safe }}</span>
-              </a>
-            </li>
+            <article class="karta-prawa">
+              <span class="karta-prawa-nazwa">{{ prawo.nazwa }}</span>
+              {# `formula-blok`: długi wzór zostaje w jednej linii i przewija się wewnątrz
+                 kafelka, zamiast go rozepchnąć (karta PRZ-140). #}
+              <span class="formula formula-blok">{{ formula_to_html(prawo.formula) |safe }}</span>
+              <span class="karta-prawa-kategoria">{{ prawo.kategoria }}</span>
+              <a class="karta-prawa-opis" href="/prawa/{{ prawo.slug }}"
+                 aria-label="Opis prawa: {{ prawo.nazwa }}">opis</a>
+            </article>
           {% endfor %}
-        </ul>
+        </div>
       </section>
     {% endfor %}
   {% else %}

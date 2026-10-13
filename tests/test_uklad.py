@@ -1,14 +1,16 @@
-"""Układ: wzory i tabele nie wychodzą poza kafelki (karta PRZ-140).
+"""Układ: wzory i tabele nie wychodzą poza kafelki (karty PRZ-140 i PRZ-156).
 
 Projekt nie ma przeglądarki w bramce ani runnera JS (``AGENTS.md``, zasada 6),
 więc o układ pytamy statycznie: czytamy arkusze CSS oraz HTML wyrenderowanych stron.
-Sprawdzamy to, o co prosi karta:
+Sprawdzamy to, o co proszą karty:
 
 * ``.formula`` nie zabrania zawijania (żadna jej reguła nie ma ``white-space: nowrap``),
 * ``.formula`` łamie długi wzór (``overflow-wrap: anywhere``),
 * istnieje klasa ``.formula-blok`` — wzór, który lepiej przewinąć niż łamać,
 * ``prawa_lista.html`` i ``prawo.html`` używają tej klasy przy wzorach,
-* na ``/prawa`` każdy wzór stoi w elemencie z klasą ``formula``.
+* na ``/prawa`` każdy wzór stoi w elemencie z klasą ``formula``,
+* lista praw to pionowa kolumna ``article.karta-prawa`` o szerokości swojej treści,
+  bez klas siatki Bootstrapa (karta PRZ-156).
 
 Zapytania ``@media`` czytamy spłaszczone: reguła z ich środka trafia na listę z własnym
 selektorem. Dzięki temu sprawdzamy **wszystkie** reguły ``.formula``, a nie tylko pierwszą.
@@ -205,3 +207,241 @@ def test_kazdy_wzor_na_liscie_praw_jest_w_elemencie_formula(lista_praw):
 
     oczekiwane = {formula.to_text(formula.parse(prawo.formula)) for prawo in prawa}
     assert set(zbieracz.wzory) == oczekiwane, "wzór w kafelku nie zgadza się z treścią prawa"
+
+
+# ---------------------------------------------------------------------------
+# Lista praw: pionowa kolumna kafelków o szerokości treści (karta PRZ-156)
+# ---------------------------------------------------------------------------
+
+SZABLON_LISTY = KATALOG_SZABLONOW / "prawa_lista.html"
+
+#: Klasy siatki Bootstrapa, które z listy praw miały zniknąć (karta PRZ-156).
+KLASY_SIATKI = ("row", "col")
+
+
+def _klasy_siatki(tresc: str) -> list[str]:
+    """Nazwy klas siatki Bootstrapa znalezione w szablonie (posortowane)."""
+    znalezione = {
+        klasa
+        for zbior in _klasy_html(tresc)
+        for klasa in zbior
+        if klasa.startswith("row") or klasa == "col" or klasa.startswith("col-")
+    }
+    return sorted(znalezione)
+
+
+class ZbieraczKafelkow(HTMLParser):
+    """Zbiera kafelki ``article.karta-prawa`` i nagłówki ich sekcji ze strony ``/prawa``.
+
+    Dla każdego kafelka notujemy nazwę, wzór, kategorię i adres odnośnika „opis”,
+    a także numer sekcji, w której kafelek stoi (``naglowki[numer]`` to jej ``<h2>``).
+
+    Strukturę czytamy ``html.parser``-em, nie wyrażeniem regularnym: wzór ma
+    zagnieżdżone ``<span>``, więc dopasowanie po napisie skończyłoby się za wcześnie
+    (ten sam powód, co w ``ZbieraczFormul``).
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.kafelki: list[dict[str, object]] = []
+        self.naglowki: list[str] = []
+        self._stos: list[tuple[str, str | None]] = []
+        self._bufor: dict[str, list[str]] = {}
+        self._kafelek: dict[str, object] | None = None
+        self._glebokosc = 0
+        self._naglowek: list[str] | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in ZNACZNIKI_PUSTE:
+            return
+        atrybuty = dict(attrs)
+        klasy = (atrybuty.get("class") or "").split()
+
+        # Nagłówki kategorii poznajemy po `id` (szablon listy: `kategoria-1`, `kategoria-2`, …);
+        # inne `<h2>` (np. spis lekcji w `base.html`) nie opisują listy praw.
+        if tag == "h2" and self._kafelek is None:
+            self._naglowek = [] if (atrybuty.get("id") or "").startswith("kategoria-") else None
+            return
+
+        if tag == "article" and "karta-prawa" in klasy and self._kafelek is None:
+            self._kafelek = {
+                "nazwa": "",
+                "wzor": "",
+                "kategoria": "",
+                "href": None,
+                "sekcja": len(self.naglowki) - 1,
+            }
+            self._bufor = {rola: [] for rola in ("nazwa", "wzor", "kategoria")}
+            self._glebokosc = 0
+            self._stos = []
+            return
+
+        if self._kafelek is None:
+            return
+
+        self._glebokosc += 1
+        rola = None
+        if "karta-prawa-nazwa" in klasy:
+            rola = "nazwa"
+        elif "formula-blok" in klasy:
+            rola = "wzor"
+        elif "karta-prawa-kategoria" in klasy:
+            rola = "kategoria"
+        if tag == "a":
+            self._kafelek["href"] = atrybuty.get("href")
+        self._stos.append((tag, rola))
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Znacznik samozamykający (``<br />``) nie otwiera elementu."""
+        return
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "h2" and self._naglowek is not None and self._kafelek is None:
+            self.naglowki.append(" ".join("".join(self._naglowek).split()))
+            self._naglowek = None
+            return
+
+        if self._kafelek is None:
+            return
+
+        if tag == "article" and self._glebokosc == 0:
+            for rola, czesci in self._bufor.items():
+                self._kafelek[rola] = " ".join("".join(czesci).split())
+            self.kafelki.append(self._kafelek)
+            self._kafelek = None
+            return
+
+        if self._stos:
+            self._stos.pop()
+            self._glebokosc -= 1
+
+    def handle_data(self, dane: str) -> None:
+        if self._naglowek is not None and self._kafelek is None:
+            self._naglowek.append(dane)
+            return
+        if self._kafelek is None:
+            return
+        rola = next((rola for _, rola in reversed(self._stos) if rola), None)
+        if rola is not None:
+            self._bufor[rola].append(dane)
+
+
+@pytest.fixture(scope="module")
+def kafelki(lista_praw: str) -> ZbieraczKafelkow:
+    """Kafelki praw odczytane ze strony ``/prawa``."""
+    zbieracz = ZbieraczKafelkow()
+    zbieracz.feed(lista_praw)
+    return zbieracz
+
+
+# --- arkusz: kolumna kafelków o szerokości treści ---------------------------
+
+
+def test_lista_praw_nie_uzywa_siatki_bootstrapa():
+    """Kryterium karty: ``prawa_lista.html`` bez klas ``row`` i ``col-*``."""
+    klasy = _klasy_siatki(SZABLON_LISTY.read_text(encoding="utf-8"))
+
+    assert not klasy, f"prawa_lista.html nadal używa siatki Bootstrapa: {klasy}"
+
+
+def _tresci_wyboru(css: str, klasa: str, *bez: str) -> list[str]:
+    """Treści reguł dotyczących klasy ``klasa``, z pominięciem tych z ``bez`` w selektorze."""
+    return [
+        tresc
+        for selektor, tresc in _reguly(css)
+        if _selektor_klasy(selektor, klasa) and not any(slowo in selektor for slowo in bez)
+    ]
+
+
+def test_lista_praw_jest_kolumna():
+    """Kryterium karty: ``.lista-praw`` układa kafelki jeden pod drugim."""
+    tresci = _tresci_wyboru(_arkusz("app.css"), "lista-praw", "karta-prawa")
+
+    assert tresci, "app.css nie ma reguły .lista-praw"
+    calosc = " ".join(tresci)
+    assert "display: flex" in calosc, ".lista-praw nie jest kontenerem flexboxa"
+    assert "flex-direction: column" in calosc, ".lista-praw nie układa kafelków w pionie"
+    assert "gap: 0.75rem" in calosc, ".lista-praw nie rozsuwa kafelków"
+    assert "align-items: flex-start" in calosc, (
+        ".lista-praw rozciąga kafelki na całą szerokość zamiast dać im szerokość treści"
+    )
+
+
+def test_kafelek_stoi_w_jednej_linii():
+    """Karta: w kafelku nazwa, wzór, kategoria i „opis” idą obok siebie."""
+    tresci = _tresci_wyboru(_arkusz("app.css"), "lista-praw")
+
+    assert any("flex-direction: row" in tresc for tresc in tresci), (
+        "kafelek listy praw nie układa części w jednej linii"
+    )
+
+
+def test_waski_ekran_uklada_kafelek_jeden_pod_drugim():
+    """Karta: w wąskim oknie części kafelka schodzą w dół, a wzór dostaje całą szerokość."""
+    wzorzec_bloku = r"@media[^{]*max-width:\s*576px\s*\)[^{]*\{(?P<tresc>.*?)\n\}"
+    wzorzec_reguly = r"div\.lista-praw\s+\.karta-prawa\s*\{[^}]*flex-direction:\s*column"
+    blok = re.search(wzorzec_bloku, _arkusz("app.css"), re.DOTALL)
+
+    assert blok, "app.css nie ma bloku @media (max-width: 576px)"
+    assert re.search(wzorzec_reguly, blok["tresc"]), (
+        "w wąskim oknie kafelek listy praw nadal ściska wzór w jednej linii"
+    )
+
+
+def test_karta_prawa_ma_szerokosc_swojej_tresci():
+    """Kryterium karty: ``.karta-prawa`` ma ``width: auto`` i ``max-width: 100%``."""
+    tresci = _tresci_regul(_arkusz("app.css"), "karta-prawa")
+
+    assert any("width: auto" in tresc for tresc in tresci), ".karta-prawa bez width: auto"
+    assert any("max-width: 100%" in tresc for tresc in tresci), ".karta-prawa bez max-width: 100%"
+
+
+def test_wzor_w_kafelku_sie_nie_zawija():
+    """Kryterium karty: wzór w kafelku jest w jednej linii i przewija się w środku."""
+    tresci = _tresci_regul(_arkusz("app.css"), "formula-blok")
+
+    assert tresci, "app.css nie ma reguły .formula-blok"
+    calosc = " ".join(tresci)
+    assert "white-space: nowrap" in calosc, "wzór w kafelku może się zawinąć"
+    assert "overflow-x: auto" in calosc, "wzór szerszy niż ekran wyjdzie z kafelka"
+    assert "max-width: 100%" in calosc, "wzór może rozepchnąć kafelek"
+
+
+# --- strona: kafelki praw ----------------------------------------------------
+
+
+def test_kazde_prawo_ma_kafelek(kafelki: ZbieraczKafelkow):
+    """Kryterium karty: każdy kafelek to ``article.karta-prawa``, po jednym na prawo."""
+    prawa = all_laws()
+
+    assert len(kafelki.kafelki) == len(prawa), (
+        f"na /prawa jest {len(kafelki.kafelki)} kafelków, a praw jest {len(prawa)}"
+    )
+    assert {kafelek["href"] for kafelek in kafelki.kafelki} == {
+        f"/prawa/{prawo.slug}" for prawo in prawa
+    }, "odnośniki w kafelkach nie prowadzą do wszystkich praw"
+
+
+def test_kafelek_pokazuje_nazwe_wzor_kategorie_i_odnosnik(kafelki: ZbieraczKafelkow):
+    """Kryterium karty: w kafelku są tytuł, wzór, kategoria i odnośnik „opis”."""
+    assert kafelki.kafelki, "strona /prawa nie ma kafelków"
+
+    for kafelek in kafelki.kafelki:
+        assert kafelek["nazwa"], f"kafelek {kafelek['href']} nie pokazuje nazwy prawa"
+        assert kafelek["wzor"], f"kafelek {kafelek['href']} nie pokazuje wzoru"
+        assert kafelek["kategoria"], f"kafelek {kafelek['href']} nie pokazuje kategorii"
+
+
+def test_naglowek_kategorii_stoi_nad_swoimi_kafelkami(kafelki: ZbieraczKafelkow):
+    """Kryterium karty: nagłówki kategorii zostają nad swoją częścią listy."""
+    assert kafelki.naglowki, "strona /prawa nie ma nagłówków kategorii"
+    assert {kafelek["sekcja"] for kafelek in kafelki.kafelki} == set(
+        range(len(kafelki.naglowki))
+    ), "jakaś kategoria nie ma kafelków albo kafelek stoi poza sekcją"
+
+    for kafelek in kafelki.kafelki:
+        naglowek = kafelki.naglowki[int(kafelek["sekcja"])]
+        assert kafelek["kategoria"] == naglowek, (
+            f"kafelek {kafelek['href']} stoi pod nagłówkiem {naglowek!r}, "
+            f"a jego kategoria to {kafelek['kategoria']!r}"
+        )
