@@ -131,6 +131,8 @@ main li a {
 
 /* --- wzory ------------------------------------------------------------ */
 
+/* Wzór zawija się w obrębie karty (karta PRZ-140). Wcześniej `white-space: nowrap`
+   kazał mu zostać w jednej linii, więc długi wzór wychodził z kafelka. */
 .formula {
   font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
   font-size: 1.3rem;
@@ -138,7 +140,25 @@ main li a {
   border: 1px solid var(--kolor-ramka);
   border-radius: 0.4rem;
   padding: 0.15em 0.4em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Wzór, który lepiej przewinąć niż łamać (kafelki `/prawa`, wzór główny strony prawa):
+   trzyma jedną linię, ale nie wychodzi z karty — nadmiar przewija się w poziomie.
+   `padding-bottom` zostawia miejsce na pasek przewijania, żeby nie zasłaniał treści. */
+.formula-blok {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
   white-space: nowrap;
+  padding-bottom: 0.25rem;
+}
+
+/* Wzór główny strony prawa (`prawo.html`): na telefonie mniejszy, więc mieści się
+   bez przewijania, a na szerokim ekranie zostaje duży i czytelny. */
+#wzor-prawa {
+  font-size: clamp(1.1rem, 3.5vw, 1.6rem);
 }
 
 /* Spójniki we wzorach. `formula.to_html` nadaje każdemu operatorowi własną, stałą klasę
@@ -226,7 +246,12 @@ main li a {
   border-bottom: 1px solid var(--kolor-ramka);
 }
 
+/* Karta kurczy się poniżej swojej treści (`min-width: 0`) i ucina to, co i tak się
+   nie mieści — długi wzór przewija się wewnątrz, zamiast wypychać kafel poza ekran
+   (karta PRZ-140). To samo dostają karty pozostałych stron. */
 .karta-prawa {
+  min-width: 0;
+  overflow: hidden;
   background: var(--kolor-panel);
   border: 1px solid var(--kolor-ramka);
   border-radius: var(--promien);
@@ -238,6 +263,14 @@ main li a {
   gap: 0.25rem;
   color: inherit;
   text-decoration: none;
+}
+
+/* Dziecko siatki albo flexboxa nie kurczy się samo z siebie poniżej swojej treści —
+   dlatego szeroka treść (długi wzór, tabela) rozciągała kolumnę i całą stronę.
+   `min-width: 0` pozwala dziecku zmaleć, a nadmiarowi zawinąć się albo przewinąć. */
+.row > [class*="col"],
+.d-flex > * {
+  min-width: 0;
 }
 
 .karta-prawa:hover,
@@ -326,6 +359,18 @@ main li a {
   white-space: nowrap;
 }
 
+/* Tabela stojąca w sekcji albo karcie bez opakowania `.table-responsive` przewija się
+   sama, zamiast wychodzić poza kafel (karta PRZ-140). Opakowana tabela nie jest
+   bezpośrednim dzieckiem, więc ta reguła jej nie dotyczy — tam przewija opakowanie. */
+.sekcja > table,
+.karta-prawa table,
+.karta-reguly table,
+.karta-rodzaju table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .tablica-prawdy td,
 .tablica-prawdy th {
   text-align: left;
@@ -401,10 +446,9 @@ main li a {
     margin-bottom: 1.5rem;
   }
 
-  /* Wzór może się złamać — inaczej długi wzór wypycha tekst za ekran. */
+  /* Na telefonie wzór jest mniejszy, więc mniej się łamie i mniej przewija. */
   .formula {
     font-size: 1.15rem;
-    white-space: normal;
   }
 
   /* Wąska tabela: mniejsze komórki mieszczą więcej kolumn. */
