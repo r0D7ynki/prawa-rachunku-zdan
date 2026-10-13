@@ -47,6 +47,12 @@ uv run flask --app app run --debug
 echo $?                    # 0 = zielona
 ```
 
+## CI
+
+[![Bramka jakości](https://github.com/r0D7ynki/prawa-rachunku-zdan/actions/workflows/gate.yml/badge.svg)](https://github.com/r0D7ynki/prawa-rachunku-zdan/actions/workflows/gate.yml)
+
+Każdy push na `main` lub `swarm/integration` i każdy pull request uruchamiają na GitHubie tę samą bramkę.
+
 ## Praca z agentami
 
 Projekt używa tablicy Kanban i roju **swarmboard**. Zasady pracy: `AGENTS.md`.
