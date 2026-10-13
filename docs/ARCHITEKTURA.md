@@ -34,6 +34,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/logic/laws_data/dodatkowe.py` | idempotencja i reguła podstawiania | PRZ-024 |
 | `app/logic/simplify.py` | silnik przekształceń ze śladem kroków | PRZ-006 |
 | `app/logic/quiz.py` | generator pytań | PRZ-007 |
+| `app/logic/rules.py` | rejestr reguł wnioskowania (wykład 2) | PRZ-090 |
 | `app/lessons.py` | rejestr wykładów i lekcji (nawigacja) | PRZ-070 |
 | `app/blueprints/home.py` | `/`, `/slowniczek`, `/jak-czytac` | PRZ-008 |
 | `app/blueprints/api_formula.py` | `/api/formula/*`, `/api/equivalence` | PRZ-009 |
@@ -49,9 +50,12 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/blueprints/playground.py` | `/plac-zabaw` | PRZ-014 |
 | `app/blueprints/quiz.py` | `/quiz` | PRZ-015 |
 | `app/blueprints/spis_tresci.py` | `/spis-tresci` | PRZ-069 |
+| `app/blueprints/reguly.py` | `/reguly` | PRZ-090 |
 | `app/templates/base.html` | szkielet strony, menu, okruszki, nawigacja lekcji, stopka | PRZ-008, PRZ-069 |
 | `app/templates/spis_tresci.html` | spis treści kursu (wykłady i lekcje) | PRZ-069 |
 | `app/static/css/nawigacja.css` | style menu, okruszków, spisu lekcji i kart sąsiadów | PRZ-069 |
+| `app/templates/reguly.html` | karty reguł wnioskowania | PRZ-090 |
+| `app/static/css/reguly.css` | style kart reguł | PRZ-090 |
 | `app/templates/partials/_truth_table.html` | komponent tablicy prawdy | PRZ-011 |
 | `app/templates/partials/_gates.html` | komponent bramek | PRZ-012 |
 | `app/templates/partials/_sets.html` | komponent diagramów zbiorów | PRZ-012 |
@@ -260,6 +264,63 @@ def check(prawo: str | None, seed: int, pytanie_id: str, odpowiedz: int) -> bool
 `generate` z tym samym `seed` daje ten sam zestaw. `check` generuje ponownie i porównuje
 odpowiedź — dzięki temu serwer nie wysyła poprawnej odpowiedzi do przeglądarki.
 
+## `app/logic/rules.py` — reguły wnioskowania
+
+Treść pochodzi z `docs/TRESC-WYKLAD2.md`, sekcja „2. Reguły wnioskowania”; ten plik jest dla
+niej źródłem prawdy (tak samo jak `laws.py` dla praw wykładu 1).
+
+```python
+@dataclass(frozen=True)
+class Rule:
+    kod: str                 # "RO", "OK", …
+    nazwa: str               # "Reguła odrywania"
+    pelna_nazwa: str         # "Modus Ponens" albo ""
+    typ: str                 # "pierwotna" | "dodatkowa"
+    przeslanki: list[str]    # ["Φ → Ψ", "Φ"]
+    wniosek: str             # "Ψ"
+    tautologia: str          # "((p → q) ∧ p) → q"
+    przyklad: str
+    opis: str
+    wnioski_dodatkowe: list[str] = []       # patrz niżej
+    tautologie_dodatkowe: list[str] = []    # patrz niżej
+
+PIERWOTNA = "pierwotna"
+DODATKOWA = "dodatkowa"
+
+def rules() -> list[Rule]        # kopie listy: pierwotne wg tabeli, potem dodatkowe
+def get(kod: str) -> Rule | None # kod bez wielkości liter i spacji (" ro " → RO)
+```
+
+**Dwa dodatkowe pola (decyzja karty PRZ-090).** Wykład podaje dwie reguły w dwóch wersjach:
+**OK** (`Φ ∧ Ψ ⊢ Φ` oraz `Φ ∧ Ψ ⊢ Ψ`, z osobną tautologią dla każdej wersji) i **OR**
+(`Φ ≡ Ψ ⊢ Φ → Ψ` oraz `Φ ≡ Ψ ⊢ Ψ → Φ`, z jedną wspólną tautologią). Żeby każde pole było
+pojedynczym wzorem przepisanym z tabeli, a nie sklejoną listą, drugą wersję trzymamy
+w `wnioski_dodatkowe` i `tautologie_dodatkowe`. U pozostałych ośmiu reguł oba pola są puste.
+
+**Notacja.** `tautologia` i `tautologie_dodatkowe` mają zwykłe zmienne (`p`, `q`) — parsują się
+przez `formula.parse` i przechodzą przez `formula.to_html`. Pola `przeslanki`, `wniosek`
+i `wnioski_dodatkowe` używają **metazmiennych** `Φ`, `Ψ`, `Θ` — to dowolne formuły, a nie
+zmienne zdaniowe, więc parser ich nie przyjmie. Rysuje je dopiero widok
+(`app/blueprints/reguly.py`), zamieniając metazmienne na litery przed parsowaniem i wracając
+do nich w drzewie (`formula.replace`). **Kod spoza `app/logic/` nie może zakładać, że te pola
+są formułami.**
+
+Kolejność kodów: `RO`, `OK`, `DK`, `OA`, `DA`, `DR`, `OR` (pierwotne), `DM1`, `DM2`, `KP`
+(dodatkowe) — jak dwie tabele wykładu.
+
+## `app/blueprints/reguly.py` — strona `/reguly`
+
+Lekcja „Reguły wnioskowania”: wyjaśnienie, czym jest reguła, sekcje „Reguły pierwotne”
+i „Reguły dodatkowe” i karta na każdą regułę. Karta pokazuje kod i nazwę, przesłanki nad
+kreską, wniosek pod kreską, tautologię, przykład z życia i opis. Kreska to `div.regula-kreska`
+(`aria-hidden`), malowany w `app/static/css/reguly.css` — nie znak `—`. Każda karta ma
+odnośnik „Sprawdź w placu zabaw” z tautologią reguły w parametrze `formula`
+(`/plac-zabaw?formula=…`), więc plac zabaw otwiera się z gotowym wzorem, także bez JavaScriptu.
+
+Sekcje powstają z pola `Rule.typ` — widok nie zna kodów reguł ani ich liczby. Metazmienne
+rysuje `metazmienne_to_html`, tautologie `formula_to_html`; oba oddają napis jako tekst
+(bez znaczników), gdy wzór się nie parsuje, żeby błąd w treści nie dawał strony 500.
+
 ## API
 
 Każdy obszar API to **osobny moduł** w `app/blueprints/` (nazwa blueprintu w nawiasie).
@@ -298,7 +359,7 @@ Przy pełnym zestawie pole jest puste. Dopisane po przeglądzie PRZ-015 (D27).
 Widoki HTML: `home.py` → `/`, `/slowniczek`, `/jak-czytac`; `laws.py` → `/prawa`,
 `/prawa/<slug>`; `playground.py` → `/plac-zabaw`; `quiz.py` → `/quiz`;
 `wstep.py` → `/wstep`; `formuly.py` → `/formuly`; `tautologie.py` → `/tautologie`;
-`przeksztalcanie.py` → `/przeksztalcanie`; `kpn.py` → `/kpn`.
+`przeksztalcanie.py` → `/przeksztalcanie`; `kpn.py` → `/kpn`; `reguly.py` → `/reguly`.
 
 Kolejność nauki na stronie (ścieżka kursu): `/wstep` → `/formuly` → `/tautologie` →
 `/przeksztalcanie` → `/kpn` → `/prawa` → `/plac-zabaw` → `/quiz`. Każda strona kursu kończy

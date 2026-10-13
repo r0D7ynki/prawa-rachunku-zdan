@@ -1,0 +1,124 @@
+/* Style strony /reguly (karta PRZ-090): karty reguł wnioskowania.
+   Właściciel: karta PRZ-090. Wspólne klasy (.formula, .sekcja, .naglowek-strony)
+   zostają w app.css.
+
+   Schemat reguły czyta się jak zapis z wykładu: przesłanki stoją nad kreską,
+   wniosek pod nią. Kreska jest osobnym elementem HTML malowanym tutaj — nigdy
+   znakiem „—”. Kolor nie jest jedynym nośnikiem informacji: każda część schematu
+   ma własną etykietę słowną („Przesłanki”, „Wniosek”). */
+
+.lista-regul {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+}
+
+.karta-reguly {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid var(--kolor-ramka);
+  border-radius: 1rem;
+}
+
+.regula-nazwa {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: baseline;
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+/* Kod reguły („RO”) — po nim rozpoznaje się regułę w wykładzie. */
+.regula-kod {
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.5rem;
+  background: var(--kolor-akcent-jasny);
+  color: var(--kolor-akcent);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.regula-pelna-nazwa {
+  color: #6b6880;
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+/* Schemat: przesłanki nad kreską, wniosek pod kreską. */
+.regula-schemat {
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--kolor-tlo);
+}
+
+.regula-etykieta {
+  margin: 0;
+  color: #6b6880;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.regula-przeslanki {
+  margin: 0.25rem 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.regula-przeslanki li {
+  max-width: none;
+}
+
+/* Kreska pod przesłankami. Grubość i kolor dają ten sam sygnał co etykiety. */
+.regula-kreska {
+  width: 60%;
+  margin: 0.5rem 0;
+  border-top: 2px solid var(--kolor-akcent);
+}
+
+.regula-wniosek {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+}
+
+/* Spójnik „oraz” w wersjach z dwoma wnioskami (OK, OR) — zwykłe słowo, nie wzór. */
+.regula-spojnik {
+  padding: 0 0.25rem;
+  color: #6b6880;
+  font-family: var(--bs-body-font-family, system-ui, sans-serif);
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.regula-szczegoly {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.regula-szczegoly dt {
+  margin-top: 0.5rem;
+  color: #6b6880;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.regula-szczegoly dd {
+  margin: 0.15rem 0 0;
+}
+
+.regula-tautologia {
+  color: var(--kolor-akcent);
+}
+
+.regula-odnosnik {
+  margin: auto 0 0;
+  padding-top: 0.5rem;
+}
