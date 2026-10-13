@@ -35,6 +35,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/logic/simplify.py` | silnik przekształceń ze śladem kroków | PRZ-006 |
 | `app/logic/quiz.py` | generator pytań | PRZ-007 |
 | `app/logic/rules.py` | rejestr reguł wnioskowania (wykład 2) | PRZ-090 |
+| `app/logic/resolution.py` | reguła rezolucji: kroki dwóch dowodów (wykład 2) | PRZ-092 |
 | `app/lessons.py` | rejestr wykładów i lekcji (nawigacja) | PRZ-070 |
 | `app/blueprints/home.py` | `/`, `/slowniczek`, `/jak-czytac` | PRZ-008 |
 | `app/blueprints/api_formula.py` | `/api/formula/*`, `/api/equivalence` | PRZ-009 |
@@ -52,6 +53,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/blueprints/spis_tresci.py` | `/spis-tresci` | PRZ-069 |
 | `app/blueprints/reguly.py` | `/reguly` | PRZ-090 |
 | `app/blueprints/konsekwencja.py` | `/konsekwencja` | PRZ-083 |
+| `app/blueprints/rezolucja.py` | `/rezolucja` | PRZ-092 |
 | `app/blueprints/api_wynikanie.py` | `/api/wynikanie` | PRZ-083 |
 | `app/templates/base.html` | szkielet strony, menu, okruszki, nawigacja lekcji, stopka | PRZ-008, PRZ-069 |
 | `app/templates/spis_tresci.html` | spis treści kursu (wykłady i lekcje) | PRZ-069 |
@@ -323,6 +325,48 @@ Sekcje powstają z pola `Rule.typ` — widok nie zna kodów reguł ani ich liczb
 rysuje `metazmienne_to_html`, tautologie `formula_to_html`; oba oddają napis jako tekst
 (bez znaczników), gdy wzór się nie parsuje, żeby błąd w treści nie dawał strony 500.
 
+## `app/logic/resolution.py` — reguła rezolucji
+
+Dane dwóch dowodów rezolucyjnych z wykładu 2 (`docs/TRESC-WYKLAD2.md`, sekcje „6. Reguła
+rezolucji” i „7. Algorytm rezolucji”). Ten moduł trzyma wyłącznie dane — tak samo jak
+`rules.py` dla reguł wnioskowania i `laws_data/` dla praw wykładu 1.
+
+```python
+@dataclass(frozen=True)
+class ResolutionStep:
+    nr: int
+    klauzula: str       # "q ∨ r"
+    rodzice: list[int]  # [1, 3]
+    literal: str        # "p" — na czym sklejono; "" dla założeń i sprzeczności
+    rodzaj: str         # "zalozenie" | "negacja-tezy" | "rezolucja" | "sprzecznosc"
+
+@dataclass(frozen=True)
+class ResolutionProof:
+    id: str
+    tytul: str
+    opis: str
+    kroki: list[ResolutionStep]
+
+def proofs() -> list[ResolutionProof]   # dwa przykłady, kopie listy
+```
+
+Stałe `RODZAJ_ZALOZENIE`, `RODZAJ_NEGACJA_TEZY`, `RODZAJ_REZOLUCJA`, `RODZAJ_SPRZECZNOSC`
+nazywają wartości pola `rodzaj`. Wiersz `sprzecznosc` zamyka dowód: ma pusty `literal`,
+a jego `rodzice` to dwa sprzeczne wiersze.
+
+## `app/blueprints/rezolucja.py` — strona `/rezolucja` (PRZ-092)
+
+Lekcja „Rezolucja”: reguła ze schematem literałów, algorytm w czterech krokach i dwa dowody
+z wykładu. Widok tylko przygotowuje dane z `resolution.proofs()` dla szablonu:
+
+* kolumnę „Skąd” składa z rodzaju kroku (teksty założeń to stała `ZRODLA_ZALOZEN`),
+* kroki pakuje w JSON (`kroki_json`) do atrybutu `data-kroki` sekcji dowodu. Skrypt
+  `app/static/js/rezolucja.js` czyta ten JSON: dodaje wiersze krok po kroku, rysuje
+  strzałkę od `rodzice` do nowej klauzuli (z literałem sklejenia) i podświetla
+  sprzeczność. Wiersze sprzeczne mają klasę `wiersz-sprzecznosc` i opis słowny dla
+  czytnika ekranu,
+* bez JavaScriptu cała tabela zostaje w HTML.
+
 ## API
 
 Każdy obszar API to **osobny moduł** w `app/blueprints/` (nazwa blueprintu w nawiasie).
@@ -382,7 +426,8 @@ Widoki HTML: `home.py` → `/`, `/slowniczek`, `/jak-czytac`; `laws.py` → `/pr
 `/prawa/<slug>`; `playground.py` → `/plac-zabaw`; `quiz.py` → `/quiz`;
 `wstep.py` → `/wstep`; `formuly.py` → `/formuly`; `tautologie.py` → `/tautologie`;
 `przeksztalcanie.py` → `/przeksztalcanie`; `kpn.py` → `/kpn`; `reguly.py` → `/reguly`;
-`konsekwencja.py` → `/konsekwencja` (GET oraz POST z formularza testu wynikania).
+`konsekwencja.py` → `/konsekwencja` (GET oraz POST z formularza testu wynikania);
+`rezolucja.py` → `/rezolucja`.
 
 Kolejność nauki na stronie (ścieżka kursu): `/wstep` → `/formuly` → `/tautologie` →
 `/przeksztalcanie` → `/kpn` → `/prawa` → `/plac-zabaw` → `/quiz`. Każda strona kursu kończy

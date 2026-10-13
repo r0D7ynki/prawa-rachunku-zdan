@@ -1,0 +1,165 @@
+{#
+  Szablon lekcji /rezolucja (karta PRZ-092). Dane dowodów przychodzą z modułu
+  `app.logic.resolution` przez widok `app/blueprints/rezolucja.py`: każdy wiersz ma
+  gotową klauzulę w HTML, kolumnę „Skąd” i informację, czy należy do sprzeczności.
+
+  Kroki paska (komponent PRZ-072) lecą do skryptu jako JSON w atrybucie `data-kroki`.
+  `rezolucja.js` tylko pokazuje: dodaje wiersze, rysuje strzałkę od rodziców do nowej
+  klauzuli i podświetla wiersze sprzeczne. Bez JavaScriptu całe tabele zostają w HTML.
+
+  Wzory rysuje `formula_to_html` (czyli `formula.to_html`) i tylko ona idzie przez `|safe`.
+#}
+{% extends "base.html" %}
+
+{% block tytul %}Rezolucja{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/rezolucja.css') }}" />
+{% endblock %}
+
+{#
+  Schemat reguły: przesłanki nad kreską, wniosek pod nią. Kreska to element HTML
+  malowany w CSS (`app/static/css/rezolucja.css`) — nie znak „—”. Schemat używa
+  metazmiennych literałów (l1…ln), więc pokazujemy go jako tekst, bez parsera.
+#}
+{% macro schemat(przeslanki, wniosek) %}
+  <div class="schemat-rezolucji">
+    <ul class="lista-przeslanek">
+      {% for przeslanka in przeslanki %}
+        <li class="formula">{{ przeslanka }}</li>
+      {% endfor %}
+    </ul>
+    <div class="kreska-rezolucji" aria-hidden="true"></div>
+    <p class="wniosek-rezolucji formula">{{ wniosek }}</p>
+  </div>
+{% endmacro %}
+
+{#
+  Tabela jednego dowodu. `wiersze` to lista słowników z widoku: nr, klauzula_html,
+  skad, literal, sprzeczny i opis_sprzecznosci.
+#}
+{% macro tabela_dowodu(tytul, wiersze) %}
+  <div class="table-responsive">
+    <table class="table tablica-rezolucji align-middle" data-tabela-rezolucji>
+      <caption>
+        {{ tytul }} — kolejne klauzule, skąd powstają i na jakim literale je sklejono.
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Nr</th>
+          <th scope="col">Klauzula</th>
+          <th scope="col">Skąd</th>
+          <th scope="col">Literał</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for wiersz in wiersze %}
+          {# Wiersze tworzące sprzeczność dostają własną klasę i opis dla czytnika ekranu. #}
+          <tr
+            data-nr="{{ wiersz.nr }}"
+            data-rodzaj="{{ wiersz.rodzaj }}"
+            {%- if wiersz.sprzeczny %} class="wiersz-sprzecznosc"{% endif %}
+          >
+            <th scope="row">{{ wiersz.nr }}</th>
+            <td class="formula">{{ formula_to_html(wiersz.klauzula) |safe }}</td>
+            <td>
+              {{ wiersz.skad }}
+              {%- if wiersz.opis_sprzecznosci %}
+                <span class="visually-hidden">{{ wiersz.opis_sprzecznosci }}</span>
+              {%- endif %}
+            </td>
+            <td class="literal">
+              {%- if wiersz.literal -%}
+                <span class="formula">{{ formula_to_html(wiersz.literal) |safe }}</span>
+              {%- else -%}
+                —
+              {%- endif -%}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Rezolucja</h1>
+    <p class="lead">
+      Reguła rezolucji skleja dwie klauzule w jedną. Powtarzana krok po kroku prowadzi
+      do sprzeczności, a sprzeczność dowodzi tezy.
+    </p>
+  </header>
+
+  <section class="sekcja" id="sekcja-regula" aria-labelledby="naglowek-regula">
+    <h2 id="naglowek-regula">Reguła rezolucji</h2>
+    <p>
+      Klauzula to alternatywa literałów. Literał to zmienna zdaniowa albo jej negacja,
+      na przykład <span class="formula">{{ formula_to_html("p") |safe }}</span>
+      i <span class="formula">{{ formula_to_html("∼p") |safe }}</span>.
+    </p>
+    <p>
+      Reguła rezolucji skleja dwie klauzule, które zawierają ten sam literał w przeciwnych
+      znakach. Z wniosku znikają oba te literały.
+    </p>
+    {{ schemat(schemat_przeslanki, schemat_wniosek) }}
+    <p>
+      Powtarzające się literały wniosku wypisujemy raz. Przykład z wykładu skleja dwie
+      klauzule na literale <span class="formula">{{ formula_to_html("q") |safe }}</span>:
+    </p>
+    {{ schemat(przyklad_przeslanki, przyklad_wniosek) }}
+  </section>
+
+  <section class="sekcja" id="sekcja-algorytm" aria-labelledby="naglowek-algorytm">
+    <h2 id="naglowek-algorytm">Algorytm rezolucji</h2>
+    <p>
+      Chcemy pokazać, że teza Ψ wynika logicznie z założeń Φ1, Φ2, …, Φn. Wystarczy
+      doprowadzić założenia i negację tezy do sprzeczności.
+    </p>
+    <ol class="lista-algorytmu" id="lista-algorytmu">
+      {% for krok in algorytm %}
+        <li>{{ krok }}</li>
+      {% endfor %}
+    </ol>
+    <p>
+      Krok pierwszy korzysta z koniunkcyjnej postaci normalnej. Sprowadzanie formuły do KPN
+      omawia <a href="{{ kpn }}">lekcja KPN</a> z wykładu 1.
+    </p>
+  </section>
+
+  {% for dowod in dowody %}
+    <section
+      class="sekcja dowod-rezolucji"
+      id="{{ dowod.id }}"
+      data-dowod-rezolucji="{{ dowod.id }}"
+      data-kroki="{{ dowod.kroki_json }}"
+      aria-labelledby="naglowek-{{ dowod.id }}"
+    >
+      <h2 id="naglowek-{{ dowod.id }}">{{ dowod.tytul }}</h2>
+      <p>{{ dowod.opis }}</p>
+      <p>
+        Pasek pod tabelą prowadzi wiersz po wierszu. Strzałka nad tabelą mówi, z których
+        wierszy powstaje nowa klauzula i na jakim literale. Ostatni krok pokazuje
+        sprzeczność, która kończy dowód.
+      </p>
+      <div class="strzalki-rezolucji" data-strzalki></div>
+      {{ tabela_dowodu(dowod.tytul, dowod.wiersze) }}
+      {% with steps = dowod.kroki %}
+        {% include "partials/_stepper.html" %}
+      {% endwith %}
+    </section>
+  {% endfor %}
+
+  <section class="sekcja" aria-labelledby="naglowek-dalej">
+    <h2 id="naglowek-dalej">Co dalej</h2>
+    <p>
+      Rezolucja to zapis dowodu nie wprost w jednej tabeli. Zanim ją policzysz, warto
+      powtórzyć <a href="/reguly">reguły wnioskowania</a> i
+      <a href="{{ kpn }}">klauzule oraz KPN</a>.
+    </p>
+  </section>
+{% endblock %}
+
+{% block skrypty %}
+  <script type="module" src="{{ url_for('static', filename='js/rezolucja.js') }}"></script>
+{% endblock %}
