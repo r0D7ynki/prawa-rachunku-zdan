@@ -281,8 +281,12 @@ z tego drzewa, więc nie zgaduje struktury z tekstu.
 
 | Endpoint | Wejście | Wyjście |
 |---|---|---|
-| `/api/quiz/generate` | `{"prawo": str\|null, "ile": int, "seed": int}` | `ok`, `seed`, `pytania` |
-| `/api/quiz/check` | `{"prawo", "seed", "id", "odpowiedz"}` | `ok`, `poprawna`, `wyjasnienie` |
+| `/api/quiz/generate` | `{"prawo": str\|null, "ile": int, "seed": int}` | `ok`, `seed`, `pytania`, `komunikat`, `blad` |
+| `/api/quiz/check` | `{"prawo", "seed", "id", "odpowiedz"}` | `ok`, `poprawna`, `wyjasnienie`, `blad` |
+
+`komunikat` w `/api/quiz/generate` to zdanie po polsku dla użytkownika, gdy `ok` jest prawdą,
+ale zestaw różni się od zamówionego (np. mniej pytań niż `ile`, bo tyle jest dostępnych).
+Przy pełnym zestawie pole jest puste. Dopisane po przeglądzie PRZ-015 (D27).
 
 Widoki HTML: `home.py` → `/`, `/slowniczek`, `/jak-czytac`; `laws.py` → `/prawa`,
 `/prawa/<slug>`; `playground.py` → `/plac-zabaw`; `quiz.py` → `/quiz`;
