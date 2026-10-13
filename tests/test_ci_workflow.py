@@ -1,14 +1,16 @@
 """Testy workflow GitHub Actions, który uruchamia bramkę projektu (karta PRZ-026).
 
-PyYAML nie jest zależnością projektu (AGENTS.md: w `pyproject.toml` tylko `flask`),
-więc plik czytamy jako tekst i sprawdzamy kształt bloków własnym czytnikiem.
-Gdy PyYAML jest dostępny, dodatkowy test parsuje cały plik przez `yaml.safe_load`.
+`pyyaml` jest zależnością deweloperską (decyzja D25), więc import `yaml` stoi na górze
+modułu: bez PyYAML testy padają już przy zbieraniu, a nie przechodzą po cichu bez
+sprawdzenia kształtu pliku.
 """
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
+
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "gate.yml"
@@ -59,28 +61,9 @@ def _sekcja_markdown(tekst: str, tytul: str) -> str:
     return trafienie.group(1).strip()
 
 
-def _sprawdz_wyglad_yaml(tekst: str) -> None:
-    """Sprawdza to, co widać bez parsera: brak tabulatorów, mapy i parzyste wcięcia."""
-    for numer, linia in enumerate(tekst.splitlines(), start=1):
-        if not linia.strip() or linia.lstrip().startswith("#"):
-            continue
-        assert "\t" not in linia, f"linia {numer}: tabulator zamiast spacji"
-        wciecie = len(linia) - len(linia.lstrip(" "))
-        assert wciecie % 2 == 0, f"linia {numer}: wcięcie {wciecie} nie jest parzyste"
-        assert re.match(r"^-? ?[\w.-]+:", linia.strip()), f"linia {numer} nie jest mapą: {linia!r}"
-
-
 def test_workflow_istnieje_i_parsuje_sie_jako_yaml():
-    """Plik jest, ma postać YAML, a przy dostępnym PyYAML parsuje się w całości."""
-    tekst = _workflow()
-    _sprawdz_wyglad_yaml(tekst)
-    try:
-        import yaml
-    except ModuleNotFoundError:
-        # PyYAML nie jest zależnością projektu (AGENTS.md: tylko `flask`).
-        # Zostaje sprawdzenie wyglądu pliku z góry tego testu.
-        return
-    dane = yaml.safe_load(tekst)
+    """Plik jest i parsuje się w całości przez `yaml.safe_load`."""
+    dane = yaml.safe_load(_workflow())
     assert isinstance(dane, dict)
     # PyYAML 1.1 czyta klucz `on:` jako wartość logiczną True.
     wyzwalacze = dane.get("on", dane.get(True))
