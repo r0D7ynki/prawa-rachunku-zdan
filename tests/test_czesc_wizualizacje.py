@@ -1,12 +1,13 @@
-"""Testy wizualizacji: schemat bramek i diagramy zbiorów (karty PRZ-012 i PRZ-074).
+"""Testy wizualizacji: schemat bramek i diagramy zbiorów (karty PRZ-012, PRZ-074, PRZ-075).
 
 Rysunki powstają w przeglądarce z drzewa ``ast``, więc testy nie mogą narysować SVG.
 Sprawdzają więc dwie rzeczy, które da się sprawdzić bez przeglądarki:
 
-* co partial oddaje serwerowi (atrybuty kontenera, pliki statyczne, ``<noscript>``),
+* co partial oddaje serwerowi (atrybuty kontenera, pliki statyczne, ``<noscript>``,
+  kroki prawa wpisane w ``[data-kroki]``),
 * jak zbudowany jest skrypt — czy drzewo z API trafia do DOM wyłącznie przez
-  ``textContent`` i ``document.createElementNS``, czy każdy element dostaje ``<title>``
-  i czy każdy błąd ma komunikat po polsku.
+  ``textContent`` i ``document.createElementNS``, czy każdy element dostaje ``<title>``,
+  czy kroki prowadzi ``createStepper`` i czy każdy błąd ma komunikat po polsku.
 
 Wzorzec testu źródłowego jest ten sam, co w ``tests/test_czesc_kroki.py``.
 """
@@ -34,6 +35,9 @@ TYPY_WEZLOW = ("Var", "Not", "And", "Or", "Imp", "Iff")
 
 FORMULA_BRAMKI = "p ∨ ∼p"
 FORMULA_ZBIORY = "∼(p ∨ q) ≡ (∼p ∧ ∼q)"
+
+#: Slugi praw rysowanych diagramami zbiorów — dla testów kroków (PRZ-075).
+PRAWA_ZBIOROW = [law.slug for law in all_laws() if law.wizualizacja == "sets"]
 
 
 @pytest.fixture
@@ -382,10 +386,18 @@ def test_zbiory_licza_obszary_z_drzewa(skrypt_zbiorow):
     assert "1 << zmienne.length" in skrypt_zbiorow, "obszarów jest tyle, ile wartościowań"
 
 
-def test_zbiory_rysuja_zamalowanie_bez_schodkow(skrypt_zbiorow):
-    assert "clipPath" in skrypt_zbiorow
-    assert 'nowyElement("mask",' in skrypt_zbiorow
-    assert "userSpaceOnUse" in skrypt_zbiorow
+def test_zbiory_licza_obszary_na_siatce(skrypt_zbiorow):
+    """Kryterium PRZ-075: obszary liczymy na siatce próbek, a nie z kombinacji figur."""
+    kolumny = re.search(r"KOLUMNY_SIATKI = (\d+)", skrypt_zbiorow)
+    wiersze = re.search(r"WIERSZE_SIATKI = (\d+)", skrypt_zbiorow)
+
+    assert kolumny and wiersze, "brak gęstości siatki próbek"
+    gestosc = int(kolumny.group(1)) * int(wiersze.group(1))
+    assert 100 * 100 <= gestosc <= 500 * 500, "siatka ma być gęsta, ale nie ogromna"
+    assert "function wKole(" in skrypt_zbiorow, "próbka pyta, czy leży w kole zbioru"
+    assert "function sciezkaObszaru(" in skrypt_zbiorow, "brak ścieżki z próbek"
+    assert 'nowyElement("path"' in skrypt_zbiorow, "obszar rysuje ścieżka"
+    assert "clipPath" not in skrypt_zbiorow, "obszarów nie składamy z przyciętych figur"
 
 
 def test_zbiory_skaluja_rysunek_do_kontenera(skrypt_zbiorow):
@@ -424,6 +436,131 @@ def test_zbiory_maja_polskie_komunikaty(skrypt_zbiorow):
 def test_zbiory_nie_rysuja_wiecej_niz_trzy_kola(skrypt_zbiorow):
     assert "MAKS_ZBIOROW = 3" in skrypt_zbiorow
     assert "UKLADY" in skrypt_zbiorow
+
+
+# ---------------------------------------------------------------------------
+# sets.js — kroki, strzałka i przełącznik (PRZ-075)
+# ---------------------------------------------------------------------------
+
+
+def _cialo_funkcji(skrypt: str, nazwa: str) -> str:
+    """Treść funkcji ``nazwa`` — od jej nawiasu klamrowego do zamykającego.
+
+    Kolejność wywołań w ciele funkcji jest tym, co odróżnia „komunikat zamiast rysunku”
+    od „rysunek i komunikat”: nawiasy liczymy ręcznie, bo w ciele są także literały
+    szablonowe z ``${...}``.
+    """
+    poczatek = skrypt.index(f"function {nazwa}(")
+    otwarcie = skrypt.index("{", poczatek)
+    glebokosc = 0
+    for pozycja in range(otwarcie, len(skrypt)):
+        if skrypt[pozycja] == "{":
+            glebokosc += 1
+        elif skrypt[pozycja] == "}":
+            glebokosc -= 1
+            if glebokosc == 0:
+                return skrypt[otwarcie:pozycja]
+    raise AssertionError(f"nie znalazłem ciała funkcji {nazwa}")
+
+
+def test_zbiory_uzywaja_wspolnego_komponentu_krokow(skrypt_zbiorow):
+    """Kryterium PRZ-075: kroki prowadzi ``createStepper``, a nie własny pasek."""
+    assert 'from "/static/js/stepper.js"' in skrypt_zbiorow
+    assert "createStepper({" in skrypt_zbiorow
+    assert "onStep:" in skrypt_zbiorow
+    assert 'setAttribute("data-stepper", "")' in skrypt_zbiorow
+
+
+@pytest.mark.parametrize("slug", PRAWA_ZBIOROW)
+def test_zbiory_biora_kroki_z_prawa(aplikacja, slug):
+    """Kryterium PRZ-075: liczba kroków paska równa się liczbie wpisów ``kroki`` prawa."""
+    prawo = next(law for law in all_laws() if law.slug == slug)
+
+    html = _renderuj(aplikacja, "partials/_sets.html", formula=prawo.formula, prawo=prawo)
+
+    assert html.count("<li data-opis=") == len(prawo.kroki), f"zła liczba kroków dla {slug}"
+    assert prawo.kroki[0].opis in html, "partial gubi opisy kroków prawa"
+
+
+@pytest.mark.parametrize("slug", PRAWA_ZBIOROW)
+def test_zbiory_krok_pierwszy_to_lewa_strona_ostatni_prawa(slug):
+    """Kryterium PRZ-075: krok 0 pokazuje obszar lewej strony, ostatni — prawej.
+
+    ``sets.js`` rysuje na kroku ``i`` obszar formuły ``kroki[i].po``. Test pilnuje więc
+    danych: pierwsza formuła kroków to lewa strona prawa, a ostatnia — prawa.
+    """
+    prawo = next(law for law in all_laws() if law.slug == slug)
+
+    assert prawo.kroki[0].po == prawo.lewa
+    assert prawo.kroki[-1].po == prawo.prawa
+
+
+def test_zbiory_rysuja_strzalke_rownowaznosci(skrypt_zbiorow):
+    """Kryterium PRZ-075: między diagramami jest strzałka z opisem „≡”."""
+    assert 'elementHtml("div", "wiz-strzalka", "≡")' in skrypt_zbiorow
+    assert 'setAttribute("data-rola", "strzalka-rownowaznosci")' in skrypt_zbiorow
+    assert "Lewa strona jest równoważna prawej" in skrypt_zbiorow, "brak opisu strzałki"
+
+
+def test_zbiory_kazdy_krok_ma_polski_opis(skrypt_zbiorow):
+    """Kryterium PRZ-075: nazwa operacji i opis kroku stoją po polsku przy diagramie."""
+    assert "krok.opis" in skrypt_zbiorow, "opis kroku pochodzi z prawa"
+    assert 'setAttribute("data-rola", "opis-kroku")' in skrypt_zbiorow
+    assert 'setAttribute("data-rola", "nazwa-operacji")' in skrypt_zbiorow
+    assert "${indeks + 1}: ${op.nazwa} — ${op.opis}" in skrypt_zbiorow
+    for nazwa in ('nazwa: "suma"', 'nazwa: "część wspólna"', 'nazwa: "dopełnienie"'):
+        assert nazwa in skrypt_zbiorow, f"brak nazwy operacji {nazwa}"
+
+
+def test_zbiory_podpisuja_poprzednie_obszary_obrysem(skrypt_zbiorow):
+    """Kryterium PRZ-075: wcześniejsze obszary zostają widoczne jako obrys."""
+    assert "wiz-obrys-obszaru" in skrypt_zbiorow
+    assert "sciezkiKrokow.slice(0, indeks)" in skrypt_zbiorow
+
+
+def test_zbiory_pokazuja_oba_obszary_naraz(skrypt_zbiorow):
+    """Kryterium PRZ-075: przełącznik pokazuje oba docelowe obszary jednocześnie."""
+    assert 'pokazOba: "Pokaż oba naraz"' in skrypt_zbiorow
+    assert "function przelaczOba(" in skrypt_zbiorow
+    assert 'setAttribute("aria-pressed", widokOba ? "true" : "false")' in skrypt_zbiorow
+    assert "ustawObszar(diagramLewy, sciezkaLewa, [])" in skrypt_zbiorow
+    assert "ustawObszar(diagramPrawy, sciezkaPrawa, [])" in skrypt_zbiorow
+
+
+def test_zbiory_komunikat_o_zbyt_wielu_zbiorach_przed_rysunkiem(skrypt_zbiorow):
+    """Kryterium PRZ-075: przy czterech zbiorach zostaje komunikat, a nie rysunek.
+
+    Sprawdzamy kolejność w ciele ``wypelnij``: strażnik liczby zmiennych kończy pracę
+    (``return``) zanim powstanie pierwszy diagram, więc dla czterech zmiennych żaden
+    element SVG nie jest tworzony.
+    """
+    cialo = _cialo_funkcji(skrypt_zbiorow, "wypelnij")
+    straznik = cialo.index("co najwyżej")
+    rysunek = cialo.index("zbudujDiagram(")
+
+    assert straznik < rysunek, "rysunek powstaje przed sprawdzeniem liczby zbiorów"
+    assert "return" in cialo[straznik:rysunek], "strażnik musi przerwać rysowanie"
+
+
+def test_zbiory_partial_mowi_o_limicie_zbiorow(aplikacja):
+    """Kryterium PRZ-075: partial mówi po polsku, ile zbiorów zmieści rysunek."""
+    html = _renderuj(aplikacja, "partials/_sets.html", formula=FORMULA_ZBIORY)
+
+    assert "co najwyżej trzy zbiory" in html
+
+
+def test_zbiory_escapuja_opis_kroku_w_atrybucie(aplikacja):
+    """Opis kroku idzie do atrybutu, więc cudzysłów nie może wyjść z atrybutu."""
+    kroki = [
+        SimpleNamespace(opis='" onclick="alert(1)', przed="∼p", po="∼p", regula="założenie"),
+    ]
+    prawo = SimpleNamespace(lewa="∼p", prawa="∼p", kroki=kroki)
+
+    html = _renderuj(aplikacja, "partials/_sets.html", formula="∼p", prawo=prawo)
+
+    assert 'onclick="' not in html
+    assert "&#34;" in html
+    assert 'data-rola="diagramy-zbiorow">' in html, "znacznik kontenera musi się domykać"
 
 
 # ---------------------------------------------------------------------------

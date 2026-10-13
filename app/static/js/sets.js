@@ -1,22 +1,43 @@
-/* Diagramy zbiorów dla lewej i prawej strony prawa (karta PRZ-012).
+/* Diagramy zbiorów prowadzone krok po kroku (karty PRZ-012 i PRZ-075).
 
-   Dla każdej strony pobieramy drzewo `ast` z `POST /api/formula/parse` i liczymy je
-   **na obszarach**: prostokąt to cała przestrzeń, koła to zbiory zmiennych, a każdy
-   najmniejszy obszar (pole, na którym wartości zmiennych są ustalone) jest zamalowany
-   wtedy, gdy formuła jest w nim prawdziwa.
+   Dla każdej strony prawa pobieramy drzewo `ast` z `POST /api/formula/parse` i liczymy je
+   **na obszarach**: prostokąt to cała przestrzeń, koła to zbiory zmiennych, a punkt należy
+   do zbioru wtedy, gdy leży w jego kole.
 
-   Zamalowanie rysujemy bez liczenia krzywych: najmniejszy obszar to część wspólna kół
-   zmiennych prawdziwych (`clipPath` jeden na drugim) bez kół zmiennych fałszywych
-   (`mask` — czarne koła zasłaniają). Dzięki temu kształt jest gładki, a nie schodkowy.
+   Obszary liczymy **na siatce próbek** (`KOLUMNY_SIATKI` × `WIERSZE_SIATKI`): dla środka
+   każdej próbki sprawdzamy, w których kołach leży, i pytamy `ocena`, czy formuła jest tam
+   prawdziwa. Przebiegi prawdziwych próbek składamy w jedną ścieżkę SVG (`<path>`). Dlatego
+   rysunek jest poprawny także dla trzech zbiorów i nie potrzebuje analitycznej geometrii.
+
+   Kroki bierzemy z pola `kroki` prawa — partial wpisuje je w liście `[data-kroki]`.
+   Na kroku `i` zamalowany jest obszar formuły z tego kroku, a obszary kroków wcześniejszych
+   zostają widoczne jako obrys: student widzi, że przekształcenie nie zmieniło obszaru.
+   Gdy partial nie poda kroków (na przykład poza stroną prawa), kroki powstają z podformuł
+   obu stron — od operacji najbardziej wewnętrznej do zewnętrznej.
 
    Każdy element SVG tworzymy przez `document.createElementNS`, a treść wstawiamy tylko
    przez `textContent` — napisy z API nie trafiają do DOM jako kod. */
+
+import { createStepper } from "/static/js/stepper.js";
 
 const ADRES = "/api/formula/parse";
 const NS_SVG = "http://www.w3.org/2000/svg";
 
 /** Najwięcej kół, ile zmieści się na czytelnym diagramie. */
 const MAKS_ZBIOROW = 3;
+
+const SZEROKOSC = 220;
+const WYSOKOSC = 180;
+const PROMIEN = 46;
+
+/** Gęstość siatki próbek: tyle punktów w poziomie i w pionie liczy jeden obszar.
+ *  Siatka 440 × 360 daje schodek wielkości pół punktu, czyli około piksela na ekranie —
+ *  dzięki temu skosy obszaru wyglądają gładko. Jeden obszar liczy się kilka milisekund. */
+const KOLUMNY_SIATKI = 440;
+const WIERSZE_SIATKI = 360;
+
+/** Zakładka próbek: sąsiednie prostokąty zachodzą na siebie, żeby nie prześwitywało tło. */
+const ZAKLADKA = 0.5;
 
 const TEKSTY = {
   ladowanie: "Wczytuję diagramy zbiorów…",
@@ -33,11 +54,16 @@ const TEKSTY = {
   legenda: "Legenda: cały prostokąt to przestrzeń, koła to zbiory zmiennych.",
   obszarPusty: "Formuła jest fałszywa przy każdym wartościowaniu, więc nic nie zamalowano.",
   obszarPelny: "Formuła jest prawdziwa przy każdym wartościowaniu, więc zamalowano całość.",
+  obszarKroku: "Zamalowany obszar formuły z tego kroku.",
+  obrysKroku: "Obrys obszaru z wcześniejszego kroku — przekształcenie go nie zmieniło.",
+  pokazOba: "Pokaż oba naraz",
+  pokazKrokami: "Pokaż krokami",
+  oba: "Pokazuję oba docelowe obszary naraz: lewą i prawą stronę prawa.",
+  strzalka:
+    "Lewa strona jest równoważna prawej — po obu stronach zamalowany jest ten sam obszar.",
+  krok: "Krok",
+  tenSam: "Obszar jest taki sam jak w poprzednim kroku.",
 };
-
-const SZEROKOSC = 220;
-const WYSOKOSC = 180;
-const PROMIEN = 46;
 
 /** Ustalone położenie kół dla jednej, dwóch i trzech zmiennych. */
 const UKLADY = {
@@ -52,6 +78,46 @@ const UKLADY = {
     [138, 108],
   ],
 };
+
+/** Zdejmuje z formuły pary przeczeń: `∼∼X` zamalowuje ten sam obszar co `X`.
+ *
+ *  Kroki przekształcenia dopisują i zdejmują przeczenia, więc bez tego kroku
+ *  `∼∼(∼p ∧ ∼q)` nazywałby się „dopełnienie”, choć zamalowuje część wspólną. */
+function bezParPrzeczen(node) {
+  let biezacy = node;
+  while (biezacy.typ === "Not" && biezacy.dziecko.typ === "Not") {
+    biezacy = biezacy.dziecko.dziecko;
+  }
+  return biezacy;
+}
+
+/** Nazwa i wyjaśnienie operacji, którą wykonuje formuła danego kroku.
+ *
+ *  Dzięki temu nad diagramem stoi wprost napisane, co robimy: „suma”, „część wspólna”
+ *  albo „dopełnienie sumy”. Nazwa zbioru pochodzi z API — trafia do DOM przez `textContent`.
+ */
+function operacja(formula) {
+  const node = bezParPrzeczen(formula);
+  if (node.typ === "Not") {
+    if (node.dziecko.typ === "Or") {
+      return { nazwa: "dopełnienie sumy", opis: "obszar poza sumą zbiorów" };
+    }
+    if (node.dziecko.typ === "And") {
+      return { nazwa: "dopełnienie części wspólnej", opis: "obszar poza częścią wspólną" };
+    }
+    if (node.dziecko.typ === "Var") {
+      return { nazwa: `dopełnienie zbioru ${node.dziecko.nazwa}`, opis: "obszar poza zbiorem" };
+    }
+    return { nazwa: "dopełnienie", opis: "obszar poza zaznaczonym obszarem" };
+  }
+  if (node.typ === "And") {
+    return { nazwa: "część wspólna", opis: "obszar wspólny obu stron" };
+  }
+  if (node.typ === "Or") {
+    return { nazwa: "suma", opis: "wszystko, co leży w którymkolwiek ze zbiorów" };
+  }
+  return { nazwa: "zbiór", opis: "obszar jednego zbioru" };
+}
 
 /** Tworzy element SVG i dokłada mu opis po polsku jako pierwsze dziecko. */
 function nowyElement(znacznik, opis) {
@@ -176,6 +242,16 @@ function obszary(node, zmienne) {
   return zamalowane;
 }
 
+/** Podpis obszaru — ten sam dla formuł, które zamalowują ten sam obszar.
+ *
+ *  Dzięki podpisowi ścieżkę SVG liczymy raz na obszar, a nie raz na krok: kroki
+ *  przekształcenia są równoważne, więc często pokazują ten sam obszar. */
+function sygnatura(node, zmienne) {
+  return [...obszary(node, zmienne)]
+    .sort((a, b) => a - b)
+    .join(",");
+}
+
 /** Opis obszaru po polsku, na przykład „Zamalowany obszar: p = 1, q = 0.”. */
 function opisObszaru(zmienne, maska) {
   const czesci = zmienne.map(
@@ -194,74 +270,65 @@ function koloSvg(srodek, wypelnienie, opis) {
   return kolo;
 }
 
-/** Rysuje jeden najmniejszy obszar: część wspólna kół prawdziwych bez kół fałszywych. */
-function zbudujObszar(kola, zmienne, maska, identyfikator, numer, definicje) {
-  const opis = opisObszaru(zmienne, maska);
-  const prawdziwe = [];
-  const falszywe = [];
-  zmienne.forEach((nazwa, indeks) => {
-    if (maska & (1 << indeks)) {
-      prawdziwe.push(indeks);
-    } else {
-      falszywe.push(indeks);
-    }
-  });
-
-  const maskaEl = nowyElement("mask", `Maska obszaru: ${opis}`);
-  maskaEl.setAttribute("id", `wiz-maska-${identyfikator}-${numer}`);
-  maskaEl.setAttribute("maskUnits", "userSpaceOnUse");
-  maskaEl.setAttribute("x", "0");
-  maskaEl.setAttribute("y", "0");
-  maskaEl.setAttribute("width", String(SZEROKOSC));
-  maskaEl.setAttribute("height", String(WYSOKOSC));
-  const widoczne = nowyElement("rect", "Obszar widoczny dla maski.");
-  widoczne.setAttribute("width", String(SZEROKOSC));
-  widoczne.setAttribute("height", String(WYSOKOSC));
-  widoczne.setAttribute("fill", "#ffffff");
-  maskaEl.append(widoczne);
-  falszywe.forEach((indeks) => {
-    maskaEl.append(koloSvg(kola[indeks], "#000000", opis));
-  });
-  definicje.append(maskaEl);
-
-  const grupa = nowyElement("g", opis);
-  grupa.setAttribute("mask", `url(#wiz-maska-${identyfikator}-${numer})`);
-  let wezel = grupa;
-  prawdziwe.forEach((indeks) => {
-    const przyciete = nowyElement("g", opis);
-    przyciete.setAttribute("clip-path", `url(#wiz-klip-${identyfikator}-${indeks})`);
-    wezel.append(przyciete);
-    wezel = przyciete;
-  });
-
-  const zamalowanie = nowyElement("rect", opis);
-  zamalowanie.setAttribute("width", String(SZEROKOSC));
-  zamalowanie.setAttribute("height", String(WYSOKOSC));
-  zamalowanie.setAttribute("class", "wiz-obszar");
-  wezel.append(zamalowanie);
-  return grupa;
+/** Czy punkt leży w kole danego zbioru. */
+function wKole(kola, indeks, x, y) {
+  const srodek = kola[indeks];
+  return (x - srodek[0]) ** 2 + (y - srodek[1]) ** 2 <= PROMIEN ** 2;
 }
 
-/** Buduje jeden diagram: przestrzeń, zamalowane obszary i obrysy kół. */
-function zbudujDiagram(node, zmienne, identyfikator) {
-  const kola = UKLADY[zmienne.length];
-  const podpisRysunku = `Diagram zbiorów dla formuły o zbiorach ${zmienne.join(", ")}`;
+/** Ścieżka SVG zamalowanego obszaru, złożona z przebiegów próbek siatki.
+ *
+ *  Dla każdego wiersza szukamy spójnych odcinków, w których formuła jest prawdziwa,
+ *  i zamieniamy każdy odcinek na prostokąt. Prostokąty zachodzą na siebie o `ZAKLADKA`,
+ *  żeby między sąsiadami nie prześwitywało tło. */
+function sciezkaObszaru(node, zmienne, kola) {
+  const krokX = SZEROKOSC / KOLUMNY_SIATKI;
+  const krokY = WYSOKOSC / WIERSZE_SIATKI;
+  const wartosci = {};
+  const prostokaty = [];
 
-  const rysunek = nowyElement("svg", podpisRysunku);
+  for (let wiersz = 0; wiersz < WIERSZE_SIATKI; wiersz += 1) {
+    const y = (wiersz + 0.5) * krokY;
+    let start = -1;
+    for (let kolumna = 0; kolumna <= KOLUMNY_SIATKI; kolumna += 1) {
+      let prawda = false;
+      if (kolumna < KOLUMNY_SIATKI) {
+        const x = (kolumna + 0.5) * krokX;
+        zmienne.forEach((nazwa, indeks) => {
+          wartosci[nazwa] = wKole(kola, indeks, x, y);
+        });
+        prawda = ocena(node, wartosci);
+      }
+      if (prawda && start < 0) {
+        start = kolumna;
+      } else if (!prawda && start >= 0) {
+        const lewa = (start * krokX).toFixed(1);
+        const prawa = (kolumna * krokX + ZAKLADKA).toFixed(1);
+        const gora = (wiersz * krokY).toFixed(1);
+        const dol = ((wiersz + 1) * krokY + ZAKLADKA).toFixed(1);
+        prostokaty.push(`M ${lewa} ${gora} H ${prawa} V ${dol} H ${lewa} Z`);
+        start = -1;
+      }
+    }
+  }
+  return prostokaty.join(" ");
+}
+
+/** Buduje jeden diagram: przestrzeń, miejsce na obszary kroków i koła z nazwami.
+ *
+ *  Ścieżki obszarów dostają wszystkie kroki naraz, ale są ukryte — `ustawObszar`
+ *  odkrywa tylko te, które należą do kroków już wykonanych. Dzięki temu przejście
+ *  między krokami nie przebudowuje rysunku. */
+function zbudujDiagram(zmienne, identyfikator, podpis, liczbaKrokow) {
+  const kola = UKLADY[zmienne.length];
+
+  const rysunek = nowyElement("svg", podpis);
   rysunek.setAttribute("viewBox", `0 0 ${SZEROKOSC} ${WYSOKOSC}`);
   rysunek.setAttribute("preserveAspectRatio", "xMidYMid meet");
   rysunek.setAttribute("class", "wiz-svg wiz-svg-zbiorow");
   rysunek.setAttribute("role", "img");
-  rysunek.setAttribute("aria-label", podpisRysunku);
-
-  const definicje = nowyElement("defs", "Przycięcia i maski obszarów tego diagramu.");
-  kola.forEach((srodek, indeks) => {
-    const przyciecie = nowyElement("clipPath", `Zbiór ${zmienne[indeks]}.`);
-    przyciecie.setAttribute("id", `wiz-klip-${identyfikator}-${indeks}`);
-    przyciecie.append(koloSvg(srodek, "#ffffff", `Zbiór ${zmienne[indeks]}.`));
-    definicje.append(przyciecie);
-  });
-  rysunek.append(definicje);
+  rysunek.setAttribute("aria-label", podpis);
+  rysunek.setAttribute("data-obszar", identyfikator);
 
   const przestrzen = nowyElement("rect", TEKSTY.przestrzen);
   przestrzen.setAttribute("x", "4");
@@ -272,21 +339,24 @@ function zbudujDiagram(node, zmienne, identyfikator) {
   przestrzen.setAttribute("class", "wiz-przestrzen");
   rysunek.append(przestrzen);
 
-  const warstwa = nowyElement("g", "Zamalowane obszary tej strony formuły.");
-  warstwa.setAttribute("class", "wiz-obszary");
-  [...obszary(node, zmienne)]
-    .sort((a, b) => a - b)
-    .forEach((maska, numer) => {
-      warstwa.append(zbudujObszar(kola, zmienne, maska, identyfikator, numer, definicje));
-    });
-  rysunek.append(warstwa);
+  const obrysy = nowyElement("g", TEKSTY.obrysKroku);
+  obrysy.setAttribute("class", "wiz-obrysy-krokow");
+  for (let numer = 0; numer < liczbaKrokow; numer += 1) {
+    const obrys = nowyElement("path", TEKSTY.obrysKroku);
+    obrys.setAttribute("class", "wiz-obrys-obszaru wiz-niewidoczny");
+    obrysy.append(obrys);
+  }
 
-  const obrysy = nowyElement("g", "Obrysy i nazwy zbiorów.");
-  obrysy.setAttribute("class", "wiz-obrysy");
+  const wypelnienie = nowyElement("path", TEKSTY.obszarKroku);
+  wypelnienie.setAttribute("class", "wiz-obszar wiz-niewidoczny");
+  rysunek.append(obrysy, wypelnienie);
+
+  const obrysyKol = nowyElement("g", "Obrysy i nazwy zbiorów.");
+  obrysyKol.setAttribute("class", "wiz-obrysy");
   kola.forEach((srodek, indeks) => {
     const obrys = koloSvg(srodek, "none", `Zbiór ${zmienne[indeks]}.`);
     obrys.setAttribute("class", "wiz-obrys");
-    obrysy.append(obrys);
+    obrysyKol.append(obrys);
 
     const etykieta = nowyElement("text", `Nazwa zbioru: ${zmienne[indeks]}.`);
     etykieta.setAttribute("class", "wiz-napis");
@@ -294,27 +364,78 @@ function zbudujDiagram(node, zmienne, identyfikator) {
     etykieta.setAttribute("y", String(srodek[1] - PROMIEN * 0.62));
     etykieta.setAttribute("text-anchor", "middle");
     etykieta.textContent = zmienne[indeks];
-    obrysy.append(etykieta);
+    obrysyKol.append(etykieta);
   });
-  rysunek.append(obrysy);
-  return rysunek;
+  rysunek.append(obrysyKol);
+  return { element: rysunek, wypelnienie, obrysy };
+}
+
+/** Rysuje obszar bieżącego kroku i obrysy obszarów z kroków wcześniejszych. */
+function ustawObszar(diagram, sciezka, wczesniejsze) {
+  diagram.wypelnienie.setAttribute("d", sciezka || "");
+  diagram.wypelnienie.classList.toggle("wiz-niewidoczny", !sciezka);
+
+  const sloty = diagram.obrysy.querySelectorAll("path");
+  sloty.forEach((slot, numer) => {
+    const wczesniejsza = wczesniejsze[numer];
+    slot.setAttribute("d", wczesniejsza || "");
+    slot.classList.toggle("wiz-niewidoczny", !wczesniejsza);
+  });
 }
 
 /** Jedna strona prawa: nagłówek z formułą i diagram pod nim. */
-function zbudujStrone(tytul, node, zmienne, identyfikator) {
+function zbudujStrone(tytul, diagram) {
   const sekcja = elementHtml("div", "wiz-diagram");
-  sekcja.append(
-    elementHtml("h3", "h6 wiz-diagram-tytul", tytul),
-    zbudujDiagram(node, zmienne, identyfikator),
-  );
+  sekcja.append(elementHtml("h3", "h6 wiz-diagram-tytul", tytul), diagram.element);
   return sekcja;
 }
 
-/** Pokazuje komunikat zamiast diagramów.
+/** Kroki przekazane przez partial: opis i formuła po kroku (pole `kroki` prawa). */
+function krokiZMontazu(montaz) {
+  const lista = montaz.querySelector("[data-kroki]");
+  if (!lista) {
+    return [];
+  }
+  return [...lista.querySelectorAll("li")].map((element) => ({
+    opis: element.dataset.opis || "",
+    po: element.dataset.po || "",
+  }));
+}
 
-    Element `status` wraca do montażu razem z komunikatem. Bez tego `replaceChildren`
-    odłączyłby go od dokumentu i `status.textContent` ustawiałby tekst na węźle poza
-    dokumentem — czytnik ekranu nie ogłosiłby wyniku. */
+/** Kroki zapasowe: podformuły obu stron od najbardziej wewnętrznej do zewnętrznej.
+ *
+ *  Ta kolejność pokazuje, jak powstaje obszar: najpierw suma zbiorów, potem jej
+ *  dopełnienie; najpierw dopełnienia, potem ich część wspólna. Używamy jej, gdy partial
+ *  nie przekazał kroków prawa. */
+function krokiZapasowe(lewa, prawa) {
+  const kroki = [];
+  const dodaj = (node, strona) => {
+    if (node.typ === "Var") {
+      return;
+    }
+    if (node.typ === "Not") {
+      dodaj(node.dziecko, strona);
+    } else {
+      dodaj(node.lewy, strona);
+      dodaj(node.prawy, strona);
+    }
+    const krok = operacja(node);
+    kroki.push({
+      tytul: krok.nazwa,
+      opis: `${strona}: ${krok.nazwa} — ${krok.opis}.`,
+      drzewo: node,
+    });
+  };
+  dodaj(lewa, "Lewa strona");
+  dodaj(prawa, "Prawa strona");
+  return kroki;
+}
+
+/** Pokazuje komunikat zamiast diagramów.
+ *
+ *  Element `status` wraca do montażu razem z komunikatem. Bez tego `replaceChildren`
+ *  odłączyłby go od dokumentu i `status.textContent` ustawiałby tekst na węźle poza
+ *  dokumentem — czytnik ekranu nie ogłosiłby wyniku. */
 function pokazKomunikat(montaz, tekst, status) {
   montaz.replaceChildren(elementHtml("p", "wiz-blad alert alert-warning mb-0", tekst), status);
   status.textContent = tekst;
@@ -330,11 +451,12 @@ async function pobierzAst(formula) {
   return odpowiedz.json();
 }
 
-/** Wypełnia jeden montaż: liczy obszary obu stron i rysuje je obok siebie. */
+/** Wypełnia jeden montaż: liczy obszary obu stron i prowadzi przez kroki prawa. */
 async function wypelnij(montaz) {
   const formula = montaz.dataset.formula || "";
   const stronaLewa = montaz.dataset.lewa || formula;
   const stronaPrawa = montaz.dataset.prawa || formula;
+  const krokiPrawa = krokiZMontazu(montaz);
   montaz.replaceChildren();
 
   const status = elementHtml("p", "wiz-status visually-hidden");
@@ -342,16 +464,19 @@ async function wypelnij(montaz) {
   status.setAttribute("aria-live", "polite");
   montaz.append(elementHtml("p", "wiz-ladowanie text-muted small mb-1", TEKSTY.ladowanie), status);
 
-  let daneLewa;
-  let danePrawa;
+  // Formuły do narysowania: obie strony prawa i formuła po każdym kroku. Powtarzające się
+  // pobieramy raz — kroki przekształcenia często powtarzają formuły sąsiadów.
+  const formuly = [...new Set([stronaLewa, stronaPrawa, ...krokiPrawa.map((krok) => krok.po)])]
+    .filter((tekst) => tekst);
+  let odpowiedzi;
   try {
-    [daneLewa, danePrawa] = await Promise.all([pobierzAst(stronaLewa), pobierzAst(stronaPrawa)]);
+    odpowiedzi = await Promise.all(formuly.map(pobierzAst));
   } catch (blad) {
     pokazKomunikat(montaz, TEKSTY.siec, status);
     return;
   }
 
-  for (const dane of [daneLewa, danePrawa]) {
+  for (const dane of odpowiedzi) {
     if (!dane.ok) {
       pokazKomunikat(montaz, dane.blad || TEKSTY.blad, status);
       return;
@@ -362,10 +487,12 @@ async function wypelnij(montaz) {
     }
   }
 
-  const zmienne = [...zbierzZmienne(daneLewa.ast)]
-    .concat([...zbierzZmienne(danePrawa.ast)])
-    .filter((nazwa, indeks, wszystkie) => wszystkie.indexOf(nazwa) === indeks)
-    .sort();
+  const drzewa = new Map();
+  formuly.forEach((tekst, indeks) => drzewa.set(tekst, odpowiedzi[indeks].ast));
+
+  const zmienne = [
+    ...new Set(formuly.flatMap((tekst) => [...zbierzZmienne(drzewa.get(tekst))])),
+  ].sort();
 
   if (zmienne.length > MAKS_ZBIOROW) {
     pokazKomunikat(
@@ -377,27 +504,80 @@ async function wypelnij(montaz) {
     return;
   }
 
-  for (const [etykieta, dane] of [
-    ["lewa strona", daneLewa],
-    ["prawa strona", danePrawa],
-  ]) {
-    if (!sensZbiorowy(dane.ast) || !maOperatorZbiorowy(dane.ast)) {
-      pokazKomunikat(montaz, `${TEKSTY.bezSensu} (${etykieta})`, status);
+  for (const tekst of formuly) {
+    if (!sensZbiorowy(drzewa.get(tekst)) || !maOperatorZbiorowy(drzewa.get(tekst))) {
+      pokazKomunikat(montaz, `${TEKSTY.bezSensu} (${tekst})`, status);
       return;
     }
   }
 
-  const obszaryLewe = obszary(daneLewa.ast, zmienne);
-  const obszaryPrawe = obszary(danePrawa.ast, zmienne);
-  const takieSame =
-    obszaryLewe.size === obszaryPrawe.size &&
-    [...obszaryLewe].every((maska) => obszaryPrawe.has(maska));
+  const kroki = krokiPrawa.length
+    ? krokiPrawa.map((krok) => {
+        const op = operacja(drzewa.get(krok.po));
+        return { tytul: op.nazwa, opis: krok.opis, drzewo: drzewa.get(krok.po) };
+      })
+    : krokiZapasowe(drzewa.get(stronaLewa), drzewa.get(stronaPrawa));
+
+  const kola = UKLADY[zmienne.length];
+  const sciezkiObszarow = new Map();
+  /** Ścieżka obszaru formuły — liczy się raz na obszar, nie raz na krok. */
+  function sciezkaDla(drzewo) {
+    const podpis = sygnatura(drzewo, zmienne);
+    if (!sciezkiObszarow.has(podpis)) {
+      sciezkiObszarow.set(podpis, sciezkaObszaru(drzewo, zmienne, kola));
+    }
+    return sciezkiObszarow.get(podpis);
+  }
+
+  const sciezkiKrokow = kroki.map((krok) => sciezkaDla(krok.drzewo));
+  const sciezkaLewa = sciezkaDla(drzewa.get(stronaLewa));
+  const sciezkaPrawa = sciezkaDla(drzewa.get(stronaPrawa));
+
+  const diagramLewy = zbudujDiagram(
+    zmienne,
+    "lewa",
+    `Diagram zbiorów dla lewej strony: ${stronaLewa}`,
+    kroki.length,
+  );
+  const diagramPrawy = zbudujDiagram(
+    zmienne,
+    "prawa",
+    `Diagram zbiorów dla prawej strony: ${stronaPrawa}`,
+    kroki.length,
+  );
+
+  // Nazwa operacji stoi wprost nad diagramami, a opis bieżącego kroku — pod nimi.
+  const operacjaEl = elementHtml("p", "wiz-operacja fw-semibold mb-2");
+  operacjaEl.setAttribute("data-rola", "nazwa-operacji");
+  const opisKroku = elementHtml("p", "wiz-krok-opis mb-0");
+  opisKroku.setAttribute("data-rola", "opis-kroku");
+
+  const strzalka = elementHtml("div", "wiz-strzalka", "≡");
+  strzalka.setAttribute("data-rola", "strzalka-rownowaznosci");
+  strzalka.setAttribute("role", "img");
+  strzalka.setAttribute("aria-label", TEKSTY.strzalka);
 
   const diagramy = elementHtml("div", "wiz-diagramy");
   diagramy.append(
-    zbudujStrone(`Lewa strona: ${stronaLewa}`, daneLewa.ast, zmienne, "lewa"),
-    zbudujStrone(`Prawa strona: ${stronaPrawa}`, danePrawa.ast, zmienne, "prawa"),
+    zbudujStrone(`Lewa strona: ${stronaLewa}`, diagramLewy),
+    strzalka,
+    zbudujStrone(`Prawa strona: ${stronaPrawa}`, diagramPrawy),
   );
+
+  const przyciskOba = elementHtml("button", "btn btn-sm btn-outline-primary", TEKSTY.pokazOba);
+  przyciskOba.type = "button";
+  przyciskOba.setAttribute("aria-pressed", "false");
+  przyciskOba.setAttribute("data-rola", "pokaz-oba");
+
+  // Pasek kroków powstaje w `createStepper`; ten kontener tylko go mieści.
+  const montazKrokow = elementHtml("div", "wiz-kroki");
+  montazKrokow.setAttribute("data-stepper", "");
+
+  const obszaryLewe = obszary(drzewa.get(stronaLewa), zmienne);
+  const obszaryPrawe = obszary(drzewa.get(stronaPrawa), zmienne);
+  const takieSame =
+    obszaryLewe.size === obszaryPrawe.size &&
+    [...obszaryLewe].every((maska) => obszaryPrawe.has(maska));
 
   const podpis = elementHtml(
     "p",
@@ -412,10 +592,66 @@ async function wypelnij(montaz) {
     uwagi.textContent = `${TEKSTY.legenda} ${TEKSTY.obszarPelny}`;
   }
 
-  montaz.replaceChildren(diagramy, podpis, uwagi, status);
-  status.textContent = `${takieSame ? TEKSTY.takiSam : TEKSTY.rozny} Zamalowanych obszarów: ${
-    obszaryLewe.size
-  } po lewej i ${obszaryPrawe.size} po prawej.`;
+  const sekcja = elementHtml("div", "wiz-rysunek d-flex flex-column gap-3");
+  sekcja.append(operacjaEl, diagramy, przyciskOba, opisKroku, montazKrokow, podpis, uwagi);
+  montaz.replaceChildren(sekcja, status);
+
+  let widokOba = false;
+  let stepper = null;
+
+  /** Rysuje krok o podanym numerze: obszar kroku i obrysy kroków wcześniejszych. */
+  function pokazKrok(numer) {
+    const indeks = Math.min(Math.max(numer, 0), kroki.length - 1);
+    widokOba = false;
+    przyciskOba.setAttribute("aria-pressed", "false");
+    przyciskOba.textContent = TEKSTY.pokazOba;
+
+    const wczesniejsze = sciezkiKrokow.slice(0, indeks);
+    ustawObszar(diagramLewy, sciezkiKrokow[indeks], wczesniejsze);
+    ustawObszar(diagramPrawy, sciezkiKrokow[indeks], wczesniejsze);
+
+    const krok = kroki[indeks];
+    const op = operacja(krok.drzewo);
+    operacjaEl.textContent = `${TEKSTY.krok} ${indeks + 1}: ${op.nazwa} — ${op.opis}`;
+    const czyTenSam = indeks > 0 && sciezkiKrokow[indeks] === sciezkiKrokow[indeks - 1];
+    opisKroku.textContent =
+      `${TEKSTY.krok} ${indeks + 1} z ${kroki.length}: ${krok.opis}` +
+      `${czyTenSam ? ` ${TEKSTY.tenSam}` : ""}`;
+    status.textContent =
+      `${krok.opis} Zamalowany obszar: ${op.nazwa}. ${TEKSTY.krok} ${indeks + 1} z ${kroki.length}.`;
+  }
+
+  /** Przełącza widok: kroki po kolei albo oba docelowe obszary naraz. */
+  function przelaczOba() {
+    widokOba = !widokOba;
+    przyciskOba.setAttribute("aria-pressed", widokOba ? "true" : "false");
+    przyciskOba.textContent = widokOba ? TEKSTY.pokazKrokami : TEKSTY.pokazOba;
+
+    if (!widokOba) {
+      pokazKrok(stepper ? stepper.index : 0);
+      return;
+    }
+    ustawObszar(diagramLewy, sciezkaLewa, []);
+    ustawObszar(diagramPrawy, sciezkaPrawa, []);
+    operacjaEl.textContent = TEKSTY.oba;
+    opisKroku.textContent = TEKSTY.oba;
+    status.textContent = `${TEKSTY.oba} ${takieSame ? TEKSTY.takiSam : TEKSTY.rozny}`;
+  }
+
+  przyciskOba.addEventListener("click", przelaczOba);
+
+  stepper = createStepper({
+    mount: montazKrokow,
+    steps: kroki.map((krok) => ({ tytul: krok.tytul, opis: krok.opis })),
+    labels: {
+      prev: "Wstecz",
+      next: "Dalej",
+      play: "Odtwórz",
+      pause: "Pauza",
+      reset: "Od nowa",
+    },
+    onStep: (indeks) => pokazKrok(indeks),
+  });
 }
 
 document.querySelectorAll(".sets-mount").forEach((montaz) => {
