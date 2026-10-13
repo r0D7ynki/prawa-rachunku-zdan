@@ -98,17 +98,33 @@
   font-weight: 500;
 }
 
-/* --- sekcja „Krok po kroku” na stronie prawa (karta PRZ-143) ----------------
-   Kroki rysuje serwer, a `steps.js` pokazuje jeden naraz. Numerków kroków nie ma
-   w widoku, więc lista jest bez numeracji także bez arkusza Bootstrapa. */
+/* --- sekcja „Krok po kroku” na stronie prawa (karty PRZ-143 i PRZ-157) -------
+   Wszystkie kroki stoją naraz, jeden pod drugim i oddzielone linią oraz
+   naprzemiennym tłem. Numer kroku rysuje sam krok (`.krok-numer`), więc lista
+   nie ma własnych punktów — inaczej numer byłby podwójny. Kroki są jedną
+   kolumną, a wzory zawijają się w niej (`.formula`), więc na telefonie strona
+   nie przewija się w poziomie. */
 
-.kroki-lista {
+.lista-krokow {
   padding-left: 0;
   list-style: none;
 }
 
-.kroki-prawa .stepper-mount {
-  margin-bottom: 0.75rem;
+.kroki-prawa .lista-krokow > .krok {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--ramka);
+}
+
+.kroki-prawa .lista-krokow > .krok:nth-child(odd) {
+  background-color: var(--tlo-panel-2);
+}
+
+.kroki-prawa .krok-numer {
+  color: var(--tekst-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* Para „przed ⇒ po” jest najważniejsza w kroku, więc idzie dużą czcionką

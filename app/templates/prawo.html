@@ -4,7 +4,8 @@
    Zmienna ``rysunek`` to ścieżka partialu wybrana polem ``prawo.wizualizacja``.
    Zmienna ``kroki`` to gotowe kroki sekcji „Krok po kroku" (``KrokWidoku``):
    wzory z wyróżnionym fragmentem przychodzą już jako HTML, więc nie wymagają
-   filtra ``|safe`` (karta PRZ-143). #}
+   filtra ``|safe`` (karta PRZ-143). Sekcja pokazuje wszystkie kroki naraz,
+   jeden pod drugim — bez komponentu kroków (karta PRZ-157). #}
 {% extends "base.html" %}
 
 {% block tytul %}{{ prawo.nazwa }} — prawa rachunku zdań{% endblock %}
@@ -47,21 +48,24 @@
       i zachowuje sens formuły.
     </p>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/steps.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
-    {# Kroki rysuje serwer (działają też bez JavaScriptu), a `steps.js` dokłada
-       tylko pasek ze strzałkami i pokazuje jeden krok naraz (karta PRZ-143).
-       Zmieniony fragment wzoru przychodzi z `app/blueprints/laws.py` jako `<mark>`. #}
-    <div class="kroki-prawa" data-kroki-prawa>
-      <div class="stepper-mount" data-stepper></div>
-      <ol class="kroki-lista list-unstyled mb-0">
+    {# Wszystkie kroki rysuje serwer i stoją naraz, jeden pod drugim (karta PRZ-157).
+       Zmieniony fragment wzoru przychodzi z `app/blueprints/laws.py` jako `<mark>`.
+       Komponentu kroków (`_steps.html` i `steps.js`) tu nie ma — pokazuje kroki
+       pojedynczo przez pasek strzałek i należy do sekcji „Rysunek” praw
+       z wizualizacją `chain` oraz do plac zabaw. #}
+    <div class="kroki-prawa">
+      <ol class="lista-krokow">
         {% for krok in kroki %}
           <li class="krok">
             <p class="krok-linia mb-1">
-              <span class="krok-plakietka badge text-bg-secondary">{{ krok.plakietka }}</span>
+              <span class="krok-numer">Krok {{ loop.index }}</span>
               <span class="krok-wzor formula">{{ krok.przed }}</span>
               <span class="visually-hidden">daje w wyniku</span>
               <span class="krok-strzalka" aria-hidden="true">⇒</span>
               <span class="krok-wzor formula">{{ krok.po }}</span>
+            </p>
+            <p class="krok-plakietka-linia mb-1">
+              <span class="krok-plakietka badge text-bg-secondary">{{ krok.plakietka }}</span>
             </p>
             <div class="krok-tresc">
               <p class="krok-opis mb-1">{{ krok.opis }}</p>
@@ -76,7 +80,6 @@
         {% endfor %}
       </ol>
     </div>
-    <script type="module" src="{{ url_for('static', filename='js/steps.js') }}"></script>
   </section>
 
   <section class="sekcja" aria-labelledby="naglowek-tablica-prawdy">
