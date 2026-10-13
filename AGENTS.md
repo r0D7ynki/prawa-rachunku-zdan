@@ -44,6 +44,10 @@ Pythona poza Flasketem — frontend to Bootstrap z CDN i czysty JavaScript.
    a wynik jest opisany tekstem (kolor nie jest jedynym nośnikiem informacji).
 6. **Test**: nowe zachowanie ma test, który pada bez zmiany. Testy logiki nie wymagają
    przeglądarki — używaj `flask.test_client()`.
+   **JavaScript**: projekt nie ma runnera JS (żadnego Node ani npm). Testem zachowania skryptu
+   jest test statyczny w `tests/`: sprawdza obecność wymaganych identyfikatorów, klas i wywołań
+   w pliku `.js` oraz brak `innerHTML` z danymi z API. Nie żądaj testu jednostkowego JS
+   i nie dodawaj środowiska Node.
 7. **Zakres**: zmieniasz tylko pliki z sekcji `## Files` karty. Potrzebny inny plik —
    wpis w `## Log`, karta wraca do `ready`, stop.
 
