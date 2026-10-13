@@ -51,6 +51,8 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/blueprints/quiz.py` | `/quiz` | PRZ-015 |
 | `app/blueprints/spis_tresci.py` | `/spis-tresci` | PRZ-069 |
 | `app/blueprints/reguly.py` | `/reguly` | PRZ-090 |
+| `app/blueprints/konsekwencja.py` | `/konsekwencja` | PRZ-083 |
+| `app/blueprints/api_wynikanie.py` | `/api/wynikanie` | PRZ-083 |
 | `app/templates/base.html` | szkielet strony, menu, okruszki, nawigacja lekcji, stopka | PRZ-008, PRZ-069 |
 | `app/templates/spis_tresci.html` | spis treści kursu (wykłady i lekcje) | PRZ-069 |
 | `app/static/css/nawigacja.css` | style menu, okruszków, spisu lekcji i kart sąsiadów | PRZ-069 |
@@ -356,10 +358,28 @@ z tego drzewa, więc nie zgaduje struktury z tekstu.
 ale zestaw różni się od zamówionego (np. mniej pytań niż `ile`, bo tyle jest dostępnych).
 Przy pełnym zestawie pole jest puste. Dopisane po przeglądzie PRZ-015 (D27).
 
+`api_wynikanie.py` (blueprint `api_wynikanie`, `url_prefix="/api"`, karta PRZ-083):
+
+| Endpoint | Wejście | Wyjście |
+|---|---|---|
+| `/api/wynikanie` | `{"zalozenia": [str], "teza": str}` | `ok`, `wynika`, `kontrprzyklad`, `blad` |
+
+`wynika` odpowiada na pytanie, czy teza wynika logicznie z listy założeń. `kontrprzyklad`
+to pierwsze wartościowanie, przy którym założenia są prawdziwe, a teza fałszywa — słownik
+`{"p": 1, "q": 0}` (wartości jako `1`/`0`) albo `null`, gdy teza wynika. Granice: 10 założeń,
+6 zmiennych i 500 znaków na formułę; przekroczenie to `ok: false` z komunikatem po polsku.
+
+`api_wynikanie.check_entailment(zalozenia, teza)` to cała logika wynikania (bez Flaska):
+buduje koniunkcję założeń i porównuje ją przez `truth.equivalent` z tą samą koniunkcją
+poszerzoną o tezę. Funkcji używa też widok `/konsekwencja`, więc formularz strony
+i endpoint API liczą wynik tym samym kodem. Błędne dane zwracają słownik z `ok: false`
+i `blad` zamiast wyjątku.
+
 Widoki HTML: `home.py` → `/`, `/slowniczek`, `/jak-czytac`; `laws.py` → `/prawa`,
 `/prawa/<slug>`; `playground.py` → `/plac-zabaw`; `quiz.py` → `/quiz`;
 `wstep.py` → `/wstep`; `formuly.py` → `/formuly`; `tautologie.py` → `/tautologie`;
-`przeksztalcanie.py` → `/przeksztalcanie`; `kpn.py` → `/kpn`; `reguly.py` → `/reguly`.
+`przeksztalcanie.py` → `/przeksztalcanie`; `kpn.py` → `/kpn`; `reguly.py` → `/reguly`;
+`konsekwencja.py` → `/konsekwencja` (GET oraz POST z formularza testu wynikania).
 
 Kolejność nauki na stronie (ścieżka kursu): `/wstep` → `/formuly` → `/tautologie` →
 `/przeksztalcanie` → `/kpn` → `/prawa` → `/plac-zabaw` → `/quiz`. Każda strona kursu kończy
