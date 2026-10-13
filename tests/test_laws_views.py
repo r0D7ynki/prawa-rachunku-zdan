@@ -611,8 +611,11 @@ def test_nieznany_adres_nie_wypisuje_znacznikow_z_adresu(klient):
     html = odpowiedz.get_data(as_text=True)
 
     assert odpowiedz.status_code == 404
-    assert "<script>" not in html
-    assert "&lt;script&gt;" in html
+    # Adres z `%3Cscript%3E` nie może wypisać się jako znacznik — pokazujemy go
+    # w ucieczce. Od karty PRZ-138 `base.html` ma własny skrypt inline, więc nie
+    # żądamy tu już „żadnego <script> na stronie”, tylko braku wstrzykniętego.
+    assert "<script>alert(1)" not in html, "adres wypisany jako znacznik"
+    assert "&lt;script&gt;" in html, "adres wypisany bez ucieczki"
 
 
 # --- nawigacja poprzednie / następne ----------------------------------------

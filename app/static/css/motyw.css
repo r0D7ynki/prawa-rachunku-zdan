@@ -1,0 +1,168 @@
+/* Motyw wybrany przez użytkownika: jasny, ciemny i „jak w systemie” (karta PRZ-138).
+
+   `app.css` zostaje warstwą bez JavaScriptu: paletę przełącza tam
+   `@media (prefers-color-scheme: dark)`. Ten arkusz wchodzi do gry wtedy, gdy wybór
+   użytkownika różni się od ustawienia systemu. Selektor `:root[data-theme="…"]` ma
+   wyższą swoistość niż `:root` z `app.css`, więc wygrywa w obie strony:
+
+     * system ciemny + wybór „Jasny” — blok jasny cofa wartości z bloku ciemnego,
+     * system jasny + wybór „Ciemny” — blok ciemny daje te same wartości, co blok
+       `@media (prefers-color-scheme: dark)` w `app.css`.
+
+   To jedyne miejsce, w którym arkusz podaje kolory wprost: paletę definiuje `app.css`,
+   a tutaj jest jej kopia dla wyboru użytkownika. Rozjazd obu zestawów wyłapie
+   `tests/test_motyw.py`. `base.html` ustawia `data-theme` skryptem w `<head>`. */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --kolor-tlo: #f7f7fb;
+  --kolor-panel: #ffffff;
+  --kolor-tekst: #1d2330;
+  --kolor-tekst-slaby: #55515e;
+  --kolor-akcent: #4c3bcf;
+  --kolor-akcent-jasny: #ece9ff;
+  --kolor-prawda: #157f4a;
+  --kolor-falsz: #b3261e;
+  --kolor-ramka: #dcd8ee;
+  --kolor-formula: #f1eefc;
+  --cien: 0 0.5rem 1.25rem rgb(29 35 48 / 8%);
+  --cien-mocny: 0 0.75rem 1.5rem rgb(76 59 207 / 22%);
+
+  /* Zmienne `--bs-*` wracają do wartości jasnych Bootstrapa 5.3. Bez tego system
+     ciemny zostawiłby ciemne menu, tabele i pola mimo wybranego motywu jasnego. */
+  --bs-body-bg: #fff;
+  --bs-body-bg-rgb: 255, 255, 255;
+  --bs-body-color: #212529;
+  --bs-body-color-rgb: 33, 37, 41;
+  --bs-emphasis-color: #000;
+  --bs-emphasis-color-rgb: 0, 0, 0;
+  --bs-heading-color: inherit;
+  --bs-secondary-color: rgba(33, 37, 41, 0.75);
+  --bs-secondary-color-rgb: 33, 37, 41;
+  --bs-secondary-bg: #e9ecef;
+  --bs-tertiary-color: rgba(33, 37, 41, 0.5);
+  --bs-tertiary-bg: #f8f9fa;
+  --bs-border-color: #dee2e6;
+  --bs-border-color-translucent: rgba(0, 0, 0, 0.175);
+  --bs-link-color: #0d6efd;
+  --bs-link-color-rgb: 13, 110, 253;
+  --bs-link-hover-color: #0a58ca;
+  --bs-link-hover-color-rgb: 10, 88, 202;
+  --bs-code-color: #d63384;
+  --bs-highlight-color: #212529;
+  --bs-highlight-bg: #fff3cd;
+  --bs-info-bg-subtle: #cff4fc;
+  --bs-info-text-emphasis: #055160;
+  --bs-info-border-subtle: #9eeaf9;
+  --bs-warning-bg-subtle: #fff3cd;
+  --bs-warning-text-emphasis: #664d03;
+  --bs-warning-border-subtle: #ffe69c;
+  --bs-danger-bg-subtle: #f8d7da;
+  --bs-success-bg-subtle: #d1e7dd;
+  --bs-success-text-emphasis: #0a3622;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --kolor-tlo: #14131c;
+  --kolor-panel: #1c1b27;
+  --kolor-tekst: #e8e6f2;
+  --kolor-tekst-slaby: #b6b1c9;
+  --kolor-akcent: #b3a6ff;
+  --kolor-akcent-jasny: #2a2745;
+  --kolor-prawda: #4ec98a;
+  --kolor-falsz: #ff8a80;
+  --kolor-ramka: #3a3750;
+  --kolor-formula: #232135;
+  --cien: 0 0.5rem 1.25rem rgb(0 0 0 / 45%);
+  --cien-mocny: 0 0.75rem 1.5rem rgb(0 0 0 / 60%);
+
+  --bs-body-bg: var(--kolor-tlo);
+  --bs-body-bg-rgb: 20, 19, 28;
+  --bs-body-color: var(--kolor-tekst);
+  --bs-body-color-rgb: 232, 230, 242;
+  --bs-emphasis-color: #ffffff;
+  --bs-emphasis-color-rgb: 255, 255, 255;
+  --bs-heading-color: inherit;
+  --bs-secondary-color: rgb(232 230 242 / 75%);
+  --bs-secondary-color-rgb: 232, 230, 242;
+  --bs-secondary-bg: #26243a;
+  --bs-tertiary-color: rgb(232 230 242 / 60%);
+  --bs-tertiary-bg: #221f33;
+  --bs-border-color: var(--kolor-ramka);
+  --bs-border-color-translucent: rgb(255 255 255 / 15%);
+  --bs-link-color: var(--kolor-akcent);
+  --bs-link-color-rgb: 179, 166, 255;
+  --bs-link-hover-color: #cfc6ff;
+  --bs-link-hover-color-rgb: 207, 198, 255;
+  --bs-code-color: #f0a6c8;
+  --bs-highlight-color: var(--kolor-tekst);
+  --bs-highlight-bg: #4a3a00;
+
+  /* Pary „subtle”, z których korzystają alerty i tło kroków. */
+  --bs-info-bg-subtle: #032830;
+  --bs-info-text-emphasis: #6edff6;
+  --bs-info-border-subtle: #087990;
+  --bs-warning-bg-subtle: #332701;
+  --bs-warning-text-emphasis: #ffda6a;
+  --bs-warning-border-subtle: #997404;
+  --bs-danger-bg-subtle: #2c0b0e;
+  --bs-success-bg-subtle: #051b11;
+  --bs-success-text-emphasis: #75b798;
+}
+
+/* Powierzchnie malowane w innych arkuszach kolorem zapisanym wprost (`reguly.css`,
+   `dowody.css`, `wizualizacje.css`). Ładują się po `app.css`, więc podnosimy
+   swoistość selektora przez `:root` także dla wybranego motywu — inaczej `#fff`
+   z tamtych plików wygrałoby kolejnością. Ta sama łata stoi w bloku ciemnym
+   `app.css`; właściwa poprawka należy do kart tych plików. */
+:root .karta-reguly,
+:root .karta-rodzaju,
+:root .strzalka-regula,
+:root .wiz-legenda {
+  background: var(--kolor-panel);
+}
+
+/* --- przełącznik w menu ------------------------------------------------ */
+
+/* Bez JavaScriptu przełącznik nie działa, więc go chowamy: motywem rządzi wtedy
+   `@media (prefers-color-scheme: dark)` z `app.css`. Klasę `bez-js` zdejmuje
+   skrypt inline w `<head>` (karta PRZ-138). */
+.bez-js .motyw-przelacznik {
+  display: none;
+}
+
+.motyw-przelacznik {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+/* Trzy przyciski obok siebie to trzy stany motywu. */
+.motyw-przycisk {
+  min-height: var(--min-dotyk);
+  min-width: var(--min-dotyk);
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--kolor-ramka);
+  border-radius: 0.5rem;
+  background: var(--kolor-panel);
+  color: var(--kolor-tekst);
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.motyw-przycisk:hover {
+  border-color: var(--kolor-akcent);
+  color: var(--kolor-akcent);
+}
+
+/* Stan wybrany niesie `aria-pressed`, a dla oka obwódka i pogrubienie —
+   sam kolor nigdy nie jest jedynym nośnikiem informacji. */
+.motyw-przycisk[aria-pressed="true"] {
+  border-color: var(--kolor-akcent);
+  box-shadow: inset 0 0 0 1px var(--kolor-akcent);
+  background: var(--kolor-akcent-jasny);
+  color: var(--kolor-akcent);
+  font-weight: 600;
+}

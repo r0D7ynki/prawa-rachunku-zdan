@@ -58,9 +58,11 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/blueprints/konsekwencja.py` | `/konsekwencja` | PRZ-083 |
 | `app/blueprints/rezolucja.py` | `/rezolucja` | PRZ-092 |
 | `app/blueprints/api_wynikanie.py` | `/api/wynikanie` | PRZ-083 |
-| `app/templates/base.html` | szkielet strony, menu, okruszki, nawigacja lekcji, stopka | PRZ-008, PRZ-069 |
+| `app/templates/base.html` | szkielet strony, menu, okruszki, nawigacja lekcji, stopka, przełącznik motywu | PRZ-008, PRZ-069, PRZ-138 |
 | `app/templates/spis_tresci.html` | spis treści kursu (wykłady i lekcje) | PRZ-069 |
 | `app/static/css/nawigacja.css` | style menu, okruszków, spisu lekcji i kart sąsiadów | PRZ-069 |
+| `app/static/css/motyw.css` | paleta jasna i ciemna dla wybranego motywu, przełącznik w menu | PRZ-138 |
+| `app/static/js/motyw.js` | wybór motywu: zapis w `localStorage`, reakcja na system | PRZ-138 |
 | `app/templates/reguly.html` | karty reguł wnioskowania | PRZ-090 |
 | `app/static/css/reguly.css` | style kart reguł | PRZ-090 |
 | `app/templates/dowody.html` | tabela dowodu, pasek kroków, kontrprzykład | PRZ-091 |
@@ -782,11 +784,35 @@ Zasady obowiązujące nowe arkusze:
 * każdy przycisk ma `min-height: var(--min-dotyk)`, a odnośniki i przyciski jawny
   stan `:focus-visible`.
 
-Tryb ciemny to jedno zapytanie `@media (prefers-color-scheme: dark)` w `app.css`.
-Bootstrap 5.3 nie ma wartości `data-bs-theme`, która idzie za systemem, więc blok
-ciemny przełącza także zmienne `--bs-*` (`--bs-body-bg`, `--bs-body-color`,
+Tryb ciemny bez JavaScriptu to jedno zapytanie `@media (prefers-color-scheme: dark)`
+w `app.css`. Bootstrap 5.3 nie ma wartości `data-bs-theme`, która idzie za systemem,
+więc blok ciemny przełącza także zmienne `--bs-*` (`--bs-body-bg`, `--bs-body-color`,
 `--bs-border-color`, `--bs-link-color-rgb` i pary `*-bg-subtle`). Dzięki temu menu,
-tabele i pola formularzy są ciemne bez JavaScriptu i bez własnego przełącznika.
+tabele i pola formularzy są ciemne bez własnego skryptu.
+
+#### Motyw wybrany przez użytkownika: `motyw.js` i `motyw.css` (PRZ-138)
+
+Strona ma trzy stany motywu: **auto** (domyślny — brak klucza), **jasny** i **ciemny**.
+Wybór siedzi w `localStorage["motyw"]` (`"light"` albo `"dark"`).
+
+- `base.html` ustawia `data-theme` i `data-bs-theme` na `<html>` **skryptem inline
+  w `<head>`, przed arkuszami CSS** — dzięki temu strona nie mignie jasnym tłem.
+  Ten sam skrypt zdejmuje z `<html>` klasę `bez-js`.
+- Atrybut `data-theme` czytają dwa bloki `motyw.css`: `:root[data-theme="light"]`
+  i `:root[data-theme="dark"]`. Selektor ma swoistość wyższą niż `:root` z `app.css`
+  (także ten w bloku `@media`), więc wybór użytkownika wygrywa z ustawieniem systemu
+  w obie strony. Paleta wybranego motywu to **kopia** palety z `app.css`; zgodności
+  obu zestawów pilnuje `tests/test_motyw.py`.
+- Przełącznik to grupa trzech przycisków (`data-motyw="auto|light|dark"`,
+  `aria-pressed`) w prawym narożniku menu. `motyw.js` zapisuje wybór („Auto” usuwa
+  klucz), zaznacza wybrany przycisk i słucha zmiany `prefers-color-scheme` — dopóki
+  wyborem jest „Auto”.
+- Bez JavaScriptu przełącznik jest niewidoczny (`.bez-js .motyw-przelacznik`), a strona
+  zostaje na warstwie z `app.css` — dlatego serwer **nie wpisuje** `data-theme` w HTML.
+- Motyw nie ma własnego widoku ani API; to warstwa `base.html` + dwa pliki statyczne.
+
+`motyw.css` to jedyne miejsce poza `app.css`, gdzie kolory stoją wprost: jest kopią
+palety dla wybranego motywu. Każdy nowy arkusz bierze kolory ze zmiennych.
 
 - Bootstrap 5.3 z CDN. Własne style w `app/static/css/<nazwa>.css`.
 - Skrypty jako `type="module"` w `app/static/js/`.

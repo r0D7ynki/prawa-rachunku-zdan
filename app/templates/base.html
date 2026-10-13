@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl" data-bs-theme="light">
+<html lang="pl" class="bez-js" data-bs-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -12,6 +12,34 @@
       name="description"
       content="Interaktywna strona o prawach i tautologiach rachunku zdań: tablice prawdy, krokowe przekształcenia, wizualizacje."
     />
+    {#
+      Motyw strony (karta PRZ-138). Ten skrypt stoi **przed** arkuszami CSS i działa
+      od razu, a nie po wczytaniu dokumentu — dlatego strona nie mignie jasnym tłem,
+      zanim przełącznik zdąży zadziałać. Klucz `motyw` w localStorage trzyma wybór
+      użytkownika (`light` albo `dark`); brak klucza znaczy „jak w systemie”.
+      Klasa `bez-js`, zdjęta tutaj, ukrywa przełącznik tam, gdzie JavaScriptu nie ma
+      — wtedy motywem rządzi samo `@media (prefers-color-scheme: dark)` z app.css.
+    #}
+    <script>
+      (function () {
+        var korzen = document.documentElement;
+        korzen.classList.remove("bez-js");
+
+        var wybor = null;
+        try {
+          wybor = localStorage.getItem("motyw");
+        } catch (blad) {
+          wybor = null;
+        }
+
+        var system = window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+        var motyw = wybor === "light" || wybor === "dark" ? wybor : system;
+        korzen.setAttribute("data-theme", motyw);
+        korzen.setAttribute("data-bs-theme", motyw);
+      })();
+    </script>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -20,6 +48,7 @@
     />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/nawigacja.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/motyw.css') }}" />
     {% block head %}{% endblock %}
   </head>
   <body>
@@ -111,6 +140,43 @@
             </li>
             <li class="nav-item">
               <a class="nav-link" href="/spis-tresci">Spis treści</a>
+            </li>
+            {#
+              Przełącznik motywu (karta PRZ-138) w prawym narożniku menu. „Auto” to brak
+              klucza w localStorage — o motywie decyduje wtedy system. Wybrany przycisk
+              ma `aria-pressed="true"`; stan zaznacza też obwódka i pogrubienie, żeby sam
+              kolor nie niósł informacji. Bez JavaScriptu grupa znika (klasa `bez-js`).
+            #}
+            <li class="nav-item d-flex align-items-center ms-lg-3">
+              <div class="motyw-przelacznik" role="group" aria-label="Motyw strony">
+                <button
+                  type="button"
+                  class="motyw-przycisk"
+                  data-motyw="auto"
+                  aria-pressed="true"
+                  title="Motyw jak w systemie"
+                >
+                  <span aria-hidden="true">◐</span> Auto
+                </button>
+                <button
+                  type="button"
+                  class="motyw-przycisk"
+                  data-motyw="light"
+                  aria-pressed="false"
+                  title="Motyw jasny"
+                >
+                  <span aria-hidden="true">☀</span> Jasny
+                </button>
+                <button
+                  type="button"
+                  class="motyw-przycisk"
+                  data-motyw="dark"
+                  aria-pressed="false"
+                  title="Motyw ciemny"
+                >
+                  <span aria-hidden="true">☾</span> Ciemny
+                </button>
+              </div>
             </li>
           </ul>
         </div>
@@ -226,6 +292,7 @@
       integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
       crossorigin="anonymous"
     ></script>
+    <script type="module" src="{{ url_for('static', filename='js/motyw.js') }}"></script>
     {% block skrypty %}{% endblock %}
   </body>
 </html>
