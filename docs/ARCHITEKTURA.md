@@ -35,6 +35,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/logic/simplify.py` | silnik przekształceń ze śladem kroków | PRZ-006 |
 | `app/logic/quiz.py` | generator pytań | PRZ-007 |
 | `app/logic/rules.py` | rejestr reguł wnioskowania (wykład 2) | PRZ-090 |
+| `app/logic/proofs.py` | dane dowodów założeniowych A–F (wykład 2) | PRZ-091 |
 | `app/logic/resolution.py` | reguła rezolucji: kroki dwóch dowodów (wykład 2) | PRZ-092 |
 | `app/lessons.py` | rejestr wykładów i lekcji (nawigacja) | PRZ-070 |
 | `app/blueprints/home.py` | `/`, `/slowniczek`, `/jak-czytac` | PRZ-008 |
@@ -52,6 +53,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/blueprints/quiz.py` | `/quiz` | PRZ-015 |
 | `app/blueprints/spis_tresci.py` | `/spis-tresci` | PRZ-069 |
 | `app/blueprints/reguly.py` | `/reguly` | PRZ-090 |
+| `app/blueprints/dowody.py` | `/dowody` | PRZ-091 |
 | `app/blueprints/konsekwencja.py` | `/konsekwencja` | PRZ-083 |
 | `app/blueprints/rezolucja.py` | `/rezolucja` | PRZ-092 |
 | `app/blueprints/api_wynikanie.py` | `/api/wynikanie` | PRZ-083 |
@@ -60,6 +62,9 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/static/css/nawigacja.css` | style menu, okruszków, spisu lekcji i kart sąsiadów | PRZ-069 |
 | `app/templates/reguly.html` | karty reguł wnioskowania | PRZ-090 |
 | `app/static/css/reguly.css` | style kart reguł | PRZ-090 |
+| `app/templates/dowody.html` | tabela dowodu, pasek kroków, kontrprzykład | PRZ-091 |
+| `app/static/js/dowody.js` | dowód krok po kroku, strzałki i sprzeczność | PRZ-091 |
+| `app/static/css/dowody.css` | style strony `/dowody` | PRZ-091 |
 | `app/templates/partials/_truth_table.html` | komponent tablicy prawdy | PRZ-011 |
 | `app/templates/partials/_gates.html` | komponent bramek | PRZ-012 |
 | `app/templates/partials/_sets.html` | komponent diagramów zbiorów | PRZ-012 |
@@ -324,6 +329,80 @@ odnośnik „Sprawdź w placu zabaw” z tautologią reguły w parametrze `formu
 Sekcje powstają z pola `Rule.typ` — widok nie zna kodów reguł ani ich liczby. Metazmienne
 rysuje `metazmienne_to_html`, tautologie `formula_to_html`; oba oddają napis jako tekst
 (bez znaczników), gdy wzór się nie parsuje, żeby błąd w treści nie dawał strony 500.
+
+## `app/logic/proofs.py` — dowody założeniowe
+
+Dane sześciu dowodów A–F z wykładu 2 (`docs/TRESC-WYKLAD2.md`, sekcje „3. Dowód założeniowy
+wprost”, „4. Dowód założeniowy nie wprost” i „5. Niepoprawne rozumowania i kontrprzykład”).
+Moduł trzyma **tylko dane**, w kolejności z wykładu — tak samo jak `rules.py` dla reguł
+wnioskowania i `resolution.py` dla rezolucji. Nie dowodzi niczego sam.
+
+```python
+@dataclass(frozen=True)
+class ProofLine:
+    nr: str            # "1", "4.1"
+    formula: str       # "(p ∨ q) → (r ∨ s)"
+    uzasadnienie: str  # "RO 2, 3" albo "Założenie" albo "Sprzeczność 5, 7"
+    z: list[str]       # numery wierszy, z których korzysta: ["2", "3"]
+
+@dataclass(frozen=True)
+class Proof:
+    id: str            # "A" … "F"
+    tytul: str
+    rodzaj: str        # "wprost" | "nie-wprost" | "wielokrotne"
+    teza: str          # formuła tezy do pokazania
+    wiersze: list[ProofLine]
+    opis: str
+
+def proofs() -> list[Proof]              # sześć dowodów A–F, kopia listy
+def get(proof_id: str) -> Proof | None   # " a " → dowód A; nieznany id → None
+def is_contradiction(line: ProofLine) -> bool
+```
+
+**Pole `z`** trzyma numery wierszy użytych w tym kroku. Założenia niczego nie wyprowadzają,
+więc ich `z` jest puste — to wiersze, których `uzasadnienie` stoi w stałej
+`UZASADNIENIA_BEZ_Z` (`Założenie`, `Z dow. nie wprost`, `Dodatkowe założenie`). Pozostałe
+wiersze mają `z` niepuste: widok rysuje z niego strzałki, a test sprawdza, że każdy numer
+istnieje w tym samym dowodzie. Pole jest **listą**, bo tak mówi kontrakt karty. `proofs()`
+oddaje nową listę dowodów, ale same obiekty `Proof` i ich listy są wspólne — wołający
+**nie może** modyfikować `z` ani `wiersze` w miejscu (widok kopiuje `z` do kroków paska).
+
+**Wiersz sprzeczności** zamyka dowód nie wprost. Jego `formula` to napis „Sprzeczność 5, 7”,
+a nie formuła — `is_contradiction` rozpoznaje go po przedrostku (stała `SPRZECZNOSC`).
+Kod spoza tego modułu **nie może** wkładać `formula` takiego wiersza do `formula.parse`;
+jego `z` to dwa wiersze, które sobie przeczą. Uwaga: `truth.is_contradiction` bada formułę,
+a `proofs.is_contradiction` — wiersz dowodu; importuj z nazwą modułu.
+
+**Rodzaje.** Stałe `RODZAJ_WPROST`, `RODZAJ_NIE_WPROST`, `RODZAJ_WIELOKROTNE` nazywają
+wartości pola `rodzaj` (widok buduje sekcje i wstęp z tych stałych, nie z napisów).
+Formuły wierszy (poza wierszem sprzeczności) to zwykłe formuły ze zmiennymi `p`, `q` —
+parsują się przez `formula.parse`, inaczej niż metazmienne `Φ`, `Ψ` w `rules.py`.
+
+## `app/blueprints/dowody.py` — strona `/dowody`
+
+Lekcja „Dowody założeniowe”: wstęp do trzech rodzajów dowodu (stała `RODZAJE`), sekcja na
+każdy dowód z `proofs.proofs()` i sekcja „Skąd kontrprzykład” (`PRZYKLADY_KONTRPRZYKLADU`,
+tabela z `docs/TRESC-WYKLAD2.md`, sekcja 5). Widok nie zna liczby ani identyfikatorów
+dowodów — bierze je z rejestru.
+
+Dla każdego dowodu widok przygotowuje:
+
+* wiersze tabeli (numer, wzór, uzasadnienie, pełna nazwa reguły), z `wciety` dla numerów
+  z kropką („4.1”) i `aria_label` z opisem sprzeczności; opisuje je `_wiersz_widoku`,
+* kroki paska jako JSON w `kroki_json` → atrybut `data-kroki` sekcji dowodu (`_krok_widoku`).
+
+Wzory rysuje `formula.to_html` (`formula_to_html`); napis, który formułą nie jest
+(„Sprzeczność 5, 7”, kontrprzykład), oddaje jako czysty tekst — literówka w treści da brzydki
+wzór, a nie stronę 500. Kody reguł z `uzasadnienie` (`RO 2, 3` → `RO`) prowadzi do pełnych
+nazw przez `rules.get`; nieznany kod zostaje samym napisem z wykładu.
+
+Bez JavaScriptu cała tabela dowodu jest w HTML (żaden wiersz nie ma `hidden`), a pasek kroków
+pokazuje `<noscript>` z listą wierszy. Wiersz sprzeczności ma klasę `wiersz-sprzecznosc`
+i polski opis słowny dla czytnika ekranu, więc kolor nie jest jedynym nośnikiem informacji.
+Skrypt `app/static/js/dowody.js` korzysta z `createStepper` (komponent PRZ-072): odkrywa
+wiersze po kolei, wyróżnia bieżący wiersz i jego źródła, rysuje nad tabelą strzałkę
+„wiersze 2 i 3 → wiersz 5 · RO” i zamyka dowód podświetleniem pary sprzecznej. Skrypt pisze
+do DOM wyłącznie przez `textContent`, nigdy `innerHTML`.
 
 ## `app/logic/resolution.py` — reguła rezolucji
 
