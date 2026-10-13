@@ -1,0 +1,84 @@
+/* Style komponentu krokowego przekształcania (karta PRZ-013).
+   Kolor nigdy nie jest jedynym nośnikiem informacji: aktywny krok ma dodatkowo
+   etykietę „Krok n", pogrubienie i lewą krawędź. */
+
+.steps-mount {
+  --steps-akcent: var(--bs-primary, #0d6efd);
+  --steps-tlo-aktywne: var(--bs-primary-bg-subtle, #cfe2ff);
+  --steps-tlo-widoczne: var(--bs-secondary-bg, #e9ecef);
+}
+
+.steps-lista {
+  padding-left: 0;
+  list-style: none;
+}
+
+.krok {
+  border-left: 4px solid transparent;
+  border-radius: 0.25rem;
+}
+
+/* Krok aktywny: ostatnio pokazany. */
+.krok-aktywny {
+  border-left-color: var(--steps-akcent);
+  background-color: var(--steps-tlo-aktywne);
+}
+
+/* Kroki już pokazane, ale nieaktywne — wygaszone tło. */
+.krok-widoczny {
+  background-color: var(--steps-tlo-widoczne);
+}
+
+.krok-naglowek {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.krok-naglowek:focus-visible {
+  outline: 2px solid var(--steps-akcent);
+  outline-offset: 2px;
+}
+
+.krok-numer {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.krok-przejscie {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.krok-prawo {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.krok-tresc {
+  padding: 0 0.75rem 0.6rem 0.75rem;
+}
+
+.krok-pozycja {
+  font-style: italic;
+}
+
+.steps-podsumowanie {
+  font-weight: 500;
+}
+
+.steps-sterowanie .btn:disabled {
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .krok {
+    transition: background-color 120ms ease-in-out;
+  }
+}
