@@ -1,16 +1,21 @@
 {# Partial: interaktywna tablica prawdy z wpisywaniem wartości. Wypełniają karty
-   PRZ-011, PRZ-073 i PRZ-121.
-   Wejście: `formula` (tekst formuły w Unicode).
+   PRZ-011, PRZ-073, PRZ-121 i PRZ-142.
+   Wejście: `formula` (tekst formuły w Unicode) oraz opcjonalne `pokaz_ocene`
+   (domyślnie `True`). Strony praw i tautologii podają `pokaz_ocene=false`: tablica
+   służy tam do czytania, więc `truth-table.js` nie rysuje pod nią panelu
+   klasyfikacji ani przycisku „Sprawdź całą tabelę” i nie ocenia wpisów.
    Skrypt `truth-table.js` pobiera tablicę z adresu w `data-adres` i dorysowuje tabelę,
    filtry, panel „Twoje ustawienie” oraz pasek kroków ze wspólnego komponentu
    `stepper.js`. Zakryta komórka wyniku to pole na jeden znak: student wpisuje `0`
    albo `1` i od razu widzi, czy dobrze.
    Partial nie liczy żadnych wartości — dokłada tylko style komponentu i paska. #}
+{% set pokaz_oceny = pokaz_ocene if pokaz_ocene is defined else true %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/truth-table.css') }}" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
 <div class="truth-table-mount"
      data-formula="{{ formula }}"
      data-adres="{{ url_for('api_formula.formula_table') }}"
+     data-pokaz-oceny="{{ 'true' if pokaz_oceny else 'false' }}"
      data-rola="tablica-prawdy">
   <noscript>
     <p class="alert alert-info mb-2">

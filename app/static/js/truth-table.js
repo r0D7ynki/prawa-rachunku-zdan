@@ -20,6 +20,12 @@
    „Sprawdź całą tabelę” maluje wszystkie wpisy i podaje wynik słowami, a „Pokaż
    odpowiedź” odsłania całą tabelę.
 
+   Tryb czytania (karta PRZ-142): na stronach praw i na `/tautologie` partial ustawia
+   `data-pokaz-oceny="false"`, bo tablica ma tam tylko pokazać wartościowanie.
+   Wtedy nie powstaje panel klasyfikacji ani przycisk „Sprawdź całą tabelę”, a wpis
+   studenta nie dostaje zieleni ani czerwieni. Tablica, strzałki kroków i pola do
+   wpisywania zostają. Brak atrybutu (albo `true`) znaczy plac zabaw: bez zmian.
+
    Numer kroku zostaje w tekście dla czytników ekranu pod tabelą (widok go nie pokazuje).
 
    Nie ma tu podsłuchu na zdarzenia klawiatury dla przycisków: element `<button>`
@@ -151,8 +157,10 @@ function zbudujNaglowek(zmienne, kolumny) {
  *
  *  Numer kroku (od zera) jest numerem komórki licząc kolumna po kolumnie, dlatego
  *  „Dalej” zawsze odsłania dokładnie jedną komórkę. Ostatni krok nie ma komórki:
- *  zbiera wynik całej formuły w jedno zdanie z klasyfikacją i liczbą jedynek. */
-function zbudujKroki(zmienne, kolumny, kolumnyKrokow, wiersze, klasyfikacja) {
+ *  zbiera wynik całej formuły w liczbę jedynek i — gdy tablica ocenia (`ocenaWlaczona`)
+ *  — w zdanie o klasyfikacji formuły. W trybie czytania zdania o klasyfikacji nie ma,
+ *  bo to właśnie ocena, której strony praw i tautologii nie pokazują (karta PRZ-142). */
+function zbudujKroki(zmienne, kolumny, kolumnyKrokow, wiersze, klasyfikacja, ocenaWlaczona) {
   const kroki = [];
   for (const [pozycja, kolumna] of kolumnyKrokow.entries()) {
     const etykieta = kolumny[kolumna];
@@ -176,11 +184,11 @@ function zbudujKroki(zmienne, kolumny, kolumnyKrokow, wiersze, klasyfikacja) {
     const wartosci = dane[POLE_WARTOSCI] || [];
     return wartosci[wartosci.length - 1] === 1;
   }).length;
+  const ocenaFormuly =
+    ocenaWlaczona ? `Formuła jest ${NAZWY_KLASYFIKACJI[klasyfikacja] || klasyfikacja}. ` : "";
   kroki.push({
     tytul: TEKSTY.podsumowanie,
-    opis:
-      `Formuła jest ${NAZWY_KLASYFIKACJI[klasyfikacja] || klasyfikacja}. ` +
-      `${TEKSTY.ileJedynek}: ${jedynki} z ${wiersze.length}.`,
+    opis: `${ocenaFormuly}${TEKSTY.ileJedynek}: ${jedynki} z ${wiersze.length}.`,
     kolumna: null,
     wiersz: null,
     numer: null,
@@ -193,6 +201,11 @@ function rysuj(montaz, formula, dane, status) {
   const zmienne = dane.tabela.variables || [];
   const kolumny = dane.tabela.columns || [];
   const wiersze = dane.znaki || [];
+
+  /* Tryb czytania (karta PRZ-142): partial na stronach praw i tautologii ustawia
+     `data-pokaz-oceny="false"`. Każdy inny montaż (lekcje z liczeniem, plac zabaw)
+     zostaje sprawdzianem — brak atrybutu znaczy to samo co `true`. */
+  const ocenaWlaczona = montaz.dataset.pokazOceny !== "false";
 
   /* Odpowiedź musi mieć po jednej wartości na kolumnę w każdym wierszu. Gdyby serwer
      zmienił kształt danych, wolimy komunikat niż liczbę wziętą z cudzej kolumny. */
@@ -244,8 +257,15 @@ function rysuj(montaz, formula, dane, status) {
     return (wiersze[komorka.wiersz][POLE_WARTOSCI] || [])[komorka.kolumna];
   }
 
-  /** Ocena wpisu: „dobrze”, „zle” albo null, gdy pole jest puste albo ma inny znak. */
+  /** Ocena wpisu: „dobrze”, „zle” albo null, gdy pole jest puste albo ma inny znak.
+   *
+   *  W trybie czytania oceny nie ma wcale: wpis studenta nie dostaje zieleni ani
+   *  czerwieni, znaczek „✓”/„✕” zostaje pusty, a etykieta mówi tylko, co wpisać.
+   *  Wartość komórki pokazuje krok, tak samo jak przed wpisaniem. */
   function ocena(komorka) {
+    if (!ocenaWlaczona) {
+      return null;
+    }
     const wpis = komorka.wejscie.value;
     if (!DOZWOLONE.includes(wpis)) {
       return null;
@@ -432,18 +452,24 @@ function rysuj(montaz, formula, dane, status) {
   const przewijanie = element("div", "tt-przewijanie table-responsive mb-2");
   przewijanie.append(tabela);
 
-  /* Pasek kroków (karta PRZ-072) stoi pod tabelą, a przyciski oceny — obok, ale poza
+  /* Pasek kroków (karta PRZ-072) stoi pod tabelą, a przyciski — obok, ale poza
      kontenerem paska, bo `createStepper` podmienia zawartość swojego kontenera. */
   const pasek = element("div", "tt-kroki");
   const montazKrokow = element("div", "tt-kroki-pasek");
   montazKrokow.setAttribute("data-stepper", "");
   const przyciskiOceny = element("div", "tt-przyciski-oceny mb-2");
 
-  const sprawdzTabele = element("button", "btn btn-primary btn-sm", TEKSTY.sprawdzTabele);
-  sprawdzTabele.type = "button";
   const pokazOdpowiedz = element("button", "btn btn-outline-primary btn-sm", TEKSTY.pokazOdpowiedz);
   pokazOdpowiedz.type = "button";
-  przyciskiOceny.append(sprawdzTabele, pokazOdpowiedz);
+  /* „Sprawdź całą tabelę” powstaje tylko tam, gdzie tablica jest sprawdzianem.
+     W trybie czytania nie ma czego sprawdzać, więc przycisk w ogóle nie istnieje. */
+  if (ocenaWlaczona) {
+    const sprawdzTabele = element("button", "btn btn-primary btn-sm", TEKSTY.sprawdzTabele);
+    sprawdzTabele.type = "button";
+    sprawdzTabele.addEventListener("click", sprawdzCalaTabele);
+    przyciskiOceny.append(sprawdzTabele);
+  }
+  przyciskiOceny.append(pokazOdpowiedz);
 
   /* Wynik sprawdzenia to zdanie po polsku — widoczne i ogłaszane przez `aria-live`. */
   const wynikSprawdzenia = element("p", "tt-wynik-sprawdzenia mb-0");
@@ -461,16 +487,21 @@ function rysuj(montaz, formula, dane, status) {
   const tytul = element("h3", "tt-tytul-ustawienia h6 mb-1", TEKSTY.ustawienie);
   const opisUstawienia = element("p", "tt-ustawienie mb-1");
   const opisWyniku = element("p", "tt-wynik-ustawienia small text-muted mb-1", TEKSTY.czekanie);
-  const klasyfikacja =
-    KLASYFIKACJE[dane.klasyfikacja] || `Odpowiedź serwera: ${dane.klasyfikacja}.`;
-  const opisKlasyfikacji = element("p", "tt-klasyfikacja small mb-2", klasyfikacja);
   const czysc = element("button", "btn btn-outline-secondary btn-sm", TEKSTY.wyczysc);
   czysc.type = "button";
   czysc.addEventListener("click", () => {
     ustawienie.clear();
     odswiez();
   });
-  panel.append(tytul, opisUstawienia, opisWyniku, opisKlasyfikacji, czysc);
+  panel.append(tytul, opisUstawienia, opisWyniku);
+  /* Zdanie „Ta formuła jest tautologią…” to ocena formuły — w trybie czytania
+     panel zostaje bez niego, a „Wyczyść wybór” działa dalej (karta PRZ-142). */
+  if (ocenaWlaczona) {
+    const klasyfikacja =
+      KLASYFIKACJE[dane.klasyfikacja] || `Odpowiedź serwera: ${dane.klasyfikacja}.`;
+    panel.append(element("p", "tt-klasyfikacja small mb-2", klasyfikacja));
+  }
+  panel.append(czysc);
 
   /** Przelicza widok po każdej zmianie ustawienia: filtry, podświetlenie i panel. */
   function odswiez() {
@@ -552,9 +583,14 @@ function rysuj(montaz, formula, dane, status) {
     }
   }
 
-  sprawdzTabele.addEventListener("click", sprawdzCalaTabele);
-
-  const kroki = zbudujKroki(zmienne, kolumny, kolumnyKrokow, wiersze, dane.klasyfikacja);
+  const kroki = zbudujKroki(
+    zmienne,
+    kolumny,
+    kolumnyKrokow,
+    wiersze,
+    dane.klasyfikacja,
+    ocenaWlaczona,
+  );
   let stepper = null;
 
   /** Pokazuje stan po wejściu w krok o numerze `indeks` (liczonym od zera).

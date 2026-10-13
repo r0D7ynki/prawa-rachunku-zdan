@@ -56,7 +56,11 @@
 
   <section class="sekcja" aria-labelledby="naglowek-tablica-prawdy">
     <h2 id="naglowek-tablica-prawdy">Tablica prawdy</h2>
-    {% include "partials/_truth_table.html" %}
+    {# To tablica do czytania, a nie sprawdzian: bez oceny formuły i bez przycisku
+       „Sprawdź całą tabelę” (karta PRZ-142). #}
+    {% with pokaz_ocene = false %}
+      {% include "partials/_truth_table.html" %}
+    {% endwith %}
   </section>
 
   <section class="sekcja" aria-labelledby="naglowek-rysunek">
