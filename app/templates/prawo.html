@@ -18,7 +18,11 @@
     <h1>{{ prawo.nazwa }}</h1>
     <dl class="wzory-prawa">
       <dt>Wzór</dt>
-      <dd id="wzor-prawa" class="formula">{{ formula_to_html(prawo.formula) |safe }}</dd>
+      {# Wzór główny: `formula-blok` trzyma go w jednej linii i przewija, gdy nie mieści
+         się w kolumnie; `#wzor-prawa` w `app.css` zmniejsza go na wąskim ekranie. #}
+      <dd id="wzor-prawa" class="formula formula-blok">
+        {{ formula_to_html(prawo.formula) |safe }}
+      </dd>
       <dt>Zapis w ASCII</dt>
       <dd id="wzor-ascii" class="formula">
         {{ formula_to_html(prawo.formula_ascii, "ascii") |safe }}

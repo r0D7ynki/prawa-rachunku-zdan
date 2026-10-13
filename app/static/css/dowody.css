@@ -19,10 +19,20 @@
 }
 
 .karta-rodzaju {
+  min-width: 0;
+  overflow: hidden;
   padding: 1rem 1.25rem;
   background: var(--tlo-panel);
   border: 1px solid var(--ramka);
   border-radius: 1rem;
+}
+
+/* Dziecko siatki albo paska flex kurczy się poniżej swojej treści, żeby długi wzór
+   ani tabela nie wyszły z karty (karta PRZ-140). */
+.lista-rodzajow > *,
+.lista-dowodow > *,
+.strzalki-dowodu > * {
+  min-width: 0;
 }
 
 .karta-rodzaju h3 {

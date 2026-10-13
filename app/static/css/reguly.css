@@ -14,6 +14,8 @@
 }
 
 .karta-reguly {
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -22,6 +24,13 @@
   background: var(--tlo-panel);
   border: 1px solid var(--ramka);
   border-radius: 1rem;
+}
+
+/* Dziecko siatki albo kolumny flex kurczy się poniżej swojej treści, żeby długi wzór
+   nie rozepchnął karty (karta PRZ-140). */
+.lista-regul > *,
+.karta-reguly > * {
+  min-width: 0;
 }
 
 .regula-nazwa {

@@ -21,7 +21,9 @@
             <li class="col">
               <a class="karta-prawa" href="/prawa/{{ prawo.slug }}">
                 <span class="karta-prawa-nazwa">{{ prawo.nazwa }}</span>
-                <span class="formula">{{ formula_to_html(prawo.formula) |safe }}</span>
+                {# `formula-blok`: długi wzór zostaje w jednej linii i przewija się wewnątrz
+                   kafelka, zamiast go rozepchnąć (karta PRZ-140). #}
+                <span class="formula formula-blok">{{ formula_to_html(prawo.formula) |safe }}</span>
               </a>
             </li>
           {% endfor %}
