@@ -8,3 +8,11 @@ __pycache__/
 htmlcov/
 .env
 *.log
+
+# Katalogi robocze roju i przeglądów. Worktree roju leżą poza repo
+# (../.worktrees-<repo>/), ale agent może przez pomyłkę utworzyć katalog o tej nazwie
+# w drzewie projektu. Nie commitujemy ich i nie lintujemy.
+worker-*/
+qa-gate/
+review-*/
+staging/
