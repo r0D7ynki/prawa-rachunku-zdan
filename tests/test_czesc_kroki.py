@@ -202,3 +202,22 @@ def test_skrypt_ma_polskie_komunikaty_i_arie(skrypt):
 def test_skrypt_podpowiada_o_rozwinieciu_kroku(skrypt):
     """Bez podpowiedzi początkujący nie zgadnie, że krok da się rozwinąć."""
     assert "Kliknij nagłówek kroku" in skrypt
+
+
+def test_skrypt_startuje_z_widocznym_pierwszym_krokiem(skrypt):
+    """Nowe zachowanie: pierwszy krok jest widoczny od razu, bez klikania."""
+    assert "const pierwszy = Math.min(1, kroki.length)" in skrypt
+    assert "let pokazane = pierwszy" in skrypt
+
+
+def test_skrypt_nie_cofa_sie_przed_pierwszy_krok(skrypt):
+    """Nowe zachowanie: „Poprzedni krok” i „Od nowa” zatrzymują się na pierwszym kroku."""
+    assert "Math.max(pokazane - 1, pierwszy)" in skrypt
+    assert "przyciski.poprzedni.disabled = pokazane <= 1" in skrypt
+    assert "przyciski.odNowa.disabled = pokazane <= 1" in skrypt
+    assert "pokazane = pierwszy;" in skrypt
+
+
+def test_skrypt_ukrywa_podpowiedz_gdy_nie_ma_krokow(skrypt):
+    """Nowe zachowanie: gdy ślad nie ma kroków, podpowiedź o rozwijaniu znika."""
+    assert "podpowiedz.hidden = kroki.length === 0" in skrypt
