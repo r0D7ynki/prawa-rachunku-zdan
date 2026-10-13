@@ -64,8 +64,10 @@
     {% if prawa %}
       <ul class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 lista-praw">
         {% for prawo in prawa %}
+          {# `urlencode` koduje spację, znak zapytania i kratkę, ale sam ukośnik zostawia:
+             taki adres rozjechałby się na dwie ścieżki. Dlatego ukośnik kodujemy ręcznie. #}
           <li class="col">
-            <a class="karta-prawa" href="/prawa/{{ prawo.slug }}">
+            <a class="karta-prawa" href="/prawa/{{ prawo.slug|urlencode|replace('/', '%2F') }}">
               <span class="karta-prawa-kategoria">{{ prawo.kategoria }}</span>
               <span class="karta-prawa-nazwa">{{ prawo.nazwa }}</span>
             </a>
