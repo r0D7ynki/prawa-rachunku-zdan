@@ -1,0 +1,101 @@
+{# Strona jednego prawa. Wypełnia ją ``app/blueprints/laws.py`` (karta PRZ-010).
+   Wzory wstawiamy wyłącznie przez ``formula_to_html`` (czyli ``formula.to_html``)
+   z filtrem ``|safe`` — nigdzie nie ma surowego napisu formuły.
+   Zmienna ``rysunek`` to ścieżka partialu wybrana polem ``prawo.wizualizacja``. #}
+{% extends "base.html" %}
+
+{% block tytul %}{{ prawo.nazwa }} — prawa rachunku zdań{% endblock %}
+
+{% block tresc %}
+  {% set formula = prawo.formula %}
+
+  <header class="naglowek-strony">
+    <p class="mb-1"><a href="/prawa">← Wszystkie prawa</a></p>
+    <p class="karta-prawa-kategoria">{{ prawo.kategoria }}</p>
+    <h1>{{ prawo.nazwa }}</h1>
+    <dl class="wzory-prawa">
+      <dt>Wzór</dt>
+      <dd id="wzor-prawa" class="formula">{{ formula_to_html(prawo.formula) |safe }}</dd>
+      <dt>Zapis w ASCII</dt>
+      <dd id="wzor-ascii" class="formula">
+        {{ formula_to_html(prawo.formula_ascii, "ascii") |safe }}
+      </dd>
+    </dl>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-po-ludzku">
+    <h2 id="naglowek-po-ludzku">Po ludzku</h2>
+    <p>{{ prawo.po_ludzku }}</p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-przyklad">
+    <h2 id="naglowek-przyklad">Przykład z życia</h2>
+    <p>{{ prawo.przyklad }}</p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-kroki">
+    <h2 id="naglowek-kroki">Krok po kroku</h2>
+    <p>
+      Każdy krok zmienia formułę na równoważną. Kolejne kroki prowadzą od lewej
+      strony prawa do prawej.
+    </p>
+    <ol class="lista-krokow">
+      {% for krok in prawo.kroki %}
+        <li class="krok">
+          <p class="krok-opis">{{ krok.opis }}</p>
+          <p class="krok-wzory">
+            <span class="formula">{{ formula_to_html(krok.przed) |safe }}</span>
+            <span class="visually-hidden">daje w wyniku</span>
+            <span aria-hidden="true">→</span>
+            <span class="formula">{{ formula_to_html(krok.po) |safe }}</span>
+          </p>
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-tablica-prawdy">
+    <h2 id="naglowek-tablica-prawdy">Tablica prawdy</h2>
+    {% include "partials/_truth_table.html" %}
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-rysunek">
+    <h2 id="naglowek-rysunek">Rysunek</h2>
+    {% include rysunek %}
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-czeste-bledy">
+    <h2 id="naglowek-czeste-bledy">Częste błędy</h2>
+    <ul class="lista-bledow">
+      {% for blad in prawo.czeste_bledy %}
+        <li>{{ blad }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-quiz">
+    <h2 id="naglowek-quiz">Sprawdź się w quizie</h2>
+    <p>Krótki quiz sprawdza, czy rozpoznajesz to prawo i jego zapis.</p>
+    <p>
+      <a class="btn btn-primary" href="/quiz?prawo={{ prawo.slug }}">
+        Sprawdź się w quizie: {{ prawo.nazwa }}
+      </a>
+    </p>
+  </section>
+
+  <nav
+    class="d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
+    aria-label="Nawigacja między prawami"
+  >
+    {% if poprzednie %}
+      <a class="btn btn-outline-secondary" href="/prawa/{{ poprzednie.slug }}">
+        ← Poprzednie prawo: {{ poprzednie.nazwa }}
+      </a>
+    {% endif %}
+    {% if nastepne %}
+      <a class="btn btn-outline-primary ms-auto" href="/prawa/{{ nastepne.slug }}">
+        Następne prawo: {{ nastepne.nazwa }} →
+      </a>
+    {% endif %}
+  </nav>
+{% endblock %}

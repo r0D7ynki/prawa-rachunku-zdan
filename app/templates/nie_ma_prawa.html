@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block tytul %}Nie ma takiego prawa{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Nie ma takiego prawa</h1>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-brak-prawa">
+    <h2 id="naglowek-brak-prawa">Nie znajdujemy tego adresu</h2>
+    <p>
+      Nie mamy prawa o adresie „{{ slug[:60] }}”. Adres mógł się zmienić
+      albo zawierać literówkę.
+    </p>
+    <p>
+      Zobacz <a href="/prawa">listę wszystkich praw</a> — każde prawo ma tam
+      własną stronę z wzorem, wyjaśnieniem i tablicą prawdy.
+    </p>
+  </section>
+{% endblock %}
