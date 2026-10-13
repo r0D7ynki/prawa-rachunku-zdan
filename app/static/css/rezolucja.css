@@ -16,7 +16,7 @@
   margin: 0.5rem 0 1rem;
   padding: 0.75rem 1rem;
   border-radius: 0.75rem;
-  background: var(--kolor-tlo);
+  background: var(--tlo-panel-2);
 }
 
 .lista-przeslanek {
@@ -33,7 +33,7 @@
 .kreska-rezolucji {
   width: 60%;
   margin: 0.5rem 0;
-  border-top: 2px solid var(--kolor-akcent);
+  border-top: 2px solid var(--akcent);
 }
 
 .wniosek-rezolucji {
@@ -66,28 +66,28 @@
 /* Kolumna literału: krótka, żeby nie rozpychała tabeli. */
 .tablica-rezolucji .literal {
   width: 6rem;
-  color: #6b6880;
+  color: var(--tekst-muted);
 }
 
 /* Wiersz, który dodaje bieżący krok. */
 .wiersz-biezacy {
-  background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+  background-color: var(--formula-tlo);
   font-weight: 600;
 }
 
 /* Wiersz użyty przez bieżący krok — z lewej strony znacznik, nie tylko tło. */
 .wiersz-rodzic > :first-child {
-  border-left: 3px solid var(--bs-primary, #0d6efd);
+  border-left: 3px solid var(--akcent);
 }
 
 /* Para sprzeczna: znacznik przy numerze wiersza. */
 .wiersz-sprzecznosc > :first-child {
-  border-left: 3px solid var(--bs-danger, #dc3545);
+  border-left: 3px solid var(--falsz);
 }
 
 /* Ostatni krok podświetla oba sprzeczne wiersze. */
 .wiersz-podswietlony {
-  background-color: var(--bs-danger-bg-subtle, #f8d7da);
+  background-color: var(--falsz-tlo);
   font-weight: 600;
 }
 
@@ -111,21 +111,21 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.2rem 0.6rem;
-  border: 1px solid var(--bs-border-color, #dee2e6);
+  border: 1px solid var(--ramka);
   border-radius: 999px;
-  background-color: var(--bs-primary-bg-subtle, #cfe2ff);
-  color: var(--bs-body-color, #212529);
+  background-color: var(--formula-tlo);
+  color: var(--tekst);
   font-size: 0.875rem;
   line-height: 1.4;
 }
 
 .strzalka-linia {
-  color: var(--bs-primary, #0d6efd);
+  color: var(--akcent);
   font-weight: 700;
 }
 
 .strzalka-operacja {
-  color: var(--bs-secondary-color, #6c757d);
+  color: var(--tekst-muted);
   font-style: italic;
 }
 

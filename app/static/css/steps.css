@@ -8,11 +8,11 @@
 
 .steps-mount,
 .kroki-prawa {
-  --steps-akcent: var(--bs-primary, #0d6efd);
-  --steps-tlo-aktywne: var(--bs-primary-bg-subtle, #cfe2ff);
-  --steps-tlo-widoczne: var(--bs-secondary-bg, #e9ecef);
-  --steps-tlo-fragmentu: var(--bs-warning-bg-subtle, #fff3cd);
-  --steps-ramka-fragmentu: var(--bs-warning-border-subtle, #ffe69c);
+  --steps-akcent: var(--akcent);
+  --steps-tlo-aktywne: var(--formula-tlo);
+  --steps-tlo-widoczne: var(--tlo-panel-2);
+  --steps-tlo-fragmentu: var(--tlo-panel);
+  --steps-ramka-fragmentu: var(--akcent);
 }
 
 .steps-lista {
@@ -124,11 +124,11 @@
 }
 
 .kroki-prawa .krok-zmiana {
-  color: var(--bs-secondary-color, #495057);
+  color: var(--tekst-muted);
 }
 
 .kroki-prawa .krok-dlaczego {
-  color: var(--bs-secondary-color, #495057);
+  color: var(--tekst-muted);
 }
 
 @media (prefers-reduced-motion: no-preference) {

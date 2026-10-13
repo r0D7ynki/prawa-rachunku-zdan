@@ -19,6 +19,28 @@
   --kolor-ramka: #dcd8ee;
   --kolor-formula: #f1eefc;
 
+  /* --- tokeny motywu (karta PRZ-139) ------------------------------------
+     Arkusze komponentów biorą kolory **wyłącznie** z tych nazw. Motyw ciemny
+     to ten sam komplet nazw, tylko z innymi wartościami: wybór użytkownika
+     (`data-theme="dark"`) i tryb systemowy (`@media`, gdy nie ma JavaScriptu)
+     stoją na końcu tego pliku. Dlatego żaden komponent nie wie, który motyw
+     jest włączony — czyta jedną nazwę, np. `--tekst`. */
+  --tlo: #f7f7fb; /* tło strony */
+  --tlo-panel: #ffffff; /* karty, sekcje, menu, pola formularzy */
+  --tlo-panel-2: #f2f0fa; /* druga powierzchnia: kroki, schematy, plakietki */
+  --tekst: #1d2330; /* tekst podstawowy */
+  --tekst-muted: #55515e; /* podpisy, opisy pomocnicze, numery */
+  --ramka: #dcd8ee; /* ramki i przewody rysunków */
+  --akcent: #4c3bcf; /* odnośniki, wyróżnienia, linie schematów */
+  --akcent-tekst: #ffffff; /* tekst na tle `--akcent`, `--prawda`, `--falsz` */
+  --prawda: #157f4a; /* wartość prawdziwa */
+  --prawda-tlo: #f0fbf6; /* tło komórki z prawdą */
+  --falsz: #b3261e; /* wartość fałszywa */
+  --falsz-tlo: #fdeceb; /* tło komórki z fałszem */
+  --formula-tlo: #f1eefc; /* tło wzoru i wyróżnień w kolorze akcentu */
+  --komorka-tlo: #fbfbfe; /* tło komórki, pola wpisywania i rysunku */
+  --komorka-obramowanie: #d9d4ee; /* obramowanie komórki */
+
   /* Cienie, promienie i odstępy — z nich budujemy karty i sekcje. */
   --cien: 0 0.5rem 1.25rem rgb(29 35 48 / 8%);
   --cien-mocny: 0 0.75rem 1.5rem rgb(76 59 207 / 22%);
@@ -309,6 +331,38 @@ main li a {
   text-align: left;
 }
 
+/* --- alerty i plakietki Bootstrapa ------------------------------------ */
+
+/* Bootstrap maluje alerty własnymi kolorami, a plakietkom nadaje białe napisy.
+   Podmieniamy je na tokeny motywu (karta PRZ-139), bo tylko wtedy obie rzeczy
+   są czytelne i w motywie jasnym, i w ciemnym. Pary „tekst na tle” liczy
+   `tests/test_kontrast.py`. Alert `alert-warning` zostaje przy kolorach
+   projektu z karty PRZ-138 — motyw nie ma własnego tokenu ostrzeżenia. */
+.alert-info {
+  --bs-alert-bg: var(--formula-tlo);
+  --bs-alert-border-color: var(--akcent);
+  --bs-alert-color: var(--akcent);
+}
+
+.alert-success {
+  --bs-alert-bg: var(--prawda-tlo);
+  --bs-alert-border-color: var(--prawda);
+  --bs-alert-color: var(--prawda);
+}
+
+.alert-danger {
+  --bs-alert-bg: var(--falsz-tlo);
+  --bs-alert-border-color: var(--falsz);
+  --bs-alert-color: var(--falsz);
+}
+
+/* Plakietka kroku („założenie”, „RO”). Bootstrap wpisuje w `.text-bg-secondary`
+   białe napisy na szarym tle — dlatego `!important`, tak samo jak w Bootstrapie. */
+.badge.text-bg-secondary {
+  color: var(--tekst) !important;
+  background-color: var(--tlo-panel-2) !important;
+}
+
 /* --- ekran szeroki ---------------------------------------------------- */
 
 @media (min-width: 992px) {
@@ -428,16 +482,55 @@ main li a {
     --bs-success-bg-subtle: #051b11;
     --bs-success-text-emphasis: #75b798;
   }
+}
 
-  /* Powierzchnie malowane w innych arkuszach kolorem zapisanym wprost
-     (`reguly.css`, `dowody.css`, `wizualizacje.css`). Te arkusze ładują się po
-     `app.css`, więc podnosimy swoistość selektora przez `:root`, inaczej `#fff`
-     z tamtych plików wygrałoby kolejnością. Właściwa poprawka — zamiana `#fff`
-     na `var(--kolor-panel)` — należy do kart tych plików. */
-  :root .karta-reguly,
-  :root .karta-rodzaju,
-  :root .strzalka-regula,
-  :root .wiz-legenda {
-    background: var(--kolor-panel);
+/* --- tokeny motywu: motyw ciemny (karta PRZ-139) ---------------------- */
+
+/* Wybór użytkownika: `motyw.js` wpisuje `data-theme` na `<html>`, a selektor
+   `:root[data-theme="…"]` wygrywa swoistością z `:root` z góry pliku. Ten sam
+   komplet nazw co w motywie jasnym — zmieniają się tylko wartości. */
+:root[data-theme="dark"] {
+  --tlo: #14131c;
+  --tlo-panel: #1c1b27;
+  --tlo-panel-2: #26243a;
+  --tekst: #e8e6f2;
+  --tekst-muted: #b6b1c9;
+  --ramka: #3a3750;
+  --akcent: #b3a6ff;
+  --akcent-tekst: #14131c;
+  --prawda: #4ec98a;
+  --prawda-tlo: #12301f;
+  --falsz: #ff8a80;
+  --falsz-tlo: #3a1a18;
+  --formula-tlo: #232135;
+  --komorka-tlo: #171a2b;
+  --komorka-obramowanie: #443f5e;
+  --cien: 0 0.5rem 1.25rem rgb(0 0 0 / 45%);
+}
+
+/* Bez JavaScriptu serwer nie wpisuje `data-theme` (robi to dopiero skrypt
+   w `base.html`), więc o motywie decyduje ustawienie systemu. CSS nie pozwala
+   objąć jednym blokiem atrybutu i zapytania o media, dlatego ciemne wartości
+   stoją drugi raz — tej samej treści pilnuje `tests/test_kontrast.py`.
+   Selektor `:not([data-theme])` znaczy „wyłącznie brak JavaScriptu”: gdy skrypt
+   działa, motyw wybiera blok wyżej. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --tlo: #14131c;
+    --tlo-panel: #1c1b27;
+    --tlo-panel-2: #26243a;
+    --tekst: #e8e6f2;
+    --tekst-muted: #b6b1c9;
+    --ramka: #3a3750;
+    --akcent: #b3a6ff;
+    --akcent-tekst: #14131c;
+    --prawda: #4ec98a;
+    --prawda-tlo: #12301f;
+    --falsz: #ff8a80;
+    --falsz-tlo: #3a1a18;
+    --formula-tlo: #232135;
+    --komorka-tlo: #171a2b;
+    --komorka-obramowanie: #443f5e;
+    --cien: 0 0.5rem 1.25rem rgb(0 0 0 / 45%);
   }
 }

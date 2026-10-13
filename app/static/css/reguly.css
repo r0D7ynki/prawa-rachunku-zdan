@@ -19,8 +19,8 @@
   gap: 0.75rem;
   height: 100%;
   padding: 1rem 1.25rem;
-  background: #fff;
-  border: 1px solid var(--kolor-ramka);
+  background: var(--tlo-panel);
+  border: 1px solid var(--ramka);
   border-radius: 1rem;
 }
 
@@ -37,15 +37,15 @@
 .regula-kod {
   padding: 0.1rem 0.5rem;
   border-radius: 0.5rem;
-  background: var(--kolor-akcent-jasny);
-  color: var(--kolor-akcent);
+  background: var(--formula-tlo);
+  color: var(--akcent);
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .regula-pelna-nazwa {
-  color: #6b6880;
+  color: var(--tekst-muted);
   font-size: 0.95rem;
   font-style: italic;
 }
@@ -54,12 +54,12 @@
 .regula-schemat {
   padding: 0.75rem 1rem;
   border-radius: 0.75rem;
-  background: var(--kolor-tlo);
+  background: var(--tlo-panel-2);
 }
 
 .regula-etykieta {
   margin: 0;
-  color: #6b6880;
+  color: var(--tekst-muted);
   font-size: 0.75rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -79,7 +79,7 @@
 .regula-kreska {
   width: 60%;
   margin: 0.5rem 0;
-  border-top: 2px solid var(--kolor-akcent);
+  border-top: 2px solid var(--akcent);
 }
 
 .regula-wniosek {
@@ -90,7 +90,7 @@
 /* Spójnik „oraz” w wersjach z dwoma wnioskami (OK, OR) — zwykłe słowo, nie wzór. */
 .regula-spojnik {
   padding: 0 0.25rem;
-  color: #6b6880;
+  color: var(--tekst-muted);
   font-family: var(--bs-body-font-family, system-ui, sans-serif);
   font-size: 0.95rem;
   font-weight: 400;
@@ -103,7 +103,7 @@
 
 .regula-szczegoly dt {
   margin-top: 0.5rem;
-  color: #6b6880;
+  color: var(--tekst-muted);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -115,7 +115,7 @@
 }
 
 .regula-tautologia {
-  color: var(--kolor-akcent);
+  color: var(--akcent);
 }
 
 .regula-odnosnik {

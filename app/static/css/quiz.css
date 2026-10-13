@@ -11,11 +11,11 @@
 
 .progress {
   height: 0.6rem;
-  background-color: var(--kolor-akcent-jasny);
+  background-color: var(--formula-tlo);
 }
 
 .progress-bar {
-  background-color: var(--kolor-akcent);
+  background-color: var(--akcent);
 }
 
 .licznik-poprawnych {
@@ -38,17 +38,36 @@
   line-height: 1.35;
 }
 
+/* Odpowiedzi to przyciski Bootstrapa, więc kolory podajemy jego zmiennym
+   `--bs-btn-*` — inaczej zostają twarde kolory Bootstrapa, nieczytelne w trybie
+   ciemnym (karta PRZ-139). Para „tekst na tle” jest w `tests/test_kontrast.py`. */
+.lista-odpowiedzi .btn-odpowiedz {
+  --bs-btn-color: var(--akcent);
+  --bs-btn-border-color: var(--akcent);
+  --bs-btn-hover-color: var(--akcent);
+  --bs-btn-hover-bg: var(--formula-tlo);
+  --bs-btn-hover-border-color: var(--akcent);
+  --bs-btn-active-color: var(--akcent);
+  --bs-btn-active-bg: var(--formula-tlo);
+  --bs-btn-active-border-color: var(--akcent);
+}
+
 /* Wybrana (i zablokowana) odpowiedź ma zostać czytelna: pełne tło zamiast zarysu. */
 .lista-odpowiedzi .btn-odpowiedz:disabled {
   opacity: 1;
 }
 
+/* Dobra odpowiedź na zielono, zła na czerwono — kolorami motywu, nie Bootstrapa. */
 .btn-odpowiedz.btn-success:disabled {
-  color: #fff;
+  --bs-btn-disabled-color: var(--prawda);
+  --bs-btn-disabled-bg: var(--prawda-tlo);
+  --bs-btn-disabled-border-color: var(--prawda);
 }
 
 .btn-odpowiedz.btn-danger:disabled {
-  color: #fff;
+  --bs-btn-disabled-color: var(--falsz);
+  --bs-btn-disabled-bg: var(--falsz-tlo);
+  --bs-btn-disabled-border-color: var(--falsz);
 }
 
 .podpowiedz {
@@ -68,7 +87,7 @@
 }
 
 .blad-pytania {
-  border-color: var(--kolor-ramka) !important;
+  border-color: var(--ramka) !important;
   font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
 }
 
