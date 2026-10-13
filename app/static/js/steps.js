@@ -1,11 +1,16 @@
-/* Krokowe przekształcenia formuł. Karty PRZ-013 i PRZ-077.
-   Dla każdego elementu `.steps-mount` pobiera ślad z `/api/formula/simplify`
-   i pokazuje kroki po kolei.
+/* Krokowe przekształcenia formuł. Karty PRZ-013, PRZ-077 i PRZ-143.
+   Skrypt obsługuje dwa rodzaje kroków:
 
-   Każdy krok to jedna linia: formuła **przed**, strzałka z plakietką nazwy prawa
-   i formuła **po**. Fragment, który krok zmienia (pole `fragment` z API), jest
-   wyróżniony znacznikiem `<mark>` z `aria-label`; gdy fragmentu nie ma w formule,
-   krok pokazuje się bez wyróżnienia i bez błędu.
+   1. Montaże `.steps-mount` (strony przekształcania) — pobiera ślad
+      z `/api/formula/simplify` i rysuje kroki od zera.
+   2. Sekcję `.kroki-prawa` na stronie prawa — tam kroki rysuje serwer, a skrypt
+      dokłada tylko pasek strzałek i pokazuje jeden krok naraz. Bez JavaScriptu
+      czytelnik widzi całą listę kroków, więc nic nie ginie.
+
+   Każdy krok to jedna linia: plakietka z nazwą użytego prawa, formuła **przed**,
+   strzałka i formuła **po**. Fragment, który krok zmienia, jest wyróżniony
+   znacznikiem `<mark>` z `aria-label`; gdy fragmentu nie ma w formule, krok
+   pokazuje się bez wyróżnienia i bez błędu.
 
    Kroki prowadzi wspólny komponent `createStepper` (PRZ-072): bieżący krok jest
    rozwinięty z opisem, poprzednie są zwinięte do jednej linii, a kolejne czekają
@@ -15,6 +20,9 @@
 import { createStepper } from "/static/js/stepper.js";
 
 const ADRES = "/api/formula/simplify";
+
+/** Selektory sekcji kroków rysowanej po stronie serwera (strona prawa). */
+const SEKCJA_PRAW = "[data-kroki-prawa]";
 
 const TEKSTY = {
   ladowanie: "Wczytuję kroki przekształcenia…",
@@ -189,6 +197,47 @@ function rysujSklad(montaz, slad, status) {
   });
 }
 
+/**
+ * Prowadzi krok po kroku sekcję narysowaną przez serwer (strona prawa).
+ *
+ * Kroki są już w HTML — ten kod tylko pokazuje jeden z nich naraz i stawia pasek
+ * ze strzałkami. Bez JavaScriptu cała lista kroków zostaje widoczna, więc
+ * czytelnik nie traci treści.
+ */
+function prowadzKrokiPrawa(sekcja) {
+  const pasek = sekcja.querySelector("[data-stepper]");
+  const pozycje = Array.from(sekcja.querySelectorAll("li.krok"));
+  if (!pasek || pozycje.length === 0) {
+    return;
+  }
+
+  /** Tekst elementu wewnątrz kroku; brak elementu to pusty napis. */
+  function tekst(pozycja, selektor) {
+    const wewnatrz = pozycja.querySelector(selektor);
+    return wewnatrz ? wewnatrz.textContent.trim() : "";
+  }
+
+  /** Pokazuje wyłącznie krok o tym numerze (liczonym od zera). */
+  function pokazKrok(numer) {
+    pozycje.forEach((pozycja, indeks) => {
+      pozycja.hidden = indeks !== numer;
+    });
+  }
+
+  createStepper({
+    mount: pasek,
+    steps: pozycje.map((pozycja) => ({
+      tytul: tekst(pozycja, ".krok-plakietka"),
+      opis: tekst(pozycja, ".krok-opis"),
+    })),
+    onStep: pokazKrok,
+  });
+}
+
 document.querySelectorAll(".steps-mount").forEach((montaz) => {
   wypelnij(montaz);
+});
+
+document.querySelectorAll(SEKCJA_PRAW).forEach((sekcja) => {
+  prowadzKrokiPrawa(sekcja);
 });

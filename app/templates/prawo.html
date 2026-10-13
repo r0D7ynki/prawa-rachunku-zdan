@@ -1,7 +1,10 @@
 {# Strona jednego prawa. Wypełnia ją ``app/blueprints/laws.py`` (karta PRZ-010).
    Wzory wstawiamy wyłącznie przez ``formula_to_html`` (czyli ``formula.to_html``)
    z filtrem ``|safe`` — nigdzie nie ma surowego napisu formuły.
-   Zmienna ``rysunek`` to ścieżka partialu wybrana polem ``prawo.wizualizacja``. #}
+   Zmienna ``rysunek`` to ścieżka partialu wybrana polem ``prawo.wizualizacja``.
+   Zmienna ``kroki`` to gotowe kroki sekcji „Krok po kroku" (``KrokWidoku``):
+   wzory z wyróżnionym fragmentem przychodzą już jako HTML, więc nie wymagają
+   filtra ``|safe`` (karta PRZ-143). #}
 {% extends "base.html" %}
 
 {% block tytul %}{{ prawo.nazwa }} — prawa rachunku zdań{% endblock %}
@@ -36,22 +39,40 @@
   <section class="sekcja" aria-labelledby="naglowek-kroki">
     <h2 id="naglowek-kroki">Krok po kroku</h2>
     <p>
-      Każdy krok zmienia formułę na równoważną. Kolejne kroki prowadzą od lewej
-      strony prawa do prawej.
+      Zamieniamy lewą stronę prawa na prawą. Każdy krok korzysta z jednego prawa
+      i zachowuje sens formuły.
     </p>
-    <ol class="lista-krokow">
-      {% for krok in prawo.kroki %}
-        <li class="krok">
-          <p class="krok-opis">{{ krok.opis }}</p>
-          <p class="krok-wzory">
-            <span class="formula">{{ formula_to_html(krok.przed) |safe }}</span>
-            <span class="visually-hidden">daje w wyniku</span>
-            <span aria-hidden="true">→</span>
-            <span class="formula">{{ formula_to_html(krok.po) |safe }}</span>
-          </p>
-        </li>
-      {% endfor %}
-    </ol>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/steps.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
+    {# Kroki rysuje serwer (działają też bez JavaScriptu), a `steps.js` dokłada
+       tylko pasek ze strzałkami i pokazuje jeden krok naraz (karta PRZ-143).
+       Zmieniony fragment wzoru przychodzi z `app/blueprints/laws.py` jako `<mark>`. #}
+    <div class="kroki-prawa" data-kroki-prawa>
+      <div class="stepper-mount" data-stepper></div>
+      <ol class="kroki-lista list-unstyled mb-0">
+        {% for krok in kroki %}
+          <li class="krok">
+            <p class="krok-linia mb-1">
+              <span class="krok-plakietka badge text-bg-secondary">{{ krok.plakietka }}</span>
+              <span class="krok-wzor formula">{{ krok.przed }}</span>
+              <span class="visually-hidden">daje w wyniku</span>
+              <span class="krok-strzalka" aria-hidden="true">⇒</span>
+              <span class="krok-wzor formula">{{ krok.po }}</span>
+            </p>
+            <div class="krok-tresc">
+              <p class="krok-opis mb-1">{{ krok.opis }}</p>
+              {% if krok.zmiana %}
+                <p class="krok-zmiana mb-1">{{ krok.zmiana }}</p>
+              {% endif %}
+              <p class="krok-dlaczego mb-0">
+                <strong>Dlaczego wolno:</strong> {{ krok.dlaczego }}
+              </p>
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+    <script type="module" src="{{ url_for('static', filename='js/steps.js') }}"></script>
   </section>
 
   <section class="sekcja" aria-labelledby="naglowek-tablica-prawdy">
