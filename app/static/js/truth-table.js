@@ -501,18 +501,21 @@ function rysuj(montaz, formula, dane, status) {
   const przyciskiOceny = element("div", "tt-przyciski-oceny mb-2");
 
   /* Jeden przycisk odpowiedzi (karta PRZ-158): pokazuje całą tabelę i tym samym
-     przyciskiem się ją ukrywa. Etykietę ustawia `pokazKrok`, bo zależy od stanu. */
+     przyciskiem się ją ukrywa. Napis i `aria-label` ustawia `pokazKrok`, bo zależą
+     od stanu — nazwa dla czytnika musi iść za widoczną etykietą. */
   const przelacznikOdpowiedzi = element(
     "button",
     "btn btn-outline-primary btn-sm",
     TEKSTY.pokazOdpowiedz,
   );
   przelacznikOdpowiedzi.type = "button";
+  przelacznikOdpowiedzi.setAttribute("aria-label", TEKSTY.pokazOdpowiedz);
   przelacznikOdpowiedzi.addEventListener("click", przelaczOdpowiedzi);
 
   /* „Wyczyść filtry” stoi obok i pokazuje się tylko przy założonym filtrze. */
   const czyscFiltry = element("button", "btn btn-outline-secondary btn-sm", TEKSTY.czyscFiltry);
   czyscFiltry.type = "button";
+  czyscFiltry.setAttribute("aria-label", TEKSTY.czyscFiltry);
   czyscFiltry.hidden = true;
   czyscFiltry.addEventListener("click", wyczyscUstawienie);
 
@@ -706,10 +709,13 @@ function rysuj(montaz, formula, dane, status) {
       naglowek.classList.toggle("tt-biezaca-kolumna", biezaca !== null && kolumna === biezaca.kolumna);
     });
 
-    /* Etykieta zależy od stanu (karta PRZ-158): ten sam przycisk pokazuje i ukrywa. */
-    przelacznikOdpowiedzi.textContent = pokazaneOdpowiedzi
+    /* Etykieta zależy od stanu (karta PRZ-158): ten sam przycisk pokazuje i ukrywa.
+       Ten sam napis trafia do `aria-label`, żeby nazwa nie została nieaktualna. */
+    const etykietaOdpowiedzi = pokazaneOdpowiedzi
       ? TEKSTY.ukryjOdpowiedz
       : TEKSTY.pokazOdpowiedz;
+    przelacznikOdpowiedzi.textContent = etykietaOdpowiedzi;
+    przelacznikOdpowiedzi.setAttribute("aria-label", etykietaOdpowiedzi);
 
     zdanieKroku.textContent = `${TEKSTY.krok} ${indeks + 1} z ${kroki.length}. ${krok.opis || ""}`;
   }

@@ -733,6 +733,21 @@ def test_licznik_widocznych_wierszy_idzie_przez_aria_live(skrypt):
     assert "if (pokazaneOdpowiedzi) {" in zgloszenie
 
 
+def test_przyciski_pod_tabela_maja_aria_label(skrypt):
+    """Zasada 5: także te dwie kontrolki mają nazwę dla czytnika ekranu.
+
+    Nazwa przełącznika idzie za widocznym napisem, bo zależy od stanu — martwy
+    ``aria-label`` mówiłby „Pokaż”, gdy przycisk już ukrywa.
+    """
+    assert 'przelacznikOdpowiedzi.setAttribute("aria-label", TEKSTY.pokazOdpowiedz);' in skrypt
+    assert 'czyscFiltry.setAttribute("aria-label", TEKSTY.czyscFiltry);' in skrypt
+
+    rysowanie = _blok(skrypt, "function pokazKrok(")
+    assert "const etykietaOdpowiedzi = pokazaneOdpowiedzi" in rysowanie
+    assert "przelacznikOdpowiedzi.textContent = etykietaOdpowiedzi;" in rysowanie
+    assert 'przelacznikOdpowiedzi.setAttribute("aria-label", etykietaOdpowiedzi);' in rysowanie
+
+
 # ---------------------------------------------------------------------------
 # Tryb czytania: strony praw i tautologii bez oceny tablicy (karta PRZ-142)
 # ---------------------------------------------------------------------------
