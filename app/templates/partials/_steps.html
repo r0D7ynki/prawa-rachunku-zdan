@@ -1,6 +1,17 @@
 {# Partial: krokowe przekształcenia. Wypełnia karta PRZ-013.
-   Wejście: `formula` (tekst formuły w Unicode), opcjonalnie `cel` ("auto"|"nnf"|"dnf"|"cnf"). #}
+   Wejście: `formula` (tekst formuły w Unicode), opcjonalnie `cel` ("auto"|"nnf"|"dnf"|"cnf").
+   Skrypt `steps.js` dorysowuje kroki, sterowanie i podsumowanie. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/steps.css') }}" />
 <div class="steps-mount" data-formula="{{ formula }}" data-cel="{{ cel|default('auto') }}"
      data-rola="kroki-przeksztalcen">
-  <p class="text-muted small mb-1">Kroki przekształcenia pojawią się tutaj po wczytaniu skryptu.</p>
+  <noscript>
+    <p class="alert alert-info mb-2">
+      Kroki przekształcenia wymagają włączonego JavaScriptu. Formułę możesz przekształcić
+      ręcznie, korzystając z praw wypisanych na stronie.
+    </p>
+  </noscript>
+  <p class="steps-ladowanie text-muted small mb-1">
+    Kroki przekształcenia pojawią się tutaj po wczytaniu skryptu.
+  </p>
 </div>
+<script type="module" src="{{ url_for('static', filename='js/steps.js') }}"></script>
