@@ -83,8 +83,11 @@
     </p>
   </section>
 
+  {# Na telefonie oba przyciski zajmują całą szerokość i stoją jeden pod drugim
+     (reguła `nav.nawigacja-dolna-praw` w `app.css`) — dwa przyciski w jednym
+     wierszu nie mieszczą się na wąskim ekranie. #}
   <nav
-    class="d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
+    class="nawigacja-dolna-praw d-flex flex-wrap justify-content-between gap-2 mt-5 pt-4 border-top"
     aria-label="Nawigacja między prawami"
   >
     {% if poprzednie %}

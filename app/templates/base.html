@@ -3,6 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {# `color-scheme` mówi przeglądarce, że arkusz obsługuje oba tryby: pasek przewijania
+       i pola formularzy przechodzą w ciemny wcześniej, niż wczyta się `app.css`
+       (tryb ciemny — karta PRZ-120). #}
+    <meta name="color-scheme" content="light dark" />
     <title>{% block tytul %}Prawa rachunku zdań{% endblock %}</title>
     <meta
       name="description"

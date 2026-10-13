@@ -1,6 +1,7 @@
 /* Nawigacja kursu: okruszki, boczny spis lekcji i sąsiedzi „poprzednia/następna”.
-   Właściciel: karta PRZ-069. Kolory bierzemy ze zmiennych z `app.css`, żeby nawigacja
-   nie wprowadzała drugiej palety. */
+   Właściciel: karty PRZ-069 i PRZ-120. Kolory bierzemy **wyłącznie** ze zmiennych
+   z `app.css` (`--kolor-*`, `--cien`, `--promien`) — dzięki temu nawigacja nie
+   wprowadza drugiej palety i sama działa w trybie ciemnym. */
 
 /* --- okruszki pod menu ------------------------------------------------ */
 
@@ -14,7 +15,7 @@
 }
 
 .okruszki .breadcrumb-item + .breadcrumb-item::before {
-  color: #8b87a0;
+  color: var(--kolor-tekst-slaby);
 }
 
 /* --- dyskretne strzałki nad treścią ----------------------------------- */
@@ -45,8 +46,9 @@
   top: 5.5rem;
   padding: 1rem 1.25rem;
   border: 1px solid var(--kolor-ramka);
-  border-radius: 0.75rem;
-  background: #fff;
+  border-radius: var(--promien);
+  background: var(--kolor-panel);
+  box-shadow: var(--cien);
 }
 
 .spis-lekcji-tytul {
@@ -54,7 +56,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #55515e;
+  color: var(--kolor-tekst-slaby);
 }
 
 .spis-lekcji-lista {
@@ -68,7 +70,7 @@
   display: block;
   padding: 0.25rem 0.5rem;
   border-radius: 0.5rem;
-  color: #2d2a3a;
+  color: var(--kolor-tekst);
   font-size: 0.95rem;
   text-decoration: none;
 }
@@ -107,8 +109,9 @@
   height: 100%;
   padding: 1rem 1.25rem;
   border: 1px solid var(--kolor-ramka);
-  border-radius: 0.75rem;
-  background: #fff;
+  border-radius: var(--promien);
+  background: var(--kolor-panel);
+  box-shadow: var(--cien);
   color: inherit;
   text-decoration: none;
 }
@@ -141,7 +144,7 @@
 .karta-lekcji-opis {
   display: block;
   font-size: 0.9rem;
-  color: #55515e;
+  color: var(--kolor-tekst-slaby);
 }
 
 /* --- spis treści całego kursu ----------------------------------------- */
@@ -169,12 +172,12 @@
 .spis-tresci-opis {
   display: block;
   margin-left: 2.5rem;
-  color: #55515e;
+  color: var(--kolor-tekst-slaby);
   font-size: 0.9rem;
 }
 
 .spis-tresci-wkrotce {
-  color: #55515e;
+  color: var(--kolor-tekst-slaby);
   font-style: italic;
 }
 
@@ -183,4 +186,32 @@
   flex-wrap: wrap;
   gap: 0.5rem 1.5rem;
   padding-left: 1.25rem;
+}
+
+/* --- telefon (do 576px) ----------------------------------------------- */
+
+@media (max-width: 576px) {
+  /* Strzałki nad treścią zostają w jednej linii zamiast łamać się w środku. */
+  .nawigacja-lekcji-gora {
+    gap: 0.5rem;
+  }
+
+  .nawigacja-lekcji-odnosnik {
+    font-size: 0.9rem;
+  }
+
+  /* Karty sąsiadów stoją jedna pod drugą — strzałka „następna” nie jest wtedy
+     wyrównana do prawej, bo prawa krawędź nie znaczy już „dalej”. */
+  .karta-lekcji {
+    padding: 0.75rem 1rem;
+  }
+
+  .karta-lekcji-nastepna {
+    text-align: left;
+  }
+
+  /* Wcięcie opisu liczy się od numeru lekcji, którego na wąskim ekranie nie ma. */
+  .spis-tresci-opis {
+    margin-left: 0;
+  }
 }
