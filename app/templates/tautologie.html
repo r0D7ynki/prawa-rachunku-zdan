@@ -139,7 +139,11 @@
       Tablica poniżej liczy się w przeglądarce. Kliknij wartość zmiennej, żeby zobaczyć
       wynik dla wybranego ustawienia.
     </p>
-    {% include "partials/_truth_table.html" %}
+    {# Tablica na lekcji tautologii też służy czytaniu: bez oceny formuły i bez
+       przycisku „Sprawdź całą tabelę” (karta PRZ-142). #}
+    {% with pokaz_ocene = false %}
+      {% include "partials/_truth_table.html" %}
+    {% endwith %}
   </section>
 
   <section class="sekcja" aria-labelledby="naglowek-metoda">

@@ -1,4 +1,4 @@
-"""Testy komponentu interaktywnej tablicy prawdy (karty PRZ-011, PRZ-073 i PRZ-121).
+"""Testy komponentu interaktywnej tablicy prawdy (karty PRZ-011, PRZ-073, PRZ-121 i PRZ-142).
 
 Tablica powstaje w przeglądarce z danych API, więc testy nie mogą jej narysować.
 Sprawdzają to, co da się sprawdzić bez przeglądarki (patrz ``AGENTS.md``, zasada 6):
@@ -13,6 +13,9 @@ Sprawdzają to, co da się sprawdzić bez przeglądarki (patrz ``AGENTS.md``, za
 * czy da się wpisywać wartości (karta PRZ-121): pole ``input`` w zakrytej komórce,
   klasy oceny ``komorka-dobrze`` i ``komorka-zle``, wynik „Sprawdź całą tabelę”
   słowami oraz klawisze ``Enter`` i ``Backspace`` w polu,
+* czy strony praw i tautologii (karta PRZ-142) pokazują tablicę bez oceny:
+  ``data-pokaz-oceny="false"``, brak przycisku „Sprawdź całą tabelę” i brak zdania
+  o klasyfikacji formuły,
 * czy z widoku zniknęły guziki kroków („Odtwórz”, „Pauza”, „Od nowa”) i kropki kroków.
 
 Wzorzec testu źródłowego jest ten sam, co w ``tests/test_czesc_kroki.py``.
@@ -82,6 +85,17 @@ def _blok(kod: str, poczatek: str) -> str:
     raise AssertionError(f"brak zamknięcia bloku: {poczatek}")
 
 
+def _sekcja_tablicy_prawdy(html: str) -> str:
+    """Fragment HTML sekcji „Tablica prawdy”: od jej nagłówka do końca sekcji.
+
+    Cięcie po ``</section>`` wystarcza, bo sekcja tablicy nie zawiera sekcji
+    zagnieżdżonej. Dzięki temu sprawdzamy samą tablicę, a nie menu, w którym
+    słowo „tautologie” stoi w każdej nawigacji.
+    """
+    start = html.index('id="naglowek-tablica-prawdy"')
+    return html[start : html.index("</section>", start)]
+
+
 # ---------------------------------------------------------------------------
 # API — kształt danych, na którym opiera się skrypt
 # ---------------------------------------------------------------------------
@@ -132,6 +146,23 @@ def test_partial_renderuje_montaz_z_formula(aplikacja):
     assert 'data-rola="tablica-prawdy"' in html
 
 
+def test_partial_domyslnie_pokazuje_ocene(aplikacja):
+    """Strona, która nie zna flagi (np. ``/formuly``), dostaje tablicę z oceną."""
+    html = _renderuj(aplikacja, formula=FORMULA)
+
+    assert 'data-pokaz-oceny="true"' in html
+
+
+def test_partial_bez_oceny_ustawia_false(aplikacja):
+    """``pokaz_ocene=false`` przechodzi do atrybutu, z którego czyta skrypt (PRZ-142)."""
+    html = _renderuj(aplikacja, formula=FORMULA, pokaz_ocene=False)
+
+    assert 'data-pokaz-oceny="false"' in html
+    # Partial nie traci przez to niczego innego: tablica i tak powstaje w skrypcie.
+    assert 'class="truth-table-mount"' in html
+    assert "/static/js/truth-table.js" in html
+
+
 def test_partial_bierze_adres_api_ze_skryptu_strony(aplikacja):
     """Adres endpointu wyznacza ``url_for``, więc zmiana trasy nie psuje komponentu."""
     html = _renderuj(aplikacja, formula=FORMULA)
@@ -154,11 +185,20 @@ def test_partial_dolacza_styl_paska_krokow(aplikacja):
 
 
 def test_partial_nie_liczy_wartosci_w_jinja(aplikacja):
-    """Partial nie ma liczyć logiki — żadnych pętli, warunków ani filtrów."""
+    """Partial nie ma liczyć logiki — żadnych pętli, warunków ani filtrów.
+
+    Jedyny dozwolony blok to domyślna wartość flagi oceny (karta PRZ-142): partial
+    musi przyjąć ``pokaz_ocene``, a strona, która jej nie podaje (np. ``/formuly``),
+    dostaje tablicę z oceną. Wszystko inne — pętle, warunki i filtry — nadal
+    jest zabronione, bo tablicę liczy API, a nie szablon.
+    """
     zrodlo = PARTIAL.read_text(encoding="utf-8")
 
-    assert "{%" not in zrodlo
+    assert "{% for" not in zrodlo
+    assert "{% if" not in zrodlo
     assert "|" not in zrodlo
+    assert zrodlo.count("{%") == 1, "partial może mieć tylko domyślną flagę oceny"
+    assert "{% set pokaz_oceny = pokaz_ocene if pokaz_ocene is defined else true %}" in zrodlo
 
 
 def test_partial_ma_noscript_z_formula(aplikacja):
@@ -564,6 +604,81 @@ def test_pole_nie_przechwytuje_strzalek(skrypt):
     assert '"Arrow' not in skrypt
     assert '"Home"' not in skrypt
     assert '"End"' not in skrypt
+
+
+# ---------------------------------------------------------------------------
+# Tryb czytania: strony praw i tautologii bez oceny tablicy (karta PRZ-142)
+# ---------------------------------------------------------------------------
+
+
+def test_strona_prawa_nie_ocenia_tablicy(klient):
+    """Kryterium karty: w sekcji tablicy nie ma oceny formuły ani sprawdzacza."""
+    html = klient.get("/prawa/de-morgan-1").get_data(as_text=True)
+    sekcja = _sekcja_tablicy_prawdy(html)
+
+    assert 'data-pokaz-oceny="false"' in sekcja, "tablica prawa nie wyłącza oceny"
+    assert "Sprawdź całą tabelę" not in sekcja
+    assert "tautolog" not in sekcja.lower()
+
+
+def test_lekcja_tautologii_nie_ocenia_tablicy(klient):
+    """Na lekcji tautologii tablica też służy czytaniu — jedno osadzenie partialu."""
+    html = klient.get("/tautologie").get_data(as_text=True)
+
+    assert html.count('data-pokaz-oceny="false"') == 1
+
+
+def test_strony_z_liczeniem_zachowuja_ocene(klient):
+    """Flaga jest wyjątkiem: lekcje „policz sam” dalej pokazują ocenę i sprawdzacz."""
+    for adres in ("/formuly", "/przeksztalcanie", "/konsekwencja"):
+        html = klient.get(adres).get_data(as_text=True)
+        assert 'data-pokaz-oceny="true"' in html, adres
+
+
+def test_plac_zabaw_zachowuje_sprawdzacz(klient):
+    """Kryterium karty: plac zabaw zostaje bez zmian.
+
+    Plac zabaw nie używa tego partialu — ma własny widok (`playground.js`) z polem
+    formuły i przyciskiem „Sprawdź”, więc klasyfikacja i sprawdzanie zostają.
+    """
+    html = klient.get("/plac-zabaw").get_data(as_text=True)
+
+    assert 'id="przycisk-sprawdz"' in html
+    assert 'id="wynik-klasyfikacja"' in html
+    assert "truth-table-mount" not in html, "plac zabaw nie używa partialu tablicy"
+
+
+def test_skrypt_czyta_flage_oceny_z_atrybutu(skrypt):
+    """Tryb czytania rozpoznajemy po atrybucie montażu, nie po adresie strony."""
+    assert 'montaz.dataset.pokazOceny !== "false"' in skrypt
+
+
+def test_skrypt_w_trybie_czytania_nie_ocenia_wpisow(skrypt):
+    """Bez oceny nie ma czym malować klas ``komorka-dobrze`` ani ``komorka-zle``."""
+    ocena = _blok(skrypt, "function ocena(")
+    czesci = ocena.split("if (!ocenaWlaczona)")
+    assert len(czesci) == 2, "`ocena()` nie zna trybu czytania"
+    assert "return null;" in czesci[1]
+    assert "ocena(komorka)" in _blok(skrypt, "function pokazOcene(")
+
+
+def test_skrypt_w_trybie_czytania_nie_tworzy_przycisku_sprawdzania(skrypt):
+    """Przycisk „Sprawdź całą tabelę” powstaje wyłącznie z włączoną oceną."""
+    blok = _blok(skrypt, "if (ocenaWlaczona) {")
+    assert "TEKSTY.sprawdzTabele" in blok
+    assert 'addEventListener("click", sprawdzCalaTabele)' in blok
+    assert "TEKSTY.sprawdzTabele" not in skrypt.replace(blok, "")
+
+
+def test_skrypt_w_trybie_czytania_bez_oceny_formuly(skrypt):
+    """„Ta formuła jest tautologią…” to ocena — w trybie czytania jej nie ma."""
+    assert re.search(r"if \(ocenaWlaczona\) \{\s*const klasyfikacja =\s*KLASYFIKACJE\[", skrypt), (
+        "zdanie o klasyfikacji musi powstać tylko przy włączonej ocenie"
+    )
+    assert skrypt.count("tt-klasyfikacja") == 1, "drugie miejsce z klasyfikacją byłoby bez osłony"
+    assert re.search(r"const ocenaFormuly =\s*ocenaWlaczona \?", skrypt), (
+        "podsumowanie kroków musi pomijać ocenę formuły w trybie czytania"
+    )
 
 
 # ---------------------------------------------------------------------------
