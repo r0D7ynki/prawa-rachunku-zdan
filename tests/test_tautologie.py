@@ -5,11 +5,17 @@ Testy nie wierzą stronie na słowo: wartości w tablicach liczą od nowa przez
 Dzięki temu test nie zakłada konkretnego znaku operatora — sprawdza to, co strona
 naprawdę narysowała. Spis T1–T14 porównujemy z rejestrem ``all_laws()``, więc test
 nie rozjedzie się z treścią praw.
+
+Kroki dowodów (karta PRZ-076) sprawdzamy w JSON-ie z atrybutu ``data-kroki``:
+pola kroku, liczbę kroków, strzałki, gaszenie odrzuconych wierszy i wnioski.
+Do tego testy źródłowe skryptu ``tautologie.js`` — bez przeglądarki nie da się
+przejść kroków, więc sprawdzamy to, co skrypt ma w kodzie.
 """
 
 from __future__ import annotations
 
 import itertools
+import json
 import re
 from collections.abc import Iterator
 from html import unescape
@@ -20,7 +26,7 @@ from markupsafe import Markup
 
 from app import create_app
 from app.blueprints import tautologie
-from app.logic.formula import And, Imp, Node, Not, Var, evaluate, parse, to_html
+from app.logic.formula import And, Imp, Node, Not, Var, evaluate, parse, to_html, to_text
 from app.logic.laws import all_laws
 
 ADRES = "/tautologie"
@@ -28,7 +34,7 @@ ADRES = "/tautologie"
 #: Podpisy (``<caption>``), po których znajdujemy tablice na stronie.
 PODPIS_SRODKA = "Tablica prawdy dla prawa wyłączonego środka"
 PODPIS_DOWODU = "Pełna tablica prawdy: cztery wiersze"
-PODPIS_METODY = "Dwa przypadki, w których formuła mogłaby być fałszywa"
+PODPIS_METODY = "Cała tablica metody skróconej"
 PODPIS_SPISU = "Spis tautologii z wykładu"
 
 #: Wiersze pełnej tablicy dowodu, dokładnie jak na wykładzie: p, q, p → q, ∼q,
@@ -40,8 +46,8 @@ WIERSZE_DOWODU = [
     ["1", "1", "1", "0", "0", "0", "1"],
 ]
 
-#: Wiersze tablicy metody skróconej, dokładnie jak na wykładzie: p, q, r, α, β, γ, δ
-#: i γ → δ.
+#: Dwa przypadki, które zostają po metodzie skróconej — jak na wykładzie:
+#: p, q, r, α, β, γ, δ i γ → δ.
 WIERSZE_METODY = [
     ["1", "1", "0", "1", "0", "0", "0", "1"],
     ["1", "0", "0", "0", "1", "0", "0", "1"],
@@ -65,9 +71,20 @@ KROKI = re.compile(r'<ol class="kroki-metody">(?P<tresc>.*?)</ol>', re.DOTALL)
 PUNKT_KROKU = re.compile(r"<li>(?P<tresc>.*?)</li>", re.DOTALL)
 ODNOSNIK_PRAWA = re.compile(r'<a\s+href="(?P<href>/prawa/[^"]+)">(?P<nazwa>[^<]+)</a>')
 
+#: Blok ``<noscript>`` z listą kroków, którą wypisuje partial paska kroków.
+NOSCRIPT = re.compile(r"<noscript>(?P<tresc>.*?)</noscript>", re.DOTALL)
+
 #: Wyrażenie wstawiane do HTML przez filtr ``|safe``.
 WZORZEC_SAFE = re.compile(r"\{\{(?P<wyrazenie>.*?)\|\s*safe\s*\}\}", re.DOTALL)
 
+#: Panel z krokami: nazwa panelu i JSON kroków w ``data-kroki``.
+PANEL_KROKOWY = re.compile(
+    r'<div class="tablica-krokowa"[^>]*data-krokowa="(?P<panel>[^"]+)"'
+    r'[^>]*data-kroki="(?P<kroki>[^"]*)"[^>]*>',
+    re.DOTALL,
+)
+
+KATALOG_STATYCZNY = Path(__file__).resolve().parents[1] / "app" / "static"
 SZABLON = Path(__file__).resolve().parents[1] / "app" / "templates" / "tautologie.html"
 
 
@@ -87,6 +104,18 @@ def html(klient):
 def tekst(html):
     """Cała strona jako tekst: bez znaczników, z pojedynczymi spacjami."""
     return _tekst(html)
+
+
+@pytest.fixture(scope="module")
+def skrypt():
+    """Treść skryptu ``tautologie.js`` — bez przeglądarki sprawdzamy to, co ma w kodzie."""
+    return (KATALOG_STATYCZNY / "js" / "tautologie.js").read_text(encoding="utf-8")
+
+
+@pytest.fixture(scope="module")
+def styl():
+    """Treść arkusza ``tautologie.css``."""
+    return (KATALOG_STATYCZNY / "css" / "tautologie.css").read_text(encoding="utf-8")
 
 
 # --- narzędzia ---------------------------------------------------------------
@@ -142,6 +171,11 @@ def _oczekiwane(wzor: str, zmienne: str, uklad: tuple[int, ...]) -> str:
 def _uklady(zmienne: str) -> Iterator[tuple[int, ...]]:
     """Wszystkie układy wartości zmiennych jako krotki zer i jedynek."""
     yield from itertools.product((1, 0), repeat=len(zmienne))
+
+
+def _kroki(html: str) -> dict[str, list[dict]]:
+    """Kroki obu paneli: nazwa panelu → lista kroków z atrybutu ``data-kroki``."""
+    return {panel: json.loads(unescape(kroki)) for panel, kroki in PANEL_KROKOWY.findall(html)}
 
 
 # --- szkielet strony ---------------------------------------------------------
@@ -274,7 +308,8 @@ def test_kroki_metody_pokazuja_formuly_przez_to_html(html):
         assert _wzor_html(wzor) in tresc, f"krok bez wyniku to_html dla {wzor!r}"
 
 
-def test_tabela_metody_ma_dwa_przypadki_z_wykladu(html):
+def test_tabela_metody_ma_osiem_wierszy_i_dwa_przypadki_z_wykladu(html):
+    """Krok pierwszy metody to cała tabela; wykład rozważa z niej dwa przypadki."""
     tabela = _tabela(html, PODPIS_METODY)
     naglowki = _naglowki(tabela)
 
@@ -284,9 +319,14 @@ def test_tabela_metody_ma_dwa_przypadki_z_wykladu(html):
     assert naglowki[5] == "γ = " + _wzor_tekstem(And(Var("α"), Var("β")))
     assert naglowki[6] == "δ = " + _wzor_tekstem(parse(tautologie.NASTEPNIK_METODY))
     assert naglowki[7] == _wzor_tekstem(Imp(Var("γ"), Var("δ")))
-
     assert len(naglowki) == 8
-    assert _wiersze(tabela) == WIERSZE_METODY
+
+    wiersze = _wiersze(tabela)
+    assert len(wiersze) == 8, "trzy zmienne to osiem wartościowań"
+
+    # Dwa przypadki z wykładu: następnik δ fałszywy, czyli p = 1 i r = 0.
+    przypadki = [wiersz for wiersz in wiersze if wiersz[0] == "1" and wiersz[2] == "0"]
+    assert przypadki == WIERSZE_METODY
 
 
 def test_tabela_metody_liczy_sie_z_evaluate(html):
@@ -307,6 +347,195 @@ def test_strona_podaje_po_co_jest_metoda_skrocona(tekst):
     assert "2^n" in tekst
     assert "zamiast" in tekst
     assert "w których formuła mogłaby być fałszywa" in tekst
+
+
+# --- kroki dowodów (PRZ-076) -------------------------------------------------
+
+
+def test_strona_ma_oba_panele_krokowe(html):
+    """Dowód pełną tablicą i metoda skrócona mają własne panele z krokami."""
+    assert set(_kroki(html)) == {"dowod", "metoda"}
+
+
+def test_obie_tabele_krokowe_sa_w_html_w_pelnej_wersji(html):
+    """Bez JavaScriptu kroki nic nie ujawniają, więc obie tabele są w HTML w całości."""
+    dowod = _tabela(html, PODPIS_DOWODU)
+    metoda = _tabela(html, PODPIS_METODY)
+
+    assert len(_naglowki(dowod)) == 7
+    assert _wiersze(dowod) == WIERSZE_DOWODU
+    assert len(_naglowki(metoda)) == 8
+    assert len(_wiersze(metoda)) == 8
+
+
+def test_panel_krokow_dolacza_arkusz_i_skrypt(html):
+    assert 'href="/static/css/tautologie.css"' in html
+    assert 'src="/static/js/tautologie.js"' in html
+
+
+def test_kazdy_krok_ma_wymagane_pola(html):
+    kroki = [krok for lista_krokow in _kroki(html).values() for krok in lista_krokow]
+
+    assert kroki, "strona nie ma ani jednego kroku"
+    for krok in kroki:
+        for pole in ("tytul", "opis", "kolumny", "strzalki", "wiersze"):
+            assert pole in krok, f"krok bez pola {pole}: {krok.get('tytul')!r}"
+        assert krok["tytul"] and krok["opis"], "krok bez tytułu albo opisu"
+
+
+def test_liczba_krokow_dowodu_rowna_sie_liczbie_kolumn(html):
+    """Krok pierwszy to kolumny zmiennych, dalej po jednej kolumnie wynikowej i wniosek."""
+    kroki = _kroki(html)["dowod"]
+    naglowki = _naglowki(_tabela(html, PODPIS_DOWODU))
+
+    assert len(kroki) == len(naglowki) == 7
+
+
+def test_kroki_dowodu_odslaniaja_kolumny_od_lewej_do_prawej(html):
+    kroki = _kroki(html)["dowod"]
+
+    assert kroki[0]["kolumny"] == [0, 1], "na starcie widać tylko kolumny p i q"
+    assert [len(krok["kolumny"]) for krok in kroki[1:-1]] == [3, 4, 5, 6, 7]
+    assert kroki[-1]["kolumny"] == list(range(7)), "wniosek pokazuje całą tablicę"
+
+
+def test_strzalki_dowodu_mowia_z_ktorych_kolumn_liczy_sie_kolumna(html):
+    kroki = _kroki(html)["dowod"]
+
+    pierwsza = kroki[1]["strzalki"][0]
+    assert pierwsza["od"] == [0, 1] and pierwsza["do"] == [2], "od p i q do p → q"
+    assert pierwsza["opis"] == "implikacja"
+    assert pierwsza["jednostka"] == "kolumna"
+
+    alfa = next(krok for krok in kroki if krok["tytul"].endswith("α"))["strzalki"][0]
+    assert alfa["od"] == [2, 3] and alfa["do"] == [4], "od p → q i ∼q do α"
+    assert alfa["opis"] == "koniunkcja"
+
+
+def test_opis_kolumny_alfa_podaje_rachunek_z_wykladu(html):
+    """Zdanie z wykładu: „Kolumna α: koniunkcja (p → q) i ∼q. W wierszu 3: 0 ∧ 1 = 0”."""
+    kroki = _kroki(html)["dowod"]
+    opis = next(krok["opis"] for krok in kroki if krok["tytul"].endswith("α"))
+
+    assert opis.startswith(f"Kolumna α: koniunkcja ({_wzor_tekstem(parse('p → q'))}) i ∼q.")
+
+    # Wiersz trzeci tablicy: p = 1 i q = 0. Wartości muszą zgadzać się z ``evaluate``.
+    wiersz = WIERSZE_DOWODU[2]
+    assert wiersz[2:] == [
+        _oczekiwane(wzor, "pq", (1, 0))
+        for wzor in ["p → q", "∼q", tautologie.ALFA_DOWODU, "∼p", tautologie.FORMULA_DOWODU]
+    ]
+    rachunek = to_text(And(Var(wiersz[2]), Var(wiersz[3])))
+    assert f"W wierszu 3: {rachunek} = {wiersz[4]}" in opis
+
+
+def test_kroki_metody_gasza_odrzucone_wiersze(html):
+    """Krok drugi zostawia odrzucone wiersze na stronie, ale je gasi."""
+    gaszenie = _kroki(html)["metoda"][1]
+
+    assert gaszenie["wiersze"] == [1, 3]
+    assert len(gaszenie["odrzucone"]) == 6
+    assert set(gaszenie["odrzucone"]) | set(gaszenie["wiersze"]) == set(range(8))
+
+    strzalka = gaszenie["strzalki"][0]
+    assert strzalka["jednostka"] == "wiersz"
+    assert strzalka["od"] == gaszenie["odrzucone"] and strzalka["do"] == gaszenie["wiersze"]
+    assert strzalka["opis"] == "zawężenie"
+
+    nastepnik = to_text(parse(tautologie.NASTEPNIK_METODY))
+    assert "Zostają tylko przypadki" in gaszenie["opis"]
+    assert f"w których {nastepnik} jest fałszywa" in gaszenie["opis"]
+    assert "r = 0 i p = 1" in gaszenie["opis"]
+
+
+def test_kroki_metody_koncza_sie_dwoma_wierszami(html):
+    kroki = _kroki(html)["metoda"]
+
+    assert len(kroki) == 4
+    assert kroki[0]["wiersze"] == list(range(8)), "krok pierwszy to cała tabela"
+    assert kroki[2]["wiersze"] == [1, 3] and kroki[2]["odrzucone"] == []
+    assert "Zostają dwa wiersze" in kroki[2]["opis"]
+
+
+def test_ostatni_krok_dowodu_dodaje_wiersz_wniosku(html, tekst):
+    kroki = _kroki(html)["dowod"]
+    tabela = _tabela(html, PODPIS_DOWODU)
+    liczba_wierszy = len(_wiersze(tabela))
+
+    assert kroki[-1]["wiersze"] == [*range(liczba_wierszy), liczba_wierszy]
+    assert "Wszystkie wiersze mają 1 — to tautologia" in kroki[-1]["opis"]
+
+    # Wiersz podsumowania jest w HTML (stopka) i rozciąga się na całą tabelę.
+    assert "<tfoot>" in tabela
+    assert f'<td colspan="{len(_naglowki(tabela))}">' in tabela
+    assert "Wszystkie wiersze mają 1 — to tautologia" in tekst
+
+
+def test_ostatni_krok_obu_tabel_podaje_wniosek(html):
+    for panel, kroki in _kroki(html).items():
+        wniosek = kroki[-1]["opis"]
+        assert "tautolog" in wniosek, f"krok końcowy panelu {panel} bez wniosku"
+        assert wniosek.endswith("."), f"krok końcowy panelu {panel} nie jest zdaniem"
+
+
+def test_bez_javascriptu_widac_liste_krokow(html):
+    """Partial paska wypisuje kroki w ``<noscript>`` — bez JS nic nie ginie."""
+    bloki = "\n".join(NOSCRIPT.findall(html))
+
+    assert bloki, "strona nie ma bloku <noscript> z krokami"
+    for kroki in _kroki(html).values():
+        for krok in kroki:
+            assert krok["tytul"] in bloki, f"brak kroku w <noscript>: {krok['tytul']!r}"
+
+
+# --- skrypt i style kroków ----------------------------------------------------
+
+
+def test_pliki_panelu_krokow_istnieja():
+    for sciezka in ("js/tautologie.js", "css/tautologie.css"):
+        plik = KATALOG_STATYCZNY / sciezka
+        assert plik.is_file(), f"brak pliku {sciezka}"
+        assert plik.stat().st_size > 0
+
+
+def test_skrypt_importuje_wspolny_komponent_krokow(skrypt):
+    assert 'import { createStepper } from "/static/js/stepper.js";' in skrypt
+    assert "createStepper({" in skrypt
+    assert "onStep:" in skrypt
+
+
+def test_skrypt_czyta_kroki_z_atrybutu(skrypt):
+    """Kroki przychodzą gotowe z serwera — skrypt ich nie liczy ani nie wymyśla."""
+    assert "panel.dataset.kroki" in skrypt
+    assert "JSON.parse" in skrypt
+
+
+def test_skrypt_rysuje_strzalki_nad_tabela(skrypt, styl):
+    assert 'nowyElement("span", "strzalka-tabeli")' in skrypt
+    assert '"strzalka-linia"' in skrypt
+    assert '"strzalka-operacja"' in skrypt
+    assert "[data-strzalki]" in skrypt
+    assert ".strzalka-tabeli" in styl
+
+
+def test_skrypt_gasi_odrzucone_wiersze(skrypt, styl):
+    """Odrzucone wiersze gasną i znikają z czytnika — klasa i ``aria-hidden``."""
+    assert 'const KLASA_ODRZUCONY = "wiersz-odrzucony";' in skrypt
+    assert "classList.toggle(KLASA_ODRZUCONY, odrzucony)" in skrypt
+    assert 'setAttribute("aria-hidden", "true")' in skrypt
+    assert ".wiersz-odrzucony" in styl
+
+
+def test_skrypt_ukrywa_kolummy_i_wiersze_poza_krokiem(skrypt):
+    assert "komorka.hidden" in skrypt
+    assert "wiersz.hidden" in skrypt
+    assert "wniosek.hidden" in skrypt
+
+
+def test_skrypt_nie_wstawia_tresci_przez_innerhtml(skrypt):
+    assert ".innerHTML" not in skrypt
+    assert "insertAdjacentHTML" not in skrypt
+    assert "document.write" not in skrypt
 
 
 # --- spis T1–T14 -------------------------------------------------------------
