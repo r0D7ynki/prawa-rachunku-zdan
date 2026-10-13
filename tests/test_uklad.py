@@ -368,10 +368,22 @@ def test_lista_praw_jest_kolumna():
 
 
 def test_kafelek_stoi_w_jednej_linii():
-    """Karta: w kafelku nazwa, wzór, kategoria i „opis” idą obok siebie."""
-    tresci = _tresci_wyboru(_arkusz("app.css"), "lista-praw")
+    """Karta: w kafelku nazwa, wzór, kategoria i „opis” idą obok siebie.
 
-    assert any("flex-direction: row" in tresc for tresc in tresci), (
+    Pytamy o regułę kafelka **wewnątrz** kontenera listy (``div.lista-praw .karta-prawa``),
+    nie o samą klasę ``.lista-praw``. Kafelek sam z siebie układa części w kolumnie
+    (``.karta-prawa`` ma ``flex-direction: column`` — tak stoi na stronie głównej),
+    więc jedna linia to wyłącznie zasługa nowej reguły. Test pada, gdy reguły nie ma;
+    selektor musi wskazywać jednocześnie kontener i kafelek.
+    """
+    reguly = [
+        tresc
+        for selektor, tresc in _reguly(_arkusz("app.css"))
+        if _selektor_klasy(selektor, "lista-praw") and _selektor_klasy(selektor, "karta-prawa")
+    ]
+
+    assert reguly, "app.css nie ma reguły dla kafelka w liście praw (div.lista-praw .karta-prawa)"
+    assert any("flex-direction: row" in tresc for tresc in reguly), (
         "kafelek listy praw nie układa części w jednej linii"
     )
 

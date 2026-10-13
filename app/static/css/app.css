@@ -252,7 +252,10 @@ main li a {
 .karta-prawa {
   min-width: 0;
   overflow: hidden;
-  /* Szerokość kafelka wynika z jego treści, ale nie wyjdzie poza ekran (karta PRZ-156). */
+  /* Szerokość kafelka wynika z jego treści, ale nie wyjdzie poza ekran (karta PRZ-156).
+     Na stronie głównej ta sama klasa stoi w kolumnie siatki Bootstrapa; tam element
+     flex dostaje z `width: auto` szerokość rodzica — czyli to samo, co bez deklaracji,
+     więc układ siatki się nie zmienia. */
   width: auto;
   max-width: 100%;
   background: var(--kolor-panel);
