@@ -6,12 +6,22 @@
   `formula.to_html`) i jest wstawiany przez `|safe`. Litery α, β, γ, δ są nazwami
   podformuł z wykładu — moduł buduje je jako drzewa formuł, więc także ich nagłówki
   rysuje `to_html`, a nie szablon.
+
+  Tablice dowodowe (karta PRZ-076) stoją w panelu `.tablica-krokowa`. Kroki przychodzą
+  z modułu jako JSON w atrybucie `data-kroki`, a skrypt `tautologie.js` tylko je
+  ujawnia: odsłania kolumny, gasi i ukrywa odrzucone wiersze oraz rysuje strzałki.
+  W HTML obie tablice są zawsze w pełnej wersji, więc strona działa bez JavaScriptu.
 #}
 {% extends "base.html" %}
 
 {% block tytul %}Tautologie rachunku zdań{% endblock %}
 
-{% macro tablica_html(dane, opis) %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tautologie.css') }}" />
+{% endblock %}
+
+{% macro tablica_html(dane, opis, wniosek="") %}
+  {% set kolumn = (dane.zmienne | length) + (dane.kolumny | length) %}
   <div class="table-responsive">
     <table class="table table-sm tablica-prawdy align-middle">
       <caption>{{ opis }} Wartości to 1 (prawda) i 0 (fałsz).</caption>
@@ -37,8 +47,24 @@
           </tr>
         {% endfor %}
       </tbody>
+      {% if wniosek %}
+        <tfoot>
+          <tr class="wiersz-wniosku">
+            <td colspan="{{ kolumn }}">{{ wniosek }}</td>
+          </tr>
+        </tfoot>
+      {% endif %}
     </table>
   </div>
+{% endmacro %}
+
+{% macro strzalki_html() %}
+  <div
+    class="strzalki-tabeli"
+    data-strzalki
+    role="group"
+    aria-label="Strzałki: skąd liczy się bieżąca kolumna"
+  ></div>
 {% endmacro %}
 
 {% block tresc %}
@@ -89,12 +115,24 @@
       Kolumna α to podformuła, czyli to, co stoi przed ostatnią implikacją. Ostatnia
       kolumna to cała formuła.
     </p>
-    {{
-      tablica_html(
-        tabela_dowodu,
-        "Pełna tablica prawdy: cztery wiersze dla zmiennych p i q."
-      )
-    }}
+    <h3>Tablica krok po kroku</h3>
+    <p>
+      Strzałka nad tabelą mówi, co powstaje i z czego. Pasek pod tabelą prowadzi przez
+      kolejne kolumny. Ostatni krok domyka dowód wierszem wniosku.
+    </p>
+    <div class="tablica-krokowa" data-krokowa="dowod" data-kroki="{{ kroki_dowodu_json }}">
+      {{ strzalki_html() }}
+      {{
+        tablica_html(
+          tabela_dowodu,
+          "Pełna tablica prawdy: cztery wiersze dla zmiennych p i q.",
+          kroki_dowodu[-1].opis
+        )
+      }}
+      {% with steps = kroki_dowodu %}
+        {% include "partials/_stepper.html" %}
+      {% endwith %}
+    </div>
     <p>{{ wniosek_dowodu }}</p>
     <h3>Policz sam</h3>
     <p>
@@ -112,7 +150,7 @@
     </p>
     <p class="formula formula-wyrozniona">{{ formula_to_html(formula_metody) |safe }}</p>
     <ol class="kroki-metody">
-      {% for krok in kroki_metody %}
+      {% for krok in kroki_rozumowania %}
         <li>
           {% if krok.wzor %}
             <span class="formula">{{ formula_to_html(krok.wzor) |safe }}</span> —
@@ -121,7 +159,22 @@
         </li>
       {% endfor %}
     </ol>
-    {{ tablica_html(tabela_metody, "Dwa przypadki, w których formuła mogłaby być fałszywa.") }}
+    <p>
+      Pasek pod tabelą prowadzi od pełnej tabeli do dwóch przypadków. Strzałka
+      „zawężenie” nad tabelą pokazuje, które wiersze odpadają.
+    </p>
+    <div class="tablica-krokowa" data-krokowa="metoda" data-kroki="{{ kroki_metody_json }}">
+      {{ strzalki_html() }}
+      {{
+        tablica_html(
+          tabela_metody,
+          "Cała tablica metody skróconej: osiem wierszy dla zmiennych p, q i r."
+        )
+      }}
+      {% with steps = kroki_metody %}
+        {% include "partials/_stepper.html" %}
+      {% endwith %}
+    </div>
     <p>{{ wniosek_metody }}</p>
     <p>
       Po to jest ta metoda: zamiast <code>2^n</code> wierszy sprawdzasz tylko te,
@@ -186,4 +239,8 @@
       Następna lekcja: przekształcanie formuł →
     </a>
   </nav>
+{% endblock %}
+
+{% block skrypty %}
+  <script type="module" src="{{ url_for('static', filename='js/tautologie.js') }}"></script>
 {% endblock %}
