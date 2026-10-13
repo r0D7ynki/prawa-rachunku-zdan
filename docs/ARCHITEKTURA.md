@@ -110,7 +110,7 @@ Node = Var | Not | And | Or | Imp | Iff
 ```python
 def parse(text: str) -> Node
 def to_text(node: Node, style: str = "wyklad") -> str  # "wyklad" | "unicode" | "ascii" | "latex"
-def to_html(node: Node, styl: str = "wyklad") -> str  # bezpieczny HTML, operatory w <span class="op">
+def to_html(node: Node, styl: str = "wyklad") -> str  # bezpieczny HTML, operator w <span class="op-...">
 def variables(node: Node) -> list[str]                    # posortowane, bez powtórzeń
 def evaluate(node: Node, env: Mapping[str, bool]) -> bool
 def size(node: Node) -> int                               # liczba liści
@@ -121,15 +121,25 @@ def normalize(node: Node) -> Node     # porządkuje strony ∧ i ∨ (stała kol
 def same(a: Node, b: Node) -> bool    # porównanie po normalize
 ```
 
-Style wypisywania: `"wyklad"` → `∼`, `≡` (domyślny, zgodny z wykładem);
-`"unicode"` → `¬`, `↔`; `"ascii"` → `~`, `&`, `|`, `->`, `<->`; `"latex"` → `\neg`, `\equiv`.
+Style wypisywania (`to_text` i `to_html` przyjmują ten sam zestaw):
+
+| styl | negacja | koniunkcja | alternatywa | implikacja | równoważność |
+|---|---|---|---|---|---|
+| `"wyklad"` (domyślny) | `∼` | `∧` | `∨` | `→` | `≡` |
+| `"unicode"` | `¬` | `∧` | `∨` | `→` | `↔` |
+| `"ascii"` | `~` | `&` | `|` | `->` | `<->` |
+| `"latex"` | `\neg` | `\land` | `\lor` | `\to` | `\leftrightarrow` |
+
+Nieznany styl to `FormulaError` z komunikatem po polsku i listą dozwolonych stylów.
 
 `to_html` używa tylko `str`, `Var`, `Not`, `And`, `Or`, `Imp`, `Iff` — nigdy `eval`.
 Nawiasy stawia tylko tam, gdzie zmieniają sens. Wynik nadaje się do `|safe` w Jinja.
 
 **Testy nie mogą zakładać konkretnego znaku operatora.** Sprawdzaj strukturę
-(`isinstance`), wynik `to_text(..., style="ascii")` albo porównuj z innym wywołaniem
-`to_html`. Nazwy klas w HTML (`op-neg`, `op-and`, `op-or`, `op-imp`, `op-iff`) są stałe.
+(`isinstance`), wynik `to_text(..., style="ascii")` albo klasy HTML. Każdy operator ma
+własną, stałą klasę: negacja `op-neg`, koniunkcja `op-and`, alternatywa `op-or`,
+implikacja `op-imp`, równoważność `op-iff` (obsługuje `≡` i `↔`). Argument `style` różni
+tylko znak operatora — struktura HTML i klasy są w obu stylach takie same.
 
 ## `app/logic/truth.py`
 

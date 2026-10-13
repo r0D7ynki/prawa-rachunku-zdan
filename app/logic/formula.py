@@ -1,22 +1,23 @@
 """AST, parser i wypisywanie formuł rachunku zdań.
 
 Moduł zamienia tekst formuły na drzewo (``parse``) i wypisuje drzewo z powrotem:
-jako tekst w stylu ``unicode``, ``ascii`` albo ``latex`` (``to_text``) oraz jako
-bezpieczny HTML (``to_html``).
+jako tekst w stylu ``wyklad``, ``unicode``, ``ascii`` albo ``latex`` (``to_text``) oraz
+jako bezpieczny HTML (``to_html``). Domyślny styl to ``wyklad`` — notacja z wykładu:
+``∼`` (U+223C) i ``≡`` (U+2261).
 
-Wejście parsera przyjmuje znaki Unicode oraz odpowiedniki ASCII:
+Wejście parsera przyjmuje znaki wykładowe, znaki popularne oraz odpowiedniki ASCII:
 
-============ ============ =========================
-Znaczenie    Unicode      ASCII
-============ ============ =========================
-negacja      ``¬``        ``~``, ``!``, ``not``
+============ ============ =================================
+Znaczenie    Wykład       Inne dopuszczone
+============ ============ =================================
+negacja      ``∼``        ``¬``, ``~``, ``!``, ``not``
 koniunkcja   ``∧``        ``&``, ``^``, ``and``
 alternatywa  ``∨``        ``|``, ``+``, ``or``
 implikacja   ``→``        ``->``, ``=>``, ``implies``
-równoważność ``↔``        ``<->``, ``<=>``, ``iff``
-============ ============ =========================
+równoważność ``≡``        ``↔``, ``<->``, ``<=>``, ``iff``
+============ ============ =================================
 
-Kolejność wiązania od najsłabszego: ``↔``, ``→`` (prawostronna), ``∨``, ``∧``, ``¬``.
+Kolejność wiązania od najsłabszego: ``≡``, ``→`` (prawostronna), ``∨``, ``∧``, ``∼``.
 Nazwa zmiennej to litera albo wyraz (``[A-Za-z_][A-Za-z0-9_]*``), np. ``p``, ``deszcz``.
 
 Parser jest napisany ręcznie (tokenizacja + rekurencyjne zejście). Moduł nigdy nie używa
@@ -119,7 +120,10 @@ _KEYWORDS = {
 }
 
 #: Operatory jednoliterowe i nawiasy.
+#: ``∼`` to U+223C (TILDE OPERATOR) z wykładu, a nie ``~`` U+007E.
+#: ``≡`` to U+2261 (IDENTICAL TO) z wykładu, a nie ``=``.
 _SINGLE = {
+    "∼": "NOT",
     "¬": "NOT",
     "~": "NOT",
     "!": "NOT",
@@ -130,6 +134,7 @@ _SINGLE = {
     "|": "OR",
     "+": "OR",
     "→": "IMP",
+    "≡": "IFF",
     "↔": "IFF",
     "(": "LPAREN",
     ")": "RPAREN",
@@ -358,7 +363,11 @@ _PRECEDENCE = {Var: 6, Not: 5, And: 4, Or: 3, Imp: 2, Iff: 1}
 #: Które pole stylu odpowiada któremu operatorowi dwuargumentowemu.
 _BINARY_STYLE_KEY = {And: "and", Or: "or", Imp: "imp", Iff: "iff"}
 
+#: Klasa HTML operatora. Nazwy są stałe (umowa z ``docs/ARCHITEKTURA.md``).
+_HTML_CLASS = {Not: "op-neg", And: "op-and", Or: "op-or", Imp: "op-imp", Iff: "op-iff"}
+
 _STYLES = {
+    "wyklad": {"not": "∼", "and": "∧", "or": "∨", "imp": "→", "iff": "≡"},
     "unicode": {"not": "¬", "and": "∧", "or": "∨", "imp": "→", "iff": "↔"},
     "ascii": {"not": "~", "and": "&", "or": "|", "imp": "->", "iff": "<->"},
     "latex": {
@@ -383,13 +392,13 @@ def _style(style: str) -> dict[str, str]:
 def _render(
     node: Node,
     symbols: dict[str, str],
-    decorate: Callable[[str], str] | None = None,
+    decorate: Callable[[str, str], str] | None = None,
     escape_vars: bool = False,
 ) -> tuple[int, str]:
     """Zwraca ``(siła wiązania, napis)`` — napis bez zewnętrznych nawiasów.
 
-    ``decorate`` to funkcja zamieniająca symbol operatora na gotowy napis
-    (np. owijająca go w ``<span class="op">``). ``escape_vars`` włącza escapowanie
+    ``decorate`` to funkcja zamieniająca symbol operatora i jego klasę HTML na gotowy
+    napis (np. ``<span class="op-neg">∼</span>``). ``escape_vars`` włącza escapowanie
     nazw zmiennych (dla HTML).
     """
     if isinstance(node, Var):
@@ -400,7 +409,8 @@ def _render(
         precedence, inner = _render(node.child, symbols, decorate, escape_vars)
         if precedence < _PRECEDENCE[Not]:
             inner = f"({inner})"
-        return _PRECEDENCE[Not], _symbol(symbols["not"], decorate) + inner
+        symbol = _symbol(symbols["not"], _HTML_CLASS[Not], decorate)
+        return _PRECEDENCE[Not], symbol + inner
 
     precedence = _PRECEDENCE[type(node)]
     right_associative = isinstance(node, Imp)
@@ -410,36 +420,38 @@ def _render(
         left = f"({left})"
     if right_precedence < precedence or (right_precedence == precedence and not right_associative):
         right = f"({right})"
-    symbol = _symbol(symbols[_BINARY_STYLE_KEY[type(node)]], decorate)
+    symbol = _symbol(symbols[_BINARY_STYLE_KEY[type(node)]], _HTML_CLASS[type(node)], decorate)
     return precedence, f"{left} {symbol} {right}"
 
 
-def _symbol(symbol: str, decorate: Callable[[str], str] | None = None) -> str:
+def _symbol(symbol: str, html_class: str, decorate: Callable[[str, str], str] | None = None) -> str:
     """Ozdabia symbol operatora, jeśli podano funkcję ``decorate``."""
     if decorate is None:
         return symbol
-    return decorate(symbol)
+    return decorate(symbol, html_class)
 
 
-def to_text(node: Node, style: str = "unicode") -> str:
-    """Wypisuje drzewo jako tekst w stylu ``unicode``, ``ascii`` albo ``latex``.
+def to_text(node: Node, style: str = "wyklad") -> str:
+    """Wypisuje drzewo jako tekst w stylu ``wyklad``, ``unicode``, ``ascii`` albo ``latex``.
 
-    Nawiasy pojawiają się tylko tam, gdzie zmieniają sens formuły.
+    Domyślnie notacja z wykładu (``∼``, ``≡``). Nawiasy pojawiają się tylko tam,
+    gdzie zmieniają sens formuły. Nieznany styl to ``FormulaError``.
     """
     symbols = _style(style)
     return _render(node, symbols)[1]
 
 
-def to_html(node: Node) -> str:
-    """Wypisuje drzewo jako bezpieczny HTML.
+def to_html(node: Node, styl: str = "wyklad") -> str:
+    """Wypisuje drzewo jako bezpieczny HTML w podanym stylu (domyślnie ``wyklad``).
 
-    Każdy znak pochodzący z wejścia (nazwa zmiennej) jest escapowany, a operatory
-    są opakowane w ``<span class="op">``. Wynik nadaje się do wstawienia przez ``|safe``.
+    Każdy znak pochodzący z wejścia (nazwa zmiennej) jest escapowany, a operatory są
+    opakowane w ``<span>`` z klasą operatora (``op-neg``, ``op-and``, ``op-or``,
+    ``op-imp``, ``op-iff``). Wynik nadaje się do wstawienia przez ``|safe``.
     """
-    symbols = _STYLES["unicode"]
+    symbols = _style(styl)
 
-    def decorate(symbol: str) -> str:
-        return f'<span class="op">{symbol}</span>'
+    def decorate(symbol: str, html_class: str) -> str:
+        return f'<span class="{html_class}">{symbol}</span>'
 
     return _render(node, symbols, decorate, escape_vars=True)[1]
 

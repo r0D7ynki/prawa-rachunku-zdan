@@ -1,4 +1,4 @@
-"""Testy parsera, wypisywania i właściwości formuł (PRZ-001)."""
+"""Testy parsera, wypisywania i właściwości formuł (PRZ-001, notacja wykładowa PRZ-017)."""
 
 from __future__ import annotations
 
@@ -38,9 +38,17 @@ def test_parse_zmienna():
     assert parse("p_1") == Var("p_1")
 
 
-@pytest.mark.parametrize("tekst", ["¬p", "~p", "!p", "not p"])
+@pytest.mark.parametrize("tekst", ["∼p", "¬p", "~p", "!p", "not p"])
 def test_negacja_wszystkie_zapisy(tekst):
     assert parse(tekst) == Not(Var("p"))
+
+
+def test_negacja_wykladowa_to_u223c_a_nie_ascii_tylda():
+    """``∼`` z wykładu to U+223C (TILDE OPERATOR), a nie ``~`` U+007E."""
+    znak = "∼"
+    assert ord(znak) == 0x223C
+    assert znak != "~"
+    assert parse("∼p") == parse("~p") == Not(Var("p"))
 
 
 @pytest.mark.parametrize("tekst", ["p ∧ q", "p & q", "p ^ q", "p and q"])
@@ -58,9 +66,21 @@ def test_implikacja_wszystkie_zapisy(tekst):
     assert parse(tekst) == Imp(Var("p"), Var("q"))
 
 
-@pytest.mark.parametrize("tekst", ["p ↔ q", "p <-> q", "p <=> q", "p iff q"])
+@pytest.mark.parametrize("tekst", ["p ≡ q", "p ↔ q", "p <-> q", "p <=> q", "p iff q"])
 def test_rownowaznosc_wszystkie_zapisy(tekst):
     assert parse(tekst) == Iff(Var("p"), Var("q"))
+
+
+def test_rownowaznosc_wykladowa_to_u2261_a_nie_znak_rownosci():
+    """``≡`` z wykładu to U+2261 (IDENTICAL TO), a nie ``=``."""
+    znak = "≡"
+    assert ord(znak) == 0x2261
+    assert znak != "="
+    assert parse("p ≡ q") == parse("p ↔ q") == Iff(Var("p"), Var("q"))
+
+
+def test_negacja_wykladowa_z_nawiasem():
+    assert parse("∼(p ∧ q)") == Not(And(Var("p"), Var("q")))
 
 
 def test_spacje_i_wciecia_sa_pomijane():
@@ -96,6 +116,12 @@ def test_negacja_wiaze_najmocniej():
 def test_rownowaznosc_wiaze_najslabiej():
     assert parse("p ↔ q → r") == Iff(Var("p"), Imp(Var("q"), Var("r")))
     assert parse("p → q ↔ r") == Iff(Imp(Var("p"), Var("q")), Var("r"))
+
+
+def test_rownowaznosc_wykladowa_wiaze_najslabiej():
+    assert parse("p ≡ q → r") == Iff(Var("p"), Imp(Var("q"), Var("r")))
+    assert parse("p → q → r") == Imp(Var("p"), Imp(Var("q"), Var("r")))
+    assert parse("∼p ≡ q") == Iff(Not(Var("p")), Var("q"))
 
 
 # ---------------------------------------------------------------------------
@@ -162,8 +188,26 @@ def test_formula_error_jest_value_error():
 # ---------------------------------------------------------------------------
 
 
+def test_to_text_domyslnie_wyklad():
+    assert to_text(parse("p → q ∧ ¬r")) == "p → q ∧ ∼r"
+
+
+def test_to_text_wyklad_uzywa_znakow_z_wykladu():
+    wynik = to_text(parse("p ≡ ∼q"), "wyklad")
+    assert "≡" in wynik
+    assert "∼" in wynik
+    assert "↔" not in wynik and "¬" not in wynik
+
+
 def test_to_text_unicode():
-    assert to_text(parse("p → q ∧ ¬r")) == "p → q ∧ ¬r"
+    assert to_text(parse("p → q ∧ ¬r"), "unicode") == "p → q ∧ ¬r"
+
+
+def test_to_text_unicode_uzywa_znakow_popularnych():
+    wynik = to_text(parse("p ≡ ∼q"), "unicode")
+    assert "↔" in wynik
+    assert "¬" in wynik
+    assert "≡" not in wynik and "∼" not in wynik
 
 
 def test_to_text_ascii():
@@ -178,15 +222,32 @@ def test_to_text_nieznany_styl_to_blad():
     with pytest.raises(FormulaError) as blad:
         to_text(parse("p"), "xml")
     assert "xml" in str(blad.value)
+    assert "Dozwolone" in str(blad.value)
+
+
+def test_to_text_wyklad_wypisuje_rownowaznosc_z_powrotem():
+    """Zapis wykładowy jest odwracalny: ``parse`` przyjmuje to, co pisze ``to_text``."""
+    formula = parse("p ≡ ∼q")
+    assert parse(to_text(formula, "wyklad")) == formula
 
 
 def test_nawiasy_tylko_gdy_zmieniaja_sens():
-    assert to_text(parse("(p ∧ q) ∨ r")) == "p ∧ q ∨ r"
-    assert to_text(parse("p ∧ (q ∨ r)")) == "p ∧ (q ∨ r)"
-    assert to_text(parse("(¬p) ∧ q")) == "¬p ∧ q"
-    assert to_text(parse("¬(p ∧ q)")) == "¬(p ∧ q)"
-    assert to_text(parse("(p → q) → r")) == "(p → q) → r"
-    assert to_text(parse("p → (q → r)")) == "p → q → r"
+    assert to_text(parse("(p ∧ q) ∨ r"), "unicode") == "p ∧ q ∨ r"
+    assert to_text(parse("p ∧ (q ∨ r)"), "unicode") == "p ∧ (q ∨ r)"
+    assert to_text(parse("(¬p) ∧ q"), "unicode") == "¬p ∧ q"
+    assert to_text(parse("¬(p ∧ q)"), "unicode") == "¬(p ∧ q)"
+    assert to_text(parse("(p → q) → r"), "unicode") == "(p → q) → r"
+    assert to_text(parse("p → (q → r)"), "unicode") == "p → q → r"
+
+
+def test_nawiasy_w_stylu_wykladowym():
+    # ``≡`` łączy w lewo, więc nawias po prawej stronie jest potrzebny.
+    assert to_text(parse("(p ≡ q) ≡ r"), "wyklad") == "p ≡ q ≡ r"
+    assert to_text(parse("p ≡ (q ≡ r)"), "wyklad") == "p ≡ (q ≡ r)"
+    assert to_text(parse("∼(p ≡ q)"), "wyklad") == "∼(p ≡ q)"
+    # ``≡`` wiąże słabiej niż ``→``, więc nawias po lewej jest potrzebny.
+    assert to_text(parse("(p ≡ q) → r"), "wyklad") == "(p ≡ q) → r"
+    assert to_text(parse("p ≡ q → r"), "wyklad") == "p ≡ q → r"
 
 
 @pytest.mark.parametrize(
@@ -210,16 +271,54 @@ def test_tekst_parsuje_sie_z_powrotem_do_tego_samego_drzewa(tekst):
     assert parse(to_text(formula)) == formula
 
 
-def test_to_html_operatory_w_span():
-    wynik = to_html(parse("¬p ∧ (q ∨ r)"))
-    assert wynik == (
-        '<span class="op">¬</span>p <span class="op">∧</span> (q <span class="op">∨</span> r)'
-    )
+def test_to_html_domyslnie_wyklad_ze_stalymi_klasami():
+    """Domyślny zapis to notacja wykładowa; klasy operatorów są stałe."""
+    wynik = to_html(parse("p ≡ ∼q"))
+    assert wynik == ('p <span class="op-iff">≡</span> <span class="op-neg">∼</span>q')
+
+
+def test_to_html_ma_klase_dla_kazdego_operatora():
+    wynik = to_html(parse("∼p ∧ q ∨ r → s ≡ t"))
+    for klasa in ("op-neg", "op-and", "op-or", "op-imp", "op-iff"):
+        assert f'class="{klasa}"' in wynik, f"brak klasy {klasa}"
+
+
+def test_to_html_unicode_uzywa_znakow_popularnych():
+    wynik = to_html(parse("p ≡ ∼q"), "unicode")
+    assert "↔" in wynik
+    assert "¬" in wynik
+    assert "≡" not in wynik and "∼" not in wynik
+    assert 'class="op-iff"' in wynik and 'class="op-neg"' in wynik
+
+
+def test_to_html_nie_zaklada_jednego_znaku_operatora():
+    """Test nie porównuje znaku operatora z literałem — patrzy na klasy HTML."""
+    wynik = to_html(parse("¬(p ∧ q)"))
+    assert 'class="op-neg"' in wynik
+    assert 'class="op-and"' in wynik
+    # Ten sam operator w innym stylu ma inną literę, ale tę samą klasę.
+    assert 'class="op-neg">¬<' in to_html(Not(Var("p")), "unicode")
+    assert 'class="op-neg">∼<' in to_html(Not(Var("p")))
 
 
 def test_to_html_escapuje_znaki_z_wejscia():
     assert to_html(Var("<script>alert(1)</script>")) == "&lt;script&gt;alert(1)&lt;/script&gt;"
-    assert to_html(Not(Var('a"b&c'))) == '<span class="op">¬</span>a&quot;b&amp;c'
+    # Nazwa zmiennej jest escapowana niezależnie od stylu operatora.
+    assert "a&quot;b&amp;c" in to_html(Not(Var('a"b&c')))
+    assert "a&quot;b&amp;c" in to_html(Not(Var('a"b&c')), "unicode")
+
+
+def test_to_html_wyklad_i_unicode_maja_te_sama_strukture_poza_znakiem():
+    """To samo drzewo w obu stylach różni się tylko znakiem operatora."""
+    node = parse("p ≡ ∼q")
+
+    def bez_znakow(html: str) -> str:
+        """Zamienia znaki operatorów na ``@`` — zostaje sam szkielet HTML."""
+        for znak in ("≡", "∼", "↔", "¬"):
+            html = html.replace(znak, "@")
+        return html
+
+    assert bez_znakow(to_html(node)) == bez_znakow(to_html(node, "unicode"))
 
 
 # ---------------------------------------------------------------------------
