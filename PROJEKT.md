@@ -39,7 +39,7 @@ w tablicy prawdy i wiedzieć, kiedy go użyć w przekształceniach.
 | 2026-10-13 | Fundament: fabryka Flask, auto-rejestracja widoków, bramka, kontrakty, tablica Kanban i rój. |
 | 2026-10-13 | Wykład 1 zamknięty: 14 praw T1–T14 z pełną treścią, ścieżka kursu `/wstep`…`/kpn`, plac zabaw, quiz, CI na GitHubie. Wszystkie 12 adresów działa. |
 | 2026-10-13 | Uwagi właściciela w kartach: nawigacja wykładami (PRZ-069 … PRZ-071) i interaktywne wizualizacje krok po kroku (PRZ-072 … PRZ-077). |
-| — | **Wykład 2 (rachunek predykatów) czeka na notatki właściciela.** Miejsce w rejestrze już jest (D30). |
+| 2026-10-13 | **Wersja gotowa do użytku, scalona do `main`.** Wykład 1 (14 praw, tablice prawdy, przekształcenia, bramki, zbiory, plac zabaw, quiz, słowniczek) i wykład 2 (wynikanie logiczne, reguły wnioskowania, dowody założeniowe, rezolucja). Nawigacja wykładami: rejestr lekcji, `/spis-tresci`, `/wyklad/<nr>`, okruszki, poprzednia/następna lekcja. Wizualizacje krok po kroku ze strzałkami. Bramka zielona, wszystkie testy przechodzą. |
 
 ## Rejestr długu
 
@@ -48,6 +48,7 @@ w tablicy prawdy i wiedzieć, kiedy go użyć w przekształceniach.
 | 1 | Brak skanera sekretów `gitleaks` w bramce QA (D9) | **otwarty** — `./scripts/gate.sh` nadal go nie uruchamia | gdy właściciel zdecyduje o instalacji |
 | 2 | Brak publikacji publicznej (GitHub Pages nie obsługuje Flask) | **spłacony w części** — CI publikuje wynik bramki (`.github/workflows/gate.yml`); publikacja samej strony zostaje otwarta | publikacja strony: osobna karta po zielonym roju |
 | 3 | Publikacja treści publicznie bez serwera aplikacji | **otwarty** | karta po zamknięciu wizualizacji; wymaga decyzji o hostingu |
-| 4 | Drobne uwagi z przeglądów w kolumnie `backlog` (m.in. porządek `_key` w `simplify.py`, walidacja `max_krokow`) | **otwarty** | po kartach z uwag właściciela |
+| 4 | 54 drobne uwagi z przeglądów w kolumnie `backlog` | **otwarty, świadomie odłożony** — decyzja właściciela: najpierw główna część projektu | kiedyś, pojedynczo; nie blokują działania strony |
+| 5 | Wykład 3 (teoria zbiorów i relacji) | **zaplanowany** | gdy właściciel dostarczy notatki; miejsce w rejestrze `app/lessons.py` już jest |
 
 Długi zebrane z przeglądów czekają jako karty `Uwaga z PRZ-…` w kolumnie `backlog`.
