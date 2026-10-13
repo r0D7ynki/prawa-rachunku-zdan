@@ -1,0 +1,74 @@
+/* Style placu zabaw. Właściciel: karta PRZ-014.
+   Kolory i zmienne dziedziczymy z app.css — tu tylko układ tego widoku. */
+
+.pole-formuly {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 1.25rem;
+}
+
+.klawiatura-symboli {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.btn-symbol {
+  min-width: 3rem;
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.lista-przykladow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-left: 0;
+  list-style: none;
+}
+
+.przyklad {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+}
+
+.tablica-podpis {
+  color: #6c6a7a;
+  font-size: 0.9rem;
+}
+
+.tablica-prawdy .prawda,
+.tablica-prawdy .falsz {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.klasyfikacja-nazwa {
+  font-weight: 600;
+}
+
+.lista-krokow .krok-przejscie {
+  display: block;
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 1.1rem;
+}
+
+.lista-krokow .krok-numer {
+  display: inline-block;
+  min-width: 4.5rem;
+  color: #6c6a7a;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kontrprzyklad {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--kolor-falsz, #b3261e);
+}
+
+.wynik-rownowaznosc .alert,
+.wynik-klasyfikacja .alert {
+  max-width: 65ch;
+}
