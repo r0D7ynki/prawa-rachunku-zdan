@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block tytul %}Jak czytać wzory{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Jak czytać wzory</h1>
+    <p class="lead">
+      Pięć symboli wystarczy, aby zapisać każde prawo rachunku zdań.
+    </p>
+  </header>
+
+  <section class="sekcja" aria-labelledby="naglowek-symbole">
+    <h2 id="naglowek-symbole">Symbole</h2>
+    <p>
+      Poniżej każdy symbol razem z nazwą i zdaniem z życia.
+      W kolumnie „Na klawiaturze” znajdziesz znaki, którymi zastąpisz symbol.
+    </p>
+    <div class="table-responsive">
+      <table class="table tablica-symboli align-middle">
+        <caption>Symbole rachunku zdań: znaczenie, zapis z klawiatury i przykład z życia.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Symbol</th>
+            <th scope="col">Jak czytamy</th>
+            <th scope="col">Na klawiaturze</th>
+            <th scope="col">Przykład z życia</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="formula">¬p</span></td>
+            <td>nie p (negacja)</td>
+            <td><code>~</code>, <code>!</code>, <code>not</code></td>
+            <td>„Nie pada deszcz.”</td>
+          </tr>
+          <tr>
+            <td><span class="formula">p ∧ q</span></td>
+            <td>p i q (koniunkcja)</td>
+            <td><code>&amp;</code>, <code>and</code></td>
+            <td>„Pada deszcz i wieje wiatr.”</td>
+          </tr>
+          <tr>
+            <td><span class="formula">p ∨ q</span></td>
+            <td>p lub q (alternatywa)</td>
+            <td><code>|</code>, <code>+</code>, <code>or</code></td>
+            <td>„Jadę autobusem lub idę pieszo.”</td>
+          </tr>
+          <tr>
+            <td><span class="formula">p → q</span></td>
+            <td>jeśli p, to q (implikacja)</td>
+            <td><code>-&gt;</code>, <code>implies</code></td>
+            <td>„Jeśli pada deszcz, to biorę parasol.”</td>
+          </tr>
+          <tr>
+            <td><span class="formula">p ↔ q</span></td>
+            <td>p wtedy i tylko wtedy, gdy q (równoważność)</td>
+            <td><code>&lt;-&gt;</code>, <code>iff</code></td>
+            <td>„Zdam egzamin wtedy i tylko wtedy, gdy się nauczę.”</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-nawiasy">
+    <h2 id="naglowek-nawiasy">Nawiasy</h2>
+    <p>
+      Nawiasy mówią, którą część formuły liczymy najpierw.
+      Bez nawiasów kolejność wyznacza siła wiązania symboli.
+    </p>
+    <p>
+      Najsilniej wiąże ¬, potem ∧, potem ∨, potem →, a najsłabiej ↔.
+      Dlatego <span class="formula">¬p ∧ q</span> czytamy jako „nie p, ale q”.
+    </p>
+    <p>
+      Nawias zmienia sens zdania. Porównaj dwa zapisy:
+    </p>
+    <ul>
+      <li>
+        <span class="formula">¬(p ∧ q)</span> — „nie jest tak, że oba naraz”.
+      </li>
+      <li>
+        <span class="formula">¬p ∧ q</span> — „p jest fałszywe, a q prawdziwe”.
+      </li>
+    </ul>
+    <p>
+      Implikacja wiąże w prawo. Zapis <span class="formula">p → q → r</span>
+      znaczy więc <span class="formula">p → (q → r)</span>.
+    </p>
+  </section>
+
+  <section class="sekcja" aria-labelledby="naglowek-tablica">
+    <h2 id="naglowek-tablica">Jak czytać tablicę prawdy</h2>
+    <ol>
+      <li>Wypisz każdą zmienną w osobnej kolumnie z lewej strony.</li>
+      <li>Wypisz wszystkie kombinacje prawdy i fałszu — po jednej w wierszu.</li>
+      <li>Policz wartość formuły w każdym wierszu i zapisz ją w ostatniej kolumnie.</li>
+      <li>Popatrz na ostatnią kolumnę i wyciągnij wniosek.</li>
+    </ol>
+    <p>
+      Każda zmienna podwaja liczbę wierszy. Dwie zmienne to cztery wiersze,
+      trzy zmienne to osiem wierszy.
+    </p>
+    <div class="table-responsive">
+      <table class="table tablica-prawdy align-middle">
+        <caption>Tablica prawdy dla implikacji p → q.</caption>
+        <thead>
+          <tr>
+            <th scope="col">p</th>
+            <th scope="col">q</th>
+            <th scope="col">p → q</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="prawda">Prawda</span></td>
+            <td><span class="prawda">Prawda</span></td>
+            <td><span class="prawda">Prawda</span></td>
+          </tr>
+          <tr>
+            <td><span class="prawda">Prawda</span></td>
+            <td><span class="falsz">Fałsz</span></td>
+            <td><span class="falsz">Fałsz</span></td>
+          </tr>
+          <tr>
+            <td><span class="falsz">Fałsz</span></td>
+            <td><span class="prawda">Prawda</span></td>
+            <td><span class="prawda">Prawda</span></td>
+          </tr>
+          <tr>
+            <td><span class="falsz">Fałsz</span></td>
+            <td><span class="falsz">Fałsz</span></td>
+            <td><span class="prawda">Prawda</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="podpowiedz-czytanie">
+      Wiersz trzeci zaskakuje: gdy p jest fałszywe, implikacja jest prawdziwa.
+      Obietnica „jeśli pada, biorę parasol” nie jest złamana, gdy nie pada.
+    </p>
+    <p>
+      Wniosek czytasz z ostatniej kolumny. Same słowa „Prawda” oznaczają tautologię,
+      same słowa „Fałsz” — kontrtautologię.
+    </p>
+    <p>
+      Kolor tylko podkreśla wynik. Obok koloru zawsze stoi słowo „Prawda” albo „Fałsz”,
+      więc wynik odczytasz także bez koloru.
+    </p>
+  </section>
+{% endblock %}
