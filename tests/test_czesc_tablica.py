@@ -14,6 +14,7 @@ Wzorzec testu źródłowego jest ten sam, co w ``tests/test_czesc_kroki.py``.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,15 @@ from app import create_app
 
 ADRES = "/api/formula/table"
 FORMULA = "p ∧ q"
+#: Ciało funkcji wybierającej wiersz — toleruje wcięcia, ale wymaga całej treści:
+#: podstawienia **wszystkich** zmiennych z wiersza i odświeżenia widoku.
+WZORZEC_WYBIERZ_WIERSZ = re.compile(
+    r"const wybierzWiersz = \(\) => \{\s*"
+    r"for \(const nazwa of zmienne\) \{\s*"
+    r"ustawienie\.set\(nazwa, wiersz\[nazwa\]\);\s*"
+    r"\}\s*"
+    r"odswiez\(\);\s*\};"
+)
 KATALOG_STATYCZNY = Path(__file__).resolve().parents[1] / "app" / "static"
 PARTIAL = (
     Path(__file__).resolve().parents[1] / "app" / "templates" / "partials" / "_truth_table.html"
@@ -220,6 +230,19 @@ def test_skrypt_klikane_komorki_to_przyciski(skrypt):
 def test_skrypt_odbiera_klikniecie_komorki_od_wiersza(skrypt):
     """Bez tego kliknięcie zmiennej ustawiałoby cały wiersz zamiast jednej zmiennej."""
     assert "stopPropagation" in skrypt
+
+
+def test_skrypt_klikniecie_wiersza_wybiera_cale_ustawienie(skrypt):
+    """Kliknięcie wiersza myszą jest osobną ścieżką od klawiatury.
+
+    Wiersz ``<tr>`` nie jest przyciskiem, więc sam musi mieć podsłuch ``click``.
+    Bez tej linii wybór ustawienia działałby tylko z Entera i spacji, a kliknięcie
+    myszą nie robiłoby nic — i żaden inny test by tego nie zauważył.
+    """
+    assert 'tr.addEventListener("click", wybierzWiersz)' in skrypt
+    assert WZORZEC_WYBIERZ_WIERSZ.search(skrypt), (
+        "obsługa wiersza ma brać wszystkie zmienne z tego wiersza i odświeżać widok"
+    )
 
 
 def test_skrypt_obsluguje_blad_api_i_siec(skrypt):
