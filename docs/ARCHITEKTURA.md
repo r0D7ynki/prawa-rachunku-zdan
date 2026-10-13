@@ -28,7 +28,8 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/logic/laws_data/implikacja.py` | definiowanie implikacji, kontrapozycja | PRZ-003 |
 | `app/logic/laws_data/algebra.py` | łączność, rozdzielność, przemienność | PRZ-004 |
 | `app/logic/laws_data/de_morgan.py` | dwa prawa de Morgana | PRZ-005 |
-| `app/logic/laws_data/zastepowanie.py` | prawo zastępowania równych | PRZ-005 |
+| `app/logic/laws_data/zastepowanie.py` | prawo zastępowania równ. | PRZ-005 |
+| `app/logic/laws_data/dodatkowe.py` | idempotencja i reguła podstawiania | PRZ-024 |
 | `app/logic/simplify.py` | silnik przekształceń ze śladem kroków | PRZ-006 |
 | `app/logic/quiz.py` | generator pytań | PRZ-007 |
 | `app/blueprints/home.py` | `/`, `/slowniczek`, `/jak-czytac` | PRZ-008 |
@@ -37,6 +38,11 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/blueprints/laws.py` | `/prawa`, `/prawa/<slug>` | PRZ-010 |
 | `app/blueprints/api_simplify.py` | `/api/formula/simplify` | PRZ-013 |
 | `app/blueprints/api_quiz.py` | `/api/quiz/*` | PRZ-015 |
+| `app/blueprints/wstep.py` | `/wstep` | PRZ-018 |
+| `app/blueprints/formuly.py` | `/formuly` | PRZ-019 |
+| `app/blueprints/tautologie.py` | `/tautologie` | PRZ-020 |
+| `app/blueprints/przeksztalcanie.py` | `/przeksztalcanie` | PRZ-021 |
+| `app/blueprints/kpn.py` | `/kpn` | PRZ-022 |
 | `app/blueprints/playground.py` | `/plac-zabaw` | PRZ-014 |
 | `app/blueprints/quiz.py` | `/quiz` | PRZ-015 |
 | `app/templates/base.html` | szkielet strony, menu, stopka | PRZ-008 |
@@ -47,17 +53,21 @@ Trzy workery pracują równolegle. Dlatego:
 
 ## Notacja formuł
 
+**Notacja z wykładu jest główna**: `∼` (negacja, U+223C), `≡` (równoważność, U+2261),
+`∧`, `∨`, `→`, a wartości logiczne to `1` i `0`. Notacja popularna (`¬`, `↔`) jest
+pokazywana obok jako ciekawostka.
+
 Wejście parsera przyjmuje znaki Unicode oraz odpowiedniki ASCII:
 
-| Znaczenie | Unicode | ASCII |
+| Znaczenie | Notacja wykładu | Inne dopuszczone |
 |---|---|---|
-| negacja | `¬` | `~`, `!`, `not` |
+| negacja | `∼` (U+223C) | `¬`, `~`, `!`, `not` |
 | koniunkcja | `∧` | `&`, `^`, `and` |
 | alternatywa | `∨` | `|`, `+`, `or` |
 | implikacja | `→` | `->`, `=>`, `implies` |
-| równoważność | `↔` | `<->`, `<=>`, `iff` |
+| równoważność | `≡` (U+2261) | `↔`, `<->`, `<=>`, `iff` |
 
-Kolejność wiązania od najsłabszego: `↔`, `→` (prawostronna), `∨`, `∧`, `¬`.
+Kolejność wiązania od najsłabszego: `≡`, `→` (prawostronna), `∨`, `∧`, `∼`.
 Nazwa zmiennej: litera albo wyraz (`[A-Za-z_][A-Za-z0-9_]*`), np. `p`, `q`, `deszcz`.
 
 ## `app/logic/formula.py`
@@ -99,8 +109,8 @@ Node = Var | Not | And | Or | Imp | Iff
 
 ```python
 def parse(text: str) -> Node
-def to_text(node: Node, style: str = "unicode") -> str   # "unicode" | "ascii" | "latex"
-def to_html(node: Node) -> str        # bezpieczny HTML, operatory w <span class="op">
+def to_text(node: Node, style: str = "wyklad") -> str  # "wyklad" | "unicode" | "ascii" | "latex"
+def to_html(node: Node, styl: str = "wyklad") -> str  # bezpieczny HTML, operatory w <span class="op">
 def variables(node: Node) -> list[str]                    # posortowane, bez powtórzeń
 def evaluate(node: Node, env: Mapping[str, bool]) -> bool
 def size(node: Node) -> int                               # liczba liści
@@ -111,8 +121,15 @@ def normalize(node: Node) -> Node     # porządkuje strony ∧ i ∨ (stała kol
 def same(a: Node, b: Node) -> bool    # porównanie po normalize
 ```
 
+Style wypisywania: `"wyklad"` → `∼`, `≡` (domyślny, zgodny z wykładem);
+`"unicode"` → `¬`, `↔`; `"ascii"` → `~`, `&`, `|`, `->`, `<->`; `"latex"` → `\neg`, `\equiv`.
+
 `to_html` używa tylko `str`, `Var`, `Not`, `And`, `Or`, `Imp`, `Iff` — nigdy `eval`.
 Nawiasy stawia tylko tam, gdzie zmieniają sens. Wynik nadaje się do `|safe` w Jinja.
+
+**Testy nie mogą zakładać konkretnego znaku operatora.** Sprawdzaj strukturę
+(`isinstance`), wynik `to_text(..., style="ascii")` albo porównuj z innym wywołaniem
+`to_html`. Nazwy klas w HTML (`op-neg`, `op-and`, `op-or`, `op-imp`, `op-iff`) są stałe.
 
 ## `app/logic/truth.py`
 
@@ -258,7 +275,13 @@ z tego drzewa, więc nie zgaduje struktury z tekstu.
 | `/api/quiz/check` | `{"prawo", "seed", "id", "odpowiedz"}` | `ok`, `poprawna`, `wyjasnienie` |
 
 Widoki HTML: `home.py` → `/`, `/slowniczek`, `/jak-czytac`; `laws.py` → `/prawa`,
-`/prawa/<slug>`; `playground.py` → `/plac-zabaw`; `quiz.py` → `/quiz`.
+`/prawa/<slug>`; `playground.py` → `/plac-zabaw`; `quiz.py` → `/quiz`;
+`wstep.py` → `/wstep`; `formuly.py` → `/formuly`; `tautologie.py` → `/tautologie`;
+`przeksztalcanie.py` → `/przeksztalcanie`; `kpn.py` → `/kpn`.
+
+Kolejność nauki na stronie (ścieżka kursu): `/wstep` → `/formuly` → `/tautologie` →
+`/przeksztalcanie` → `/kpn` → `/prawa` → `/plac-zabaw` → `/quiz`. Każda strona kursu kończy
+się odnośnikiem „następna lekcja” i „poprzednia lekcja” (zwykłe `href`, nie `url_for`).
 
 
 ## Frontend
