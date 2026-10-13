@@ -182,6 +182,13 @@ def _wiersz_tabeli(tabela: str, nr: int) -> str:
     raise AssertionError(f"brak wiersza o numerze {nr}")
 
 
+def _ukryty_opis(tabela: str, nr: int) -> str:
+    """Opis dla czytnika ekranu (``visually-hidden``) przy wierszu o numerze."""
+    dopasowanie = UKRYTY_OPIS.search(_wiersz_tabeli(tabela, nr))
+    assert dopasowanie, f"wiersz {nr} bez słownego opisu sprzeczności"
+    return _tekst(dopasowanie["tresc"])
+
+
 def _kroki_z_atrybutu(sekcja: str) -> list[dict]:
     """Kroki z atrybutu ``data-kroki`` (encje wracają do znaków)."""
     dopasowanie = KROKI_JSON.search(sekcja)
@@ -481,7 +488,8 @@ def test_kolumna_skad_zalezy_od_rodzaju_kroku(html):
 def test_wiersze_sprzeczne_maja_klase_i_opis_slowny(html):
     for dowod, tabela in zip(proofs(), TABELA.findall(html), strict=True):
         ostatni = dowod.kroki[-1]
-        oczekiwane = {ostatni.nr, *ostatni.rodzice}
+        pierwszy, drugi = ostatni.rodzice
+        oczekiwane = {ostatni.nr, pierwszy, drugi}
         # Dokładny zapis atrybutu: ``class="&quot;wiersz-sprzecznosc&quot;"`` nie zadziała
         # w przeglądarce, więc test pilnuje klasy bez encji.
         z_klasa = {
@@ -491,8 +499,34 @@ def test_wiersze_sprzeczne_maja_klase_i_opis_slowny(html):
         }
 
         assert z_klasa == oczekiwane, f"{dowod.id}: wiersze sprzeczne to {oczekiwane}"
-        assert f"Sprzeczność {ostatni.rodzice[0]}, {ostatni.rodzice[1]}" in unescape(tabela)
-        assert "wiersz sprzeczny z wierszem" in unescape(tabela), "brak opisu słownego"
+        assert f"Sprzeczność {pierwszy}, {drugi}" in unescape(tabela)
+        # Opis mówi o drugim wierszu *pary sprzecznej*, a nie o pochodzeniu wiersza
+        # (wiersz 8 przykładu 1 powstaje z 2 i 5, ale jest sprzeczny z 9).
+        assert _ukryty_opis(tabela, pierwszy) == f"wiersz sprzeczny z wierszem {drugi}"
+        assert _ukryty_opis(tabela, drugi) == f"wiersz sprzeczny z wierszem {pierwszy}"
+        assert _ukryty_opis(tabela, ostatni.nr) == f"sprzeczność wierszy {pierwszy} i {drugi}"
+
+
+def test_opis_sprzecznosci_bierze_pare_z_ostatniego_kroku():
+    """Para to ``rodzice`` ostatniego kroku — nie ``rodzice`` samych sprzecznych wierszy."""
+    for dowod in proofs():
+        ostatni = dowod.kroki[-1]
+        para = widok._para_sprzeczna(dowod)
+        pierwszy, drugi = para
+
+        assert para == (ostatni.rodzice[0], ostatni.rodzice[1]), f"{dowod.id}: zła para"
+        opisy = {
+            wiersz["nr"]: wiersz["opis_sprzecznosci"] for wiersz in widok.wiersze_dowodu(dowod)
+        }
+        assert opisy[pierwszy] == f"wiersz sprzeczny z wierszem {drugi}"
+        assert opisy[drugi] == f"wiersz sprzeczny z wierszem {pierwszy}"
+        assert opisy[ostatni.nr] == f"sprzeczność wierszy {pierwszy} i {drugi}"
+
+        # Wiersz pary opisuje partnera z pary, a nie żadnego ze swoich rodziców;
+        # pomyłka „sprzeczny z wierszem 2” (rodzic wiersza 8) musi tu padać.
+        for nr, partner in ((pierwszy, drugi), (drugi, pierwszy)):
+            krok = next(k for k in dowod.kroki if k.nr == nr)
+            assert partner not in krok.rodzice, f"{dowod.id}: para nie jest pochodzeniem"
 
 
 def test_strona_bez_javascriptu_pokazuje_cale_tabele(html):
