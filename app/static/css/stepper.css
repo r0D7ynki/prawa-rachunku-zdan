@@ -1,11 +1,12 @@
-/* Style wspólnego komponentu kroków (karta PRZ-072).
-   Kolor nigdy nie jest jedynym nośnikiem informacji: bieżący krok ma dodatkowo
-   `aria-current="step"`, pogrubienie i obramowanie, a wskaźnik pisze „Krok 3 z 7”. */
+/* Style wspólnego komponentu kroków (karty PRZ-072 i PRZ-124).
+   Pasek to dwie okrągłe strzałki po bokach i opis kroku między nimi.
+   Widok nie pokazuje numeru kroku. Kolor nigdy nie jest jedynym nośnikiem informacji:
+   wyłączona strzałka jest przygaszona, ma `disabled` i `aria-disabled` w HTML-u. */
 
 .stepper {
   --stepper-akcent: var(--bs-primary, #0d6efd);
-  --stepper-tlo-kropki: var(--bs-secondary-bg, #e9ecef);
-  --stepper-tlo-biezacej: var(--bs-primary-bg-subtle, #cfe2ff);
+  --stepper-tlo-strzalki: var(--bs-secondary-bg, #e9ecef);
+  --stepper-rozmiar-strzalki: 2.75rem;
 
   padding: 0.75rem;
   border: 1px solid var(--bs-border-color, #dee2e6);
@@ -13,79 +14,91 @@
   background-color: var(--bs-body-bg, #fff);
 }
 
-/* Cały pasek da się wziąć fokusem — wtedy działają strzałki, Home, End i spacja. */
+/* Cały pasek da się wziąć fokusem — wtedy działają strzałki, Home i End. */
 .stepper:focus-visible {
   outline: 2px solid var(--stepper-akcent);
   outline-offset: 2px;
 }
 
+/* Rząd: „‹”, opis kroku, „›”. Opis zajmuje wolne miejsce między strzałkami. */
 .stepper-pasek {
-  row-gap: 0.5rem;
-}
-
-.stepper-wskaznik {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.stepper-kropki {
-  padding-left: 0;
-}
-
-.stepper-kropka {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  background-color: var(--stepper-tlo-kropki);
-  color: var(--bs-body-color, #212529);
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.stepper-kropka:hover {
-  border-color: var(--stepper-akcent);
-}
-
-.stepper-kropka:focus-visible {
-  outline: 2px solid var(--stepper-akcent);
-  outline-offset: 2px;
-}
-
-/* Bieżący krok: tło, obramowanie i pogrubienie — nie tylko kolor. */
-.stepper-kropka[aria-current="step"] {
-  border-color: var(--stepper-akcent);
-  background-color: var(--stepper-tlo-biezacej);
-  font-weight: 800;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+  gap: 0.75rem;
 }
 
 .stepper-opis {
-  padding: 0.5rem 0.25rem 0 0.25rem;
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 
 .stepper-tytul {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
   color: var(--bs-body-color, #212529);
 }
 
 .stepper-tresc {
+  margin: 0;
   color: var(--bs-secondary-color, #6c757d);
+}
+
+/* Okrągła strzałka z samym znakiem „‹” albo „›”. */
+.stepper-strzalka {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--stepper-rozmiar-strzalki);
+  height: var(--stepper-rozmiar-strzalki);
+  padding: 0;
+  border: 2px solid var(--stepper-akcent);
+  border-radius: 50%;
+  background-color: var(--bs-body-bg, #fff);
+  color: var(--stepper-akcent);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.stepper-strzalka:hover:not(:disabled) {
+  background-color: var(--stepper-tlo-strzalki);
+}
+
+.stepper-strzalka:focus-visible {
+  outline: 2px solid var(--stepper-akcent);
+  outline-offset: 2px;
+}
+
+/* Krok skrajny: strzałka wyłączona. Widać to po kolorze i po kursorze,
+   a czytnik ekranu wie o tym z `aria-disabled`. */
+.stepper-strzalka:disabled {
+  border-color: var(--bs-border-color, #dee2e6);
+  color: var(--bs-secondary-color, #6c757d);
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .stepper-blad {
   margin-bottom: 0;
 }
 
+/* Telefon: strzałki mają 44 px (wygodne pod palec), a opis zawija się pod nimi. */
+@media (max-width: 575.98px) {
+  .stepper {
+    --stepper-rozmiar-strzalki: 44px;
+  }
+
+  .stepper-opis {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .stepper-kropka {
-    transition:
-      background-color 120ms ease-in-out,
-      border-color 120ms ease-in-out;
+  .stepper-strzalka {
+    transition: background-color 120ms ease-in-out;
   }
 }

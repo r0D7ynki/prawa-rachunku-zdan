@@ -18,7 +18,7 @@ const ADRES = "/api/formula/simplify";
 
 const TEKSTY = {
   ladowanie: "Wczytuję kroki przekształcenia…",
-  siec: "Nie udało się połączyć z serwerem. Sprawdź połączenie i kliknij „Od nowa”.",
+  siec: "Nie udało się połączyć z serwerem. Sprawdź połączenie i odśwież stronę.",
   brakKrokow: "Ta formuła nie wymaga przekształcenia — jest już w żądanej postaci.",
   blad: "Nie udało się przekształcić tej formuły.",
   fragment: "ten fragment zastępujemy",
@@ -172,6 +172,8 @@ function rysujSklad(montaz, slad, status) {
       pozycja.classList.toggle("krok-zwiniety", numer < indeks);
       pozycja.classList.toggle("krok-ukryty", numer > indeks);
     });
+    // Numer kroku zostaje wyłącznie dla czytnika ekranu (`visually-hidden`);
+    // widok pokazuje same strzałki paska (karta PRZ-124).
     status.textContent = `Krok ${indeks + 1} z ${kroki.length}: ${kroki[indeks].nazwa}.`;
   }
 
