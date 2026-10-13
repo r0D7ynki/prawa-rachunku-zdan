@@ -1,0 +1,57 @@
+{#
+  Spis treści kursu (karta PRZ-069). Wszystkie dane pochodzą z rejestru `NAV`
+  (`app/lessons.py`) — szablon nie wypisuje ani jednego tytułu ręcznie.
+#}
+{% extends "base.html" %}
+
+{% block tytul %}Spis treści{% endblock %}
+
+{% block tresc %}
+  <header class="naglowek-strony">
+    <h1>Spis treści</h1>
+    <p class="lead">
+      Cały kurs w jednym miejscu: wykłady i lekcje w kolejności nauki.
+    </p>
+  </header>
+
+  {% for wyklad in NAV.lectures %}
+    <section
+      class="sekcja spis-tresci-wyklad"
+      id="wyklad-{{ wyklad.numer }}"
+      aria-labelledby="naglowek-wyklad-{{ wyklad.numer }}"
+    >
+      <h2 id="naglowek-wyklad-{{ wyklad.numer }}">
+        Wykład {{ wyklad.numer }}: {{ wyklad.tytul }}
+      </h2>
+      <p>{{ wyklad.opis }}</p>
+
+      {% if wyklad.gotowy %}
+        <ol class="spis-tresci-lekcje">
+          {% for lekcja in wyklad.lekcje %}
+            <li class="spis-tresci-lekcja">
+              <a href="{{ lekcja.sciezka }}">
+                <span class="spis-tresci-numer" aria-hidden="true">{{ wyklad.numer }}.{{ loop.index }}</span>
+                {{ lekcja.tytul }}
+              </a>
+              <span class="spis-tresci-opis">{{ lekcja.opis }}</span>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="spis-tresci-wkrotce">Wykład w przygotowaniu. Materiał pojawi się wkrótce.</p>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  <section class="sekcja" aria-labelledby="naglowek-narzedzia">
+    <h2 id="naglowek-narzedzia">Narzędzia</h2>
+    <p>Strony poza ścieżką lekcji — zaglądasz do nich, gdy czegoś szukasz.</p>
+    <ul class="spis-tresci-narzedzia">
+      {% for narzedzie in NAV.tools %}
+        <li>
+          <a href="{{ narzedzie.sciezka }}">{{ narzedzie.tytul }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endblock %}

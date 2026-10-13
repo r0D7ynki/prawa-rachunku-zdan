@@ -48,7 +48,10 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/blueprints/kpn.py` | `/kpn` | PRZ-022 |
 | `app/blueprints/playground.py` | `/plac-zabaw` | PRZ-014 |
 | `app/blueprints/quiz.py` | `/quiz` | PRZ-015 |
-| `app/templates/base.html` | szkielet strony, menu, stopka | PRZ-008 |
+| `app/blueprints/spis_tresci.py` | `/spis-tresci` | PRZ-069 |
+| `app/templates/base.html` | szkielet strony, menu, okruszki, nawigacja lekcji, stopka | PRZ-008, PRZ-069 |
+| `app/templates/spis_tresci.html` | spis treści kursu (wykłady i lekcje) | PRZ-069 |
+| `app/static/css/nawigacja.css` | style menu, okruszków, spisu lekcji i kart sąsiadów | PRZ-069 |
 | `app/templates/partials/_truth_table.html` | komponent tablicy prawdy | PRZ-011 |
 | `app/templates/partials/_gates.html` | komponent bramek | PRZ-012 |
 | `app/templates/partials/_sets.html` | komponent diagramów zbiorów | PRZ-012 |

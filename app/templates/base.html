@@ -15,12 +15,22 @@
       crossorigin="anonymous"
     />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/nawigacja.css') }}" />
     {% block head %}{% endblock %}
   </head>
   <body>
     <a class="skip-link" href="#tresc">Przejdź do treści</a>
 
-    <nav class="navbar navbar-expand-lg sticky-top navbar-zadania" aria-label="Nawigacja główna">
+    {#
+      Cała nawigacja powstaje z rejestru `NAV` (app/lessons.py, karta PRZ-070):
+      menu wykładami, okruszki, boczny spis lekcji i sąsiedzi „poprzednia/następna”.
+      Żaden szablon lekcji nie powtarza tych elementów (karta PRZ-069).
+    #}
+    <nav
+      id="nawigacja-glowna"
+      class="navbar navbar-expand-lg sticky-top navbar-zadania"
+      aria-label="Nawigacja główna"
+    >
       <div class="container">
         <a class="navbar-brand" href="/">
           <span aria-hidden="true">⊢</span> Prawa rachunku zdań
@@ -46,28 +56,153 @@
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
               >
-                Nauka
+                Wykłady
               </a>
-              <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="/wstep">Wstęp</a></li>
-                <li><a class="dropdown-item" href="/formuly">Formuły</a></li>
-                <li><a class="dropdown-item" href="/tautologie">Tautologie</a></li>
-                <li><a class="dropdown-item" href="/przeksztalcanie">Przekształcanie</a></li>
-                <li><a class="dropdown-item" href="/kpn">KPN</a></li>
+              <ul class="dropdown-menu menu-wyklady">
+                {% for wyklad in NAV.lectures %}
+                  <li>
+                    <h6 class="dropdown-header">Wykład {{ wyklad.numer }}: {{ wyklad.tytul }}</h6>
+                  </li>
+                  {% if wyklad.gotowy %}
+                    {% for lekcja in wyklad.lekcje %}
+                      <li>
+                        <a
+                          class="dropdown-item{% if NAV.lesson and NAV.lesson.sciezka == lekcja.sciezka %} active{% endif %}"
+                          href="{{ lekcja.sciezka }}"
+                          {% if NAV.lesson and NAV.lesson.sciezka == lekcja.sciezka %}aria-current="page"{% endif %}
+                        >
+                          {{ lekcja.tytul }}
+                        </a>
+                      </li>
+                    {% endfor %}
+                  {% else %}
+                    <li>
+                      <span class="dropdown-item disabled" aria-disabled="true">
+                        {{ wyklad.tytul }} — wkrótce
+                      </span>
+                    </li>
+                  {% endif %}
+                {% endfor %}
               </ul>
             </li>
-            <li class="nav-item"><a class="nav-link" href="/prawa">Prawa</a></li>
-            <li class="nav-item"><a class="nav-link" href="/plac-zabaw">Plac zabaw</a></li>
-            <li class="nav-item"><a class="nav-link" href="/quiz">Quiz</a></li>
-            <li class="nav-item"><a class="nav-link" href="/jak-czytac">Jak czytać</a></li>
-            <li class="nav-item"><a class="nav-link" href="/slowniczek">Słowniczek</a></li>
+            <li class="nav-item dropdown">
+              <a
+                class="nav-link dropdown-toggle"
+                href="#"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                Narzędzia
+              </a>
+              <ul class="dropdown-menu">
+                {% for narzedzie in NAV.tools %}
+                  <li>
+                    <a class="dropdown-item" href="{{ narzedzie.sciezka }}">
+                      <span aria-hidden="true">{{ narzedzie.ikona }}</span> {{ narzedzie.tytul }}
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/spis-tresci">Spis treści</a>
+            </li>
           </ul>
         </div>
       </div>
     </nav>
 
     <main id="tresc" class="container py-4 py-lg-5" tabindex="-1">
-      {% block tresc %}{% endblock %}
+      {% if NAV.lesson %}
+        {% set wyklad = NAV.lectures | selectattr("numer", "equalto", NAV.lesson.wyklad) | first %}
+
+        <nav class="okruszki" aria-label="Ścieżka nawigacji">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/spis-tresci">Wykłady</a></li>
+            <li class="breadcrumb-item">
+              <a href="/spis-tresci#wyklad-{{ wyklad.numer }}">
+                Wykład {{ wyklad.numer }}: {{ wyklad.tytul }}
+              </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">{{ NAV.lesson.tytul }}</li>
+          </ol>
+        </nav>
+
+        <nav class="nawigacja-lekcji-gora" aria-label="Nawigacja między lekcjami">
+          {% if NAV.previous %}
+            <a class="nawigacja-lekcji-odnosnik" href="{{ NAV.previous.sciezka }}">
+              <span aria-hidden="true">←</span> Poprzednia
+            </a>
+          {% endif %}
+          {% if NAV.next %}
+            <a class="nawigacja-lekcji-odnosnik" href="{{ NAV.next.sciezka }}">
+              Następna <span aria-hidden="true">→</span>
+            </a>
+          {% endif %}
+        </nav>
+      {% endif %}
+
+      <div class="row g-4 g-lg-5">
+        {% if NAV.lesson %}
+          <aside class="col-lg-3 d-none d-lg-block">
+            <nav class="spis-lekcji" aria-label="Lekcje wykładu">
+              <h2 class="spis-lekcji-tytul">Lekcje wykładu {{ wyklad.numer }}</h2>
+              <ol class="spis-lekcji-lista list-unstyled mb-0">
+                {% for lekcja in wyklad.lekcje %}
+                  <li>
+                    <a
+                      class="spis-lekcji-odnosnik{% if lekcja.sciezka == NAV.lesson.sciezka %} aktywny{% endif %}"
+                      href="{{ lekcja.sciezka }}"
+                      {% if lekcja.sciezka == NAV.lesson.sciezka %}aria-current="page"{% endif %}
+                    >
+                      <span class="spis-lekcji-ikona" aria-hidden="true">{{ lekcja.ikona }}</span>
+                      {{ lekcja.tytul }}
+                    </a>
+                  </li>
+                {% endfor %}
+              </ol>
+              <p class="spis-lekcji-skroty mb-0">
+                <a href="/prawa">Prawa rachunku zdań</a><br />
+                <a href="/plac-zabaw">Plac zabaw</a>
+              </p>
+            </nav>
+          </aside>
+        {% endif %}
+
+        <div class="{% if NAV.lesson %}col-lg-9{% else %}col-12{% endif %}">
+          {% block tresc %}{% endblock %}
+        </div>
+      </div>
+
+      {% if NAV.lesson %}
+        <nav class="nawigacja-lekcji-dol" aria-label="Sąsiednie lekcje">
+          <div class="row g-3">
+            {% if NAV.previous %}
+              <div class="col-md-6">
+                <a class="karta-lekcji karta-lekcji-poprzednia" href="{{ NAV.previous.sciezka }}">
+                  <span class="karta-lekcji-etykieta">
+                    <span aria-hidden="true">←</span> Poprzednia lekcja
+                  </span>
+                  <span class="karta-lekcji-tytul">{{ NAV.previous.tytul }}</span>
+                  <span class="karta-lekcji-opis">{{ NAV.previous.opis }}</span>
+                </a>
+              </div>
+            {% endif %}
+            {% if NAV.next %}
+              <div class="col-md-6">
+                <a class="karta-lekcji karta-lekcji-nastepna" href="{{ NAV.next.sciezka }}">
+                  <span class="karta-lekcji-etykieta">
+                    Następna lekcja <span aria-hidden="true">→</span>
+                  </span>
+                  <span class="karta-lekcji-tytul">{{ NAV.next.tytul }}</span>
+                  <span class="karta-lekcji-opis">{{ NAV.next.opis }}</span>
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </nav>
+      {% endif %}
     </main>
 
     <footer class="stopka border-top mt-auto py-4">
