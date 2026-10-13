@@ -98,12 +98,14 @@
   font-weight: 500;
 }
 
-/* --- sekcja „Krok po kroku” na stronie prawa (karty PRZ-143 i PRZ-157) -------
-   Wszystkie kroki stoją naraz, jeden pod drugim i oddzielone linią oraz
-   naprzemiennym tłem. Numer kroku rysuje sam krok (`.krok-numer`), więc lista
-   nie ma własnych punktów — inaczej numer byłby podwójny. Kroki są jedną
-   kolumną, a wzory zawijają się w niej (`.formula`), więc na telefonie strona
-   nie przewija się w poziomie. */
+/* --- sekcja „Krok po kroku” na stronie prawa (karty PRZ-143, PRZ-157, PRZ-167)
+   Wszystkie kroki stoją naraz, jeden pod drugim i oddzielone linią. Każdy krok
+   wygląda tak samo: to samo tło, ramka, odstęp i czcionka — stąd żadnych reguł
+   malowania „co drugiego” elementu, które różnicowałyby kroki (karta PRZ-167).
+   Numer kroku rysuje sam krok (`.krok-numer`), więc lista nie ma własnych
+   punktów — inaczej numer byłby podwójny. Kroki są jedną kolumną, a wzory
+   zawijają się w niej (`.formula`), więc na telefonie strona nie przewija się
+   w poziomie. */
 
 .lista-krokow {
   padding-left: 0;
@@ -113,9 +115,6 @@
 .kroki-prawa .lista-krokow > .krok {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--ramka);
-}
-
-.kroki-prawa .lista-krokow > .krok:nth-child(odd) {
   background-color: var(--tlo-panel-2);
 }
 

@@ -125,6 +125,7 @@ LAWS: list[Law] = [
                 ),
             },
         ],
+        kroki_warte=False,
     ),
     Law(
         slug="lacznosc-koniunkcji",
@@ -237,6 +238,7 @@ LAWS: list[Law] = [
                 ),
             },
         ],
+        kroki_warte=False,
     ),
     Law(
         slug="rozdzielnosc-1",
@@ -541,6 +543,7 @@ LAWS: list[Law] = [
                 ),
             },
         ],
+        kroki_warte=False,
     ),
     Law(
         slug="przemiennosc-koniunkcji",
@@ -637,5 +640,6 @@ LAWS: list[Law] = [
                 ),
             },
         ],
+        kroki_warte=False,
     ),
 ]

@@ -32,7 +32,10 @@ class Law:
 
     ``kategoria`` to dowolny niepusty napis — rejestr nie narzuca zamkniętej
     listy kategorii. ``wizualizacja`` wybiera rysunek i musi być jedną z wartości
-    ``laws.WIZUALIZACJE``.
+    ``laws.WIZUALIZACJE``. ``kroki_warte`` mówi, czy sekcja „Krok po kroku” ma
+    sens: przy prawach oczywistych przekształcenie to „masło maślane”, więc
+    strona pokazuje wtedy jedno zdanie zamiast listy (karta PRZ-167). Domyślna
+    wartość ``True`` zostawia poprawne dane, które pola nie podają.
     """
 
     slug: str
@@ -48,3 +51,4 @@ class Law:
     czeste_bledy: list[str]
     wizualizacja: str
     quiz: list[dict]
+    kroki_warte: bool = True

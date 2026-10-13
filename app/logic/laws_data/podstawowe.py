@@ -103,6 +103,7 @@ LAWS: list[Law] = [
                 ),
             },
         ],
+        kroki_warte=False,
     ),
     Law(
         slug="identycznosci",
@@ -175,6 +176,7 @@ LAWS: list[Law] = [
                 ),
             },
         ],
+        kroki_warte=False,
     ),
     Law(
         slug="podwojne-przeczenie",
@@ -239,5 +241,6 @@ LAWS: list[Law] = [
                 "wyjasnienie": "Dla p = 1 mamy ∼1 = 0, a potem ∼0 = 1. Wynik wraca do p.",
             },
         ],
+        kroki_warte=False,
     ),
 ]

@@ -214,6 +214,7 @@ class Law:
     czeste_bledy: list[str]
     wizualizacja: str     # "gates" | "sets" | "switch" | "chain"
     quiz: list[dict]      # {"pytanie", "opcje": [...], "poprawna": int, "podpowiedz", "wyjasnienie"}
+    kroki_warte: bool = True  # False = prawo oczywiste: sekcja kroków znika (PRZ-167)
 ```
 
 ```python
@@ -354,6 +355,11 @@ jest przycinany do ostatniego kroku.
 Sekcję buduje w całości serwer: `strona_prawa` podaje szablonowi `kroki` — listę
 `KrokWidoku`, a `steps.js` tylko pokazuje jeden krok naraz paskiem strzałek (PRZ-124).
 Bez JavaScriptu czytelnik widzi całą listę, więc nic nie ginie.
+
+Przy prawach oczywistych (`Law.kroki_warte == False`, karta PRZ-167) szablon nie
+wstawia sekcji kroków wcale — żadnego nagłówka ani listy. Zamiast niej stoi jedno
+zdanie: „To prawo widać od razu we wzorze — nie trzeba nic przekształcać.”
+Domyślna wartość pola to `True`, więc treść bez decyzji nadal pokazuje kroki.
 
 ```python
 @dataclass(frozen=True)

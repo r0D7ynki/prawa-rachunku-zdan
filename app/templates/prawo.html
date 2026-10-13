@@ -41,46 +41,53 @@
     <p>{{ prawo.przyklad }}</p>
   </section>
 
-  <section class="sekcja" aria-labelledby="naglowek-kroki">
-    <h2 id="naglowek-kroki">Krok po kroku</h2>
-    <p>
-      Zamieniamy lewą stronę prawa na prawą. Każdy krok korzysta z jednego prawa
-      i zachowuje sens formuły.
-    </p>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/steps.css') }}" />
-    {# Wszystkie kroki rysuje serwer i stoją naraz, jeden pod drugim (karta PRZ-157).
-       Zmieniony fragment wzoru przychodzi z `app/blueprints/laws.py` jako `<mark>`.
-       Komponentu kroków (`_steps.html` i `steps.js`) tu nie ma — pokazuje kroki
-       pojedynczo przez pasek strzałek i należy do sekcji „Rysunek” praw
-       z wizualizacją `chain` oraz do plac zabaw. #}
-    <div class="kroki-prawa">
-      <ol class="lista-krokow">
-        {% for krok in kroki %}
-          <li class="krok">
-            <p class="krok-linia mb-1">
-              <span class="krok-numer">Krok {{ loop.index }}</span>
-              <span class="krok-wzor formula">{{ krok.przed }}</span>
-              <span class="visually-hidden">daje w wyniku</span>
-              <span class="krok-strzalka" aria-hidden="true">⇒</span>
-              <span class="krok-wzor formula">{{ krok.po }}</span>
-            </p>
-            <p class="krok-plakietka-linia mb-1">
-              <span class="krok-plakietka badge text-bg-secondary">{{ krok.plakietka }}</span>
-            </p>
-            <div class="krok-tresc">
-              <p class="krok-opis mb-1">{{ krok.opis }}</p>
-              {% if krok.zmiana %}
-                <p class="krok-zmiana mb-1">{{ krok.zmiana }}</p>
-              {% endif %}
-              <p class="krok-dlaczego mb-0">
-                <strong>Dlaczego wolno:</strong> {{ krok.dlaczego }}
+  {# Prawo oczywiste nie pokazuje sekcji kroków: przekształcenie „widać od razu
+     we wzorze”, a lista kroków byłaby „masłem maślanym” (karta PRZ-167). Zamiast
+     niej stoi jedno zdanie — bez nagłówka i bez listy. #}
+  {% if prawo.kroki_warte %}
+    <section class="sekcja" aria-labelledby="naglowek-kroki">
+      <h2 id="naglowek-kroki">Krok po kroku</h2>
+      <p>
+        Zamieniamy lewą stronę prawa na prawą. Każdy krok korzysta z jednego prawa
+        i zachowuje sens formuły.
+      </p>
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/steps.css') }}" />
+      {# Wszystkie kroki rysuje serwer i stoją naraz, jeden pod drugim (karta PRZ-157).
+         Zmieniony fragment wzoru przychodzi z `app/blueprints/laws.py` jako `<mark>`.
+         Komponentu kroków (`_steps.html` i `steps.js`) tu nie ma — pokazuje kroki
+         pojedynczo przez pasek strzałek i należy do sekcji „Rysunek” praw
+         z wizualizacją `chain` oraz do plac zabaw. #}
+      <div class="kroki-prawa">
+        <ol class="lista-krokow">
+          {% for krok in kroki %}
+            <li class="krok">
+              <p class="krok-linia mb-1">
+                <span class="krok-numer">Krok {{ loop.index }}</span>
+                <span class="krok-wzor formula">{{ krok.przed }}</span>
+                <span class="visually-hidden">daje w wyniku</span>
+                <span class="krok-strzalka" aria-hidden="true">⇒</span>
+                <span class="krok-wzor formula">{{ krok.po }}</span>
               </p>
-            </div>
-          </li>
-        {% endfor %}
-      </ol>
-    </div>
-  </section>
+              <p class="krok-plakietka-linia mb-1">
+                <span class="krok-plakietka badge text-bg-secondary">{{ krok.plakietka }}</span>
+              </p>
+              <div class="krok-tresc">
+                <p class="krok-opis mb-1">{{ krok.opis }}</p>
+                {% if krok.zmiana %}
+                  <p class="krok-zmiana mb-1">{{ krok.zmiana }}</p>
+                {% endif %}
+                <p class="krok-dlaczego mb-0">
+                  <strong>Dlaczego wolno:</strong> {{ krok.dlaczego }}
+                </p>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      </div>
+    </section>
+  {% else %}
+    <p class="sekcja">To prawo widać od razu we wzorze — nie trzeba nic przekształcać.</p>
+  {% endif %}
 
   <section class="sekcja" aria-labelledby="naglowek-tablica-prawdy">
     <h2 id="naglowek-tablica-prawdy">Tablica prawdy</h2>

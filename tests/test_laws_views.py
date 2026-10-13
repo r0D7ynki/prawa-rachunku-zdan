@@ -75,6 +75,22 @@ WZORZEC_LICZNIKA = re.compile(r"krok\s+\d+\s+z", re.IGNORECASE)
 #: Prawa, na których karty PRZ-143 i PRZ-157 sprawdzają sekcję „Krok po kroku”.
 PRAWA_KROKOW = ("de-morgan-1", "rozdzielnosc-1")
 
+#: Prawa oczywiste: sekcja „Krok po kroku” znika, a zostaje jedno zdanie (karta
+#: PRZ-167). Lista jest dosłowna, bo „oczywistość” to decyzja o treści, nie
+#: własność wyliczalna z formuły.
+PRAWA_OCZYWISTE = (
+    "wylaczony-srodek",
+    "identycznosci",
+    "podwojne-przeczenie",
+    "lacznosc-alternatywy",
+    "lacznosc-koniunkcji",
+    "przemiennosc-alternatywy",
+    "przemiennosc-koniunkcji",
+)
+
+#: Zdanie, które zastępuje sekcję kroków w prawie oczywistym (karta PRZ-167).
+ZDANIE_OCZYWISTE = "To prawo widać od razu we wzorze — nie trzeba nic przekształcać."
+
 #: Zdanie wprowadzające sekcji kroków — wymaga go karta PRZ-157.
 WPROWADZENIE_KROKOW = "Zamieniamy lewą stronę prawa na prawą."
 
@@ -395,6 +411,12 @@ def test_strona_prawa_ma_kazdy_krok_z_wzorami(strony, law):
     # Bez znaczników ``<mark>``, żeby porównywać z gołym wyjściem ``to_html``.
     html = _bez_mark(strony[law.slug])
 
+    # Prawo oczywiste nie ma kroków, tylko jedno zdanie (karta PRZ-167).
+    if not law.kroki_warte:
+        assert 'id="naglowek-kroki"' not in html, f"{law.slug} nie może mieć sekcji kroków"
+        assert _widac(html, ZDANIE_OCZYWISTE), f"{law.slug} bez zdania o oczywistości"
+        return
+
     for numer, krok in enumerate(law.kroki, start=1):
         assert _widac(html, krok.opis), f"brak opisu kroku {numer} prawa {law.slug}"
         assert _wzor_html(krok.przed) in html, f"brak wzoru „przed” kroku {numer}"
@@ -618,6 +640,81 @@ def test_arkusz_oddziela_kroki_i_znosi_numeracje_listy():
     assert "list-style: none" in blok, "numer kroku rysuje krok, nie lista"
     assert "border-top" in blok, "kroki muszą być oddzielone linią"
     assert "background-color" in blok, "kroki muszą mieć własne tło"
+
+
+# --- kroki tylko tam, gdzie mają sens (karta PRZ-167) ------------------------
+
+
+def test_pole_kroki_warte_domyslnie_wlacza_kroki():
+    """Kryterium 1: dane bez nowego pola zostają poprawne — kroki są warte."""
+    prawo = Law(
+        slug="bez-pola",
+        nazwa="Prawo bez pola",
+        kategoria="podstawowe",
+        formula="p ∨ ∼p",
+        formula_ascii="p | ~p",
+        lewa="p ∨ ∼p",
+        prawa="p ∨ ∼p",
+        po_ludzku="Treść.",
+        przyklad="Przykład.",
+        kroki=[],
+        czeste_bledy=[],
+        wizualizacja="chain",
+        quiz=[],
+    )
+
+    assert prawo.kroki_warte is True
+
+
+def test_prawa_oczywiste_to_dokladnie_te_z_karty():
+    """Kryterium 2: siedem praw oczywistych ma fałsz, pozostałe prawdę."""
+    oczywiste = {law.slug for law in PRAWA if not law.kroki_warte}
+
+    assert oczywiste == set(PRAWA_OCZYWISTE)
+
+
+@pytest.mark.parametrize("slug", PRAWA_OCZYWISTE)
+def test_prawo_oczywiste_nie_ma_sekcji_ani_listy_krokow(strony, slug):
+    """Kryterium 3: znika nagłówek i lista, zostaje zdanie o oczywistości."""
+    html = strony[slug]
+
+    assert 'id="naglowek-kroki"' not in html, f"{slug} nie może mieć nagłówka sekcji kroków"
+    # Napis „Krok po kroku” zostaje w tekstach innych komponentów (np. `noscript`
+    # rysunku), więc pilnujemy nagłówka, a nie samego napisu.
+    assert "Krok po kroku</h2>" not in html, f"{slug} nie może mieć nagłówka sekcji kroków"
+    assert 'class="lista-krokow"' not in html, f"{slug} nie może mieć listy kroków"
+    assert '<li class="krok">' not in html, f"{slug} nie może mieć kroków"
+    assert _widac(html, ZDANIE_OCZYWISTE), f"brak zdania o oczywistości na {slug}"
+
+
+def test_prawo_z_krokami_ma_pelna_sekcje_krokow(strony):
+    """Kryterium 4: ``de-morgan-1`` ma sekcję „Krok po kroku” z wszystkimi krokami."""
+    law = laws.get("de-morgan-1")
+    html = strony[law.slug]
+
+    assert law.kroki_warte is True
+    assert 'id="naglowek-kroki"' in html
+    assert not _widac(html, ZDANIE_OCZYWISTE), "prawo z krokami nie dostaje zdania o oczywistości"
+    assert len(_kroki_sekcji(_lista_krokow(_sekcja_krokow(html)))) == len(law.kroki) > 0
+
+
+def test_arkusz_nie_roznicuje_krokow_naprzemiennie():
+    """Kryterium 5: kroków nie odróżnia naprzemienne tło (``:nth-child``)."""
+    arkusz = (KATALOG_APP / "static" / "css" / "steps.css").read_text("utf-8")
+
+    assert ":nth-child(even)" not in arkusz, "parzyste kroki nie mogą wyglądać inaczej"
+    assert ":nth-child(odd)" not in arkusz, "nieparzyste kroki nie mogą wyglądać inaczej"
+
+
+def test_wszystkie_kroki_maja_ta_sama_klase_i_ten_sam_numer(strony):
+    """Kryterium 6: żaden krok nie dostaje klasy różnicującej wygląd."""
+    law = laws.get("de-morgan-1")
+    sekcja = _sekcja_krokow(strony[law.slug])
+    klasy = re.findall(r'<li class="([^"]*)"', _lista_krokow(sekcja))
+
+    assert len(klasy) == len(law.kroki) > 1
+    assert set(klasy) == {"krok"}, "kroki muszą mieć jedną, wspólną klasę"
+    assert sekcja.count('<span class="krok-numer">') == len(law.kroki), "numer w każdym kroku"
 
 
 # --- szablony ----------------------------------------------------------------
