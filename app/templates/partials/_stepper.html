@@ -1,0 +1,31 @@
+{# Partial: wspólny komponent kroków (stepper). Wypełnia karta PRZ-072.
+   Wejście (opcjonalne): `steps` — lista słowników {"tytul": ..., "opis": ...}.
+   Pasek rysuje `stepper.js` przez `createStepper` na kontenerze `[data-stepper]`.
+   Strona, która używa partialu, podaje kroki i wywołanie `onStep` z siebie.
+   Bez JavaScriptu zostaje lista wszystkich kroków. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
+<div class="stepper-mount" data-stepper data-rola="kroki">
+  <noscript>
+    {% if steps %}
+      <p class="alert alert-info mb-2">
+        Prowadzenie krok po kroku wymaga włączonego JavaScriptu. Poniżej pełna lista kroków.
+      </p>
+      <ol class="stepper-noscript">
+        {% for krok in steps %}
+          <li>
+            <strong>{{ krok.tytul }}</strong>{% if krok.opis %} — {{ krok.opis }}{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="alert alert-info mb-0">
+        Ten komponent prowadzi przez kroki i wymaga włączonego JavaScriptu.
+        Włącz go, aby przejść kroki po kolei.
+      </p>
+    {% endif %}
+  </noscript>
+  <p class="stepper-ladowanie text-muted small mb-1">
+    Kroki pojawią się tutaj po wczytaniu skryptu.
+  </p>
+</div>
+<script type="module" src="{{ url_for('static', filename='js/stepper.js') }}"></script>
