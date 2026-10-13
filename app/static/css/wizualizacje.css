@@ -4,13 +4,15 @@
    Kolor nigdy nie jest jedynym nośnikiem informacji: każdy kształt ma napis, każde
    pole ma `<title>` i `aria-label`, a opis kroku stoi tekstem pod rysunkiem. */
 
+/* Kolory rysunku pochodzą wyłącznie z tokenów motywu (`app.css`), więc oba
+   motywy obsługuje jeden zestaw reguł — nie ma tu drugiego bloku trybu ciemnego. */
 .wiz-figura {
-  --wiz-akcent: var(--kolor-akcent, #4c3bcf);
-  --wiz-drugi: #b45309;
-  --wiz-tlo-ksztaltu: var(--kolor-akcent-jasny, #ece9ff);
-  --wiz-linia: #475569;
-  --wiz-tekst: #1f2937;
-  --wiz-tlo: #fbfbfe;
+  --wiz-akcent: var(--akcent);
+  --wiz-obszar-2: var(--prawda-tlo);
+  --wiz-tlo-ksztaltu: var(--formula-tlo);
+  --wiz-linia: var(--ramka);
+  --wiz-tekst: var(--tekst);
+  --wiz-tlo: var(--komorka-tlo);
 
   margin-bottom: 1.5rem;
 }
@@ -151,7 +153,7 @@
 }
 
 .wiz-zmienna .wiz-ksztalt {
-  fill: #ffffff;
+  fill: var(--tlo-panel);
 }
 
 /* Bramka zapala się po swoim kroku; bieżąca ma grubszą krawędź — widać ją bez koloru. */
@@ -176,7 +178,7 @@
   font-size: 10px;
   fill: var(--wiz-tekst);
   paint-order: stroke;
-  stroke: #ffffff;
+  stroke: var(--tlo-panel);
   stroke-width: 3px;
   stroke-linejoin: round;
 }
@@ -203,40 +205,21 @@
   fill: none;
 }
 
-/* Dwa obszary mają różne kolory i własne opisy, więc kolor tylko wspiera treść. */
+/* Dwa obszary mają różne kolory i własne opisy, więc kolor tylko wspiera treść.
+   Bierzemy je z tokenów tła, dzięki czemu w trybie ciemnym są ciemnymi
+   odcieniami, a nie jasnymi plamami na ciemnym panelu (karta PRZ-139). */
 .obszar-1 {
-  fill: var(--wiz-akcent);
-  opacity: 0.55;
+  fill: var(--formula-tlo);
+  opacity: 0.75;
 }
 
 .obszar-2 {
-  fill: var(--wiz-drugi);
-  opacity: 0.45;
+  fill: var(--wiz-obszar-2);
+  opacity: 0.75;
 }
 
 .wiz-blad {
   border-left: 4px solid currentColor;
-}
-
-/* --- tryb ciemny ------------------------------------------------------- */
-
-@media (prefers-color-scheme: dark) {
-  .wiz-figura {
-    --wiz-akcent: var(--kolor-akcent, #a5b4fc);
-    --wiz-drugi: #fbbf24;
-    --wiz-tlo-ksztaltu: #2b2b45;
-    --wiz-linia: #cbd5e1;
-    --wiz-tekst: #e2e8f0;
-    --wiz-tlo: #171a2b;
-  }
-
-  .wiz-zmienna .wiz-ksztalt {
-    fill: #10121f;
-  }
-
-  .wiz-wartosc {
-    stroke: #171a2b;
-  }
 }
 
 @media print {

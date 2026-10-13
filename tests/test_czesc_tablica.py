@@ -706,12 +706,13 @@ def test_styl_pokazuje_pole_w_zakrytej_komorce(styl):
 
 
 def test_styl_ocenia_wpis_kolorem(styl):
-    """Dobrze — zielone tło i ramka, źle — czerwone tło; oba z klasy karty."""
+    """Dobrze — zielone tło, tekst i ramka, źle — czerwone; oba z tokenów (PRZ-139)."""
     assert ".tt-komorka-wyniku.komorka-dobrze {" in styl
-    assert "background-color: var(--bs-success-bg-subtle, #d1e7dd);" in styl
-    assert "box-shadow: inset 0 0 0 2px var(--bs-success, #198754);" in styl
+    assert "background-color: var(--prawda-tlo);" in styl
+    assert "box-shadow: inset 0 0 0 2px var(--prawda);" in styl
     assert ".tt-komorka-wyniku.komorka-zle {" in styl
-    assert "background-color: var(--bs-danger-bg-subtle, #f8d7da);" in styl
+    assert "background-color: var(--falsz-tlo);" in styl
+    assert "color: var(--falsz);" in styl
 
 
 def test_styl_pokazuje_znaczek_oceny_obok_wpisu(styl):

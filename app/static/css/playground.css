@@ -38,7 +38,7 @@
 }
 
 .tablica-podpis {
-  color: #6c6a7a;
+  color: var(--tekst-muted);
   font-size: 0.9rem;
 }
 
@@ -61,7 +61,7 @@
 .lista-krokow .krok-numer {
   display: inline-block;
   min-width: 4.5rem;
-  color: #6c6a7a;
+  color: var(--tekst-muted);
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -71,7 +71,7 @@
   font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--kolor-falsz, #b3261e);
+  color: var(--falsz);
 }
 
 .wynik-rownowaznosc .alert,

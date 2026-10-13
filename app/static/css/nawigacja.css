@@ -1,7 +1,8 @@
 /* Nawigacja kursu: okruszki, boczny spis lekcji i sąsiedzi „poprzednia/następna”.
-   Właściciel: karty PRZ-069 i PRZ-120. Kolory bierzemy **wyłącznie** ze zmiennych
-   z `app.css` (`--kolor-*`, `--cien`, `--promien`) — dzięki temu nawigacja nie
-   wprowadza drugiej palety i sama działa w trybie ciemnym. */
+   Właściciel: karty PRZ-069 i PRZ-120. Kolory bierzemy **wyłącznie** z tokenów
+   motywu (`--tekst`, `--tlo-panel`, `--ramka`, `--akcent`, `--formula-tlo`)
+   i ze zmiennych `--cien`, `--promien` z `app.css` — dzięki temu nawigacja nie
+   wprowadza drugiej palety i sama działa w trybie ciemnym (karta PRZ-139). */
 
 /* --- okruszki pod menu ------------------------------------------------ */
 
@@ -15,7 +16,7 @@
 }
 
 .okruszki .breadcrumb-item + .breadcrumb-item::before {
-  color: var(--kolor-tekst-slaby);
+  color: var(--tekst-muted);
 }
 
 /* --- dyskretne strzałki nad treścią ----------------------------------- */
@@ -29,7 +30,7 @@
 }
 
 .nawigacja-lekcji-odnosnik {
-  color: var(--kolor-akcent);
+  color: var(--akcent);
   font-size: 0.95rem;
   text-decoration: none;
 }
@@ -45,9 +46,9 @@
   position: sticky;
   top: 5.5rem;
   padding: 1rem 1.25rem;
-  border: 1px solid var(--kolor-ramka);
+  border: 1px solid var(--ramka);
   border-radius: var(--promien);
-  background: var(--kolor-panel);
+  background: var(--tlo-panel);
   box-shadow: var(--cien);
 }
 
@@ -56,7 +57,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--kolor-tekst-slaby);
+  color: var(--tekst-muted);
 }
 
 .spis-lekcji-lista {
@@ -70,31 +71,31 @@
   display: block;
   padding: 0.25rem 0.5rem;
   border-radius: 0.5rem;
-  color: var(--kolor-tekst);
+  color: var(--tekst);
   font-size: 0.95rem;
   text-decoration: none;
 }
 
 .spis-lekcji-odnosnik:hover,
 .spis-lekcji-odnosnik:focus-visible {
-  background: var(--kolor-akcent-jasny);
-  color: var(--kolor-akcent);
+  background: var(--formula-tlo);
+  color: var(--akcent);
 }
 
 .spis-lekcji-odnosnik.aktywny {
-  background: var(--kolor-akcent-jasny);
-  color: var(--kolor-akcent);
+  background: var(--formula-tlo);
+  color: var(--akcent);
   font-weight: 600;
 }
 
 .spis-lekcji-ikona {
   margin-right: 0.25rem;
-  color: var(--kolor-akcent);
+  color: var(--akcent);
 }
 
 .spis-lekcji-skroty {
   padding-top: 0.75rem;
-  border-top: 1px solid var(--kolor-ramka);
+  border-top: 1px solid var(--ramka);
   font-size: 0.9rem;
 }
 
@@ -108,9 +109,9 @@
   display: block;
   height: 100%;
   padding: 1rem 1.25rem;
-  border: 1px solid var(--kolor-ramka);
+  border: 1px solid var(--ramka);
   border-radius: var(--promien);
-  background: var(--kolor-panel);
+  background: var(--tlo-panel);
   box-shadow: var(--cien);
   color: inherit;
   text-decoration: none;
@@ -118,8 +119,8 @@
 
 .karta-lekcji:hover,
 .karta-lekcji:focus-visible {
-  border-color: var(--kolor-akcent);
-  background: var(--kolor-akcent-jasny);
+  border-color: var(--akcent);
+  background: var(--formula-tlo);
 }
 
 .karta-lekcji-nastepna {
@@ -132,7 +133,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--kolor-akcent);
+  color: var(--akcent);
 }
 
 .karta-lekcji-tytul {
@@ -144,7 +145,7 @@
 .karta-lekcji-opis {
   display: block;
   font-size: 0.9rem;
-  color: var(--kolor-tekst-slaby);
+  color: var(--tekst-muted);
 }
 
 /* --- spis treści całego kursu ----------------------------------------- */
@@ -165,19 +166,19 @@
 .spis-tresci-numer {
   display: inline-block;
   min-width: 2.5rem;
-  color: var(--kolor-akcent);
+  color: var(--akcent);
   font-variant-numeric: tabular-nums;
 }
 
 .spis-tresci-opis {
   display: block;
   margin-left: 2.5rem;
-  color: var(--kolor-tekst-slaby);
+  color: var(--tekst-muted);
   font-size: 0.9rem;
 }
 
 .spis-tresci-wkrotce {
-  color: var(--kolor-tekst-slaby);
+  color: var(--tekst-muted);
   font-style: italic;
 }
 

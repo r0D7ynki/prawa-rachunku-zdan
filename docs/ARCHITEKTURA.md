@@ -757,28 +757,40 @@ createStepper({
 
 ### Paleta, typografia i tryb ciemny (`app.css`)
 
-Całą paletę projektu trzyma `:root` w `app/static/css/app.css`. Nowe arkusze biorą kolory
-wyłącznie z tych zmiennych, bo tryb ciemny przełącza sam zestaw zmiennych, a nie pojedyncze
-reguły. W starszych arkuszach zostały pojedyncze kolory wpisane wprost (`reguly.css`,
-`dowody.css`, `wizualizacje.css`). Łata je blok trybu ciemnego selektorem `:root .klasa` —
-te arkusze ładują się po `app.css`, więc bez podniesienia swoistości wygrałyby kolejnością.
-Właściwa poprawka (`var(--kolor-panel)` w miejsce `#fff`) należy do kart tych plików.
+Całą paletę projektu trzyma `:root` w `app/static/css/app.css`. Arkusze komponentów biorą
+kolory **wyłącznie z tokenów motywu** (karta PRZ-139): te same nazwy w motywie jasnym
+i ciemnym, więc żaden komponent nie wie, który motyw jest włączony. Motyw ciemny przełącza
+zestaw wartości, a nie pojedyncze reguły.
 
-| Zmienna | Rola |
+| Token | Rola |
 |---|---|
-| `--kolor-tlo` | tło strony |
-| `--kolor-panel` | tło kart, sekcji, menu i stopki |
-| `--kolor-tekst`, `--kolor-tekst-slaby` | tekst podstawowy i pomocniczy |
-| `--kolor-akcent`, `--kolor-akcent-jasny` | akcent (odnośniki, wyróżnienie) |
-| `--kolor-prawda`, `--kolor-falsz` | wartości logiczne (zawsze obok słowa albo cyfry) |
-| `--kolor-ramka`, `--kolor-formula` | ramki oraz tło wzoru `.formula` |
-| `--cien`, `--cien-mocny` | cień kart i cień pod kursorem |
-| `--promien`, `--odstep-sekcji` | promień zaokrąglenia i odstęp sekcji |
-| `--min-dotyk`, `--ramka-focus` | cel dotyku przycisku (44 px) i obwódka fokusu (2 px) |
+| `--tlo` | tło strony |
+| `--tlo-panel`, `--tlo-panel-2` | powierzchnia kart, sekcji i menu oraz druga powierzchnia (kroki, schematy, plakietki) |
+| `--tekst`, `--tekst-muted` | tekst podstawowy i pomocniczy |
+| `--ramka`, `--komorka-obramowanie` | ramki oraz obramowanie komórki i pola wpisywania |
+| `--akcent`, `--akcent-tekst` | akcent (odnośniki, wyróżnienia) i tekst na tle akcentu, prawdy albo fałszu |
+| `--prawda`, `--prawda-tlo`, `--falsz`, `--falsz-tlo` | wartości logiczne: kolor tekstu i tło komórki |
+| `--formula-tlo` | tło wzoru i wyróżnień w kolorze akcentu |
+| `--komorka-tlo` | tło komórki, pola wpisywania i rysunku |
+| `--cien` | cień kart |
+
+Zmienne `--kolor-*` (oraz `--cien-mocny`, `--promien`, `--odstep-sekcji`, `--min-dotyk`
+i `--ramka-focus`) zostają dla arkuszy, które mają własne nazwy, i dla wybranego motywu.
+
+Tokeny przełączają trzy bloki: `:root` (motyw jasny), `:root[data-theme="dark"]` (wybór
+użytkownika, karta PRZ-138) i kopia w `@media (prefers-color-scheme: dark)` pod selektorem
+`:root:not([data-theme])` — dla czytelnika bez JavaScriptu, któremu serwer nie wpisuje
+`data-theme`. CSS nie pozwala objąć jednym blokiem atrybutu i zapytania o media, dlatego
+zgodności obu zestawów pilnuje `tests/test_kontrast.py`. Ten sam test liczy kontrast WCAG
+par „tekst na tle” — w obu motywach co najmniej 4,5:1.
+
+Alerty i plakietki Bootstrapa mają własne kolory z tokenów: `.alert-info`, `.alert-success`,
+`.alert-danger` i `.badge.text-bg-secondary`. Alert `alert-warning` zostaje przy parach
+kolorów z karty PRZ-138, bo motyw nie ma tokenu ostrzeżenia.
 
 Zasady obowiązujące nowe arkusze:
 
-* kolor bierzemy wyłącznie ze zmiennej z `:root` — nigdy nie wpisujemy `#rrggbb`,
+* kolor bierzemy wyłącznie z tokenu — nigdy nie wpisujemy `#rrggbb`,
 * sekcja treści to karta `.sekcja` (tło `--kolor-panel`, ramka `--kolor-ramka`, cień `--cien`),
 * nagłówki `h1`–`h3` skalują się przez `clamp()`, a tekst ma maksymalnie `70ch`,
 * każdy przycisk ma `min-height: var(--min-dotyk)`, a odnośniki i przyciski jawny
@@ -802,7 +814,9 @@ Wybór siedzi w `localStorage["motyw"]` (`"light"` albo `"dark"`).
   i `:root[data-theme="dark"]`. Selektor ma swoistość wyższą niż `:root` z `app.css`
   (także ten w bloku `@media`), więc wybór użytkownika wygrywa z ustawieniem systemu
   w obie strony. Paleta wybranego motywu to **kopia** palety z `app.css`; zgodności
-  obu zestawów pilnuje `tests/test_motyw.py`.
+  obu zestawów pilnuje `tests/test_motyw.py`. Tokeny motywu (sekcja wyżej) przełącza
+  dodatkowo blok `:root[data-theme="dark"]` w `app.css` — dzięki temu wybór
+  użytkownika działa także dla nich, bez kopiowania ich do `motyw.css`.
 - Przełącznik to grupa trzech przycisków (`data-motyw="auto|light|dark"`,
   `aria-pressed`) w prawym narożniku menu. `motyw.js` zapisuje wybór („Auto” usuwa
   klucz), zaznacza wybrany przycisk i słucha zmiany `prefers-color-scheme` — dopóki
