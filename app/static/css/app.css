@@ -1,18 +1,42 @@
-/* Style wspólne projektu. Właściciel: karta PRZ-008. */
+/* Style wspólne projektu: paleta, typografia, karty sekcji, tabele i tryb ciemny.
+   Właściciel: karty PRZ-008 i PRZ-120.
+
+   Całą paletę trzymamy w `:root` tego arkusza. Pozostałe arkusze (`nawigacja.css`,
+   `reguly.css`) tylko dziedziczą zmienne, więc zmiana koloru to jedna linia tutaj. */
+
 :root {
+  color-scheme: light;
+
+  /* Paleta: tło, powierzchnia kart, tekst, akcent, prawda, fałsz, ramka, wzór. */
   --kolor-tlo: #f7f7fb;
+  --kolor-panel: #ffffff;
+  --kolor-tekst: #1d2330;
+  --kolor-tekst-slaby: #55515e;
   --kolor-akcent: #4c3bcf;
   --kolor-akcent-jasny: #ece9ff;
   --kolor-prawda: #157f4a;
   --kolor-falsz: #b3261e;
   --kolor-ramka: #dcd8ee;
+  --kolor-formula: #f1eefc;
+
+  /* Cienie, promienie i odstępy — z nich budujemy karty i sekcje. */
+  --cien: 0 0.5rem 1.25rem rgb(29 35 48 / 8%);
+  --cien-mocny: 0 0.75rem 1.5rem rgb(76 59 207 / 22%);
+  --promien: 1rem;
+  --odstep-sekcji: 1.5rem;
+
+  /* Dotyk i klawiatura: najmniejszy przycisk i grubość obwódki fokusu. */
+  --min-dotyk: 44px;
+  --ramka-focus: 2px;
 }
 
 body {
   background: var(--kolor-tlo);
+  color: var(--kolor-tekst);
   display: flex;
   min-height: 100vh;
   flex-direction: column;
+  line-height: 1.65;
 }
 
 .skip-link {
@@ -24,24 +48,74 @@ body {
   left: 1rem;
   top: 1rem;
   z-index: 1080;
-  background: #fff;
+  background: var(--kolor-panel);
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
+  box-shadow: var(--cien);
 }
 
-.navbar-zadania {
-  background: #fff;
-  border-bottom: 1px solid var(--kolor-ramka);
+/* Klawiatura: stan fokusu widoczny na odnośnikach, przyciskach i polach. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--ramka-focus) solid var(--kolor-akcent);
+  outline-offset: 2px;
 }
 
-.navbar-brand {
+/* --- typografia ------------------------------------------------------- */
+
+/* Nagłówki skalują się z szerokością okna (`clamp`), więc hierarchia zostaje
+   czytelna i na telefonie, i na szerokim monitorze. */
+h1,
+h2,
+h3 {
+  color: var(--kolor-tekst);
   font-weight: 600;
-  color: var(--kolor-akcent);
+  line-height: 1.25;
 }
+
+h1 {
+  font-size: clamp(1.7rem, 1.25rem + 2vw, 2.4rem);
+}
+
+h2 {
+  font-size: clamp(1.3rem, 1.15rem + 0.8vw, 1.7rem);
+}
+
+h3 {
+  font-size: clamp(1.1rem, 1.02rem + 0.4vw, 1.3rem);
+}
+
+/* Tekst czytamy w kolumnie o wygodnej długości wiersza — 70 znaków. */
+main p,
+main li,
+main dd {
+  max-width: 70ch;
+}
+
+main p {
+  line-height: 1.75;
+}
+
+/* Dwa odnośniki obok siebie nie mogą się stykać — łatwo wtedy kliknąć zły. */
+main p a,
+main li a {
+  margin-inline: 0.125em;
+  text-underline-offset: 0.2em;
+}
+
+/* --- wzory ------------------------------------------------------------ */
 
 .formula {
   font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
-  font-size: 1.15rem;
+  font-size: 1.3rem;
+  background: var(--kolor-formula);
+  border: 1px solid var(--kolor-ramka);
+  border-radius: 0.4rem;
+  padding: 0.15em 0.4em;
   white-space: nowrap;
 }
 
@@ -57,6 +131,16 @@ body {
   color: var(--kolor-akcent);
 }
 
+/* Wzór wyróżniony: stoi we własnym akapicie i ma prowadzić wzrok (`.formula-wyrozniona`
+   w `kpn.html`, `tautologie.html`, `formuly.html`, `przeksztalcanie.html`,
+   `konsekwencja.html`). Wcześniej klasa nie miała żadnej reguły. */
+.formula-wyrozniona {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  box-shadow: var(--cien);
+}
+
 .prawda {
   color: var(--kolor-prawda);
   font-weight: 600;
@@ -67,10 +151,64 @@ body {
   font-weight: 600;
 }
 
-.karta-prawa {
-  background: #fff;
+/* --- nawigacja, menu i stopka ---------------------------------------- */
+
+.navbar-zadania {
+  background: var(--kolor-panel);
+  border-bottom: 1px solid var(--kolor-ramka);
+  box-shadow: var(--cien);
+}
+
+.navbar-brand {
+  font-weight: 600;
+  color: var(--kolor-akcent);
+}
+
+/* Menu zwijane na telefonie: przycisk musi być wygodny pod palcem. */
+.navbar-toggler {
+  min-height: var(--min-dotyk);
+  min-width: var(--min-dotyk);
+}
+
+.stopka {
+  background: var(--kolor-panel);
+  color: var(--kolor-tekst-slaby);
+}
+
+/* --- przyciski -------------------------------------------------------- */
+
+/* Każdy przycisk to cel dotyku o wysokości co najmniej 44px (WCAG 2.5.8). */
+.btn {
+  min-height: var(--min-dotyk);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+/* --- karty i sekcje --------------------------------------------------- */
+
+.sekcja {
+  background: var(--kolor-panel);
   border: 1px solid var(--kolor-ramka);
-  border-radius: 1rem;
+  border-radius: var(--promien);
+  box-shadow: var(--cien);
+  padding: var(--odstep-sekcji);
+  margin-bottom: 2rem;
+}
+
+/* Wyraźny nagłówek sekcji: kreska oddziela go od treści. */
+.sekcja > h2 {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--kolor-ramka);
+}
+
+.karta-prawa {
+  background: var(--kolor-panel);
+  border: 1px solid var(--kolor-ramka);
+  border-radius: var(--promien);
+  box-shadow: var(--cien);
   padding: 1rem 1.25rem;
   height: 100%;
   display: flex;
@@ -83,7 +221,7 @@ body {
 .karta-prawa:hover,
 .karta-prawa:focus-visible {
   border-color: var(--kolor-akcent);
-  box-shadow: 0 0.25rem 0.75rem rgb(76 59 207 / 15%);
+  box-shadow: var(--cien-mocny);
 }
 
 .karta-prawa-kategoria {
@@ -111,29 +249,11 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.sekcja {
-  margin-bottom: 2.5rem;
-}
-
-.sekcja h2 {
-  font-size: 1.4rem;
-  margin-bottom: 0.75rem;
-}
-
-.sekcja p,
-.sekcja li {
-  max-width: 65ch;
-}
-
-.licznik-praw {
-  font-weight: 600;
-  color: var(--kolor-akcent);
-}
-
 .spis-hasel {
-  background: #fff;
+  background: var(--kolor-panel);
   border: 1px solid var(--kolor-ramka);
-  border-radius: 1rem;
+  border-radius: var(--promien);
+  box-shadow: var(--cien);
   padding: 1rem 1.25rem;
   margin-bottom: 2rem;
 }
@@ -155,7 +275,29 @@ body {
 
 .slowniczek dd {
   margin: 0.25rem 0 0;
-  max-width: 65ch;
+  max-width: 70ch;
+}
+
+.licznik-praw {
+  font-weight: 600;
+  color: var(--kolor-akcent);
+}
+
+.podpowiedz-czytanie {
+  border-left: 4px solid var(--kolor-akcent);
+  padding-left: 1rem;
+  color: var(--kolor-tekst-slaby);
+}
+
+/* --- tabele ----------------------------------------------------------- */
+
+/* Nagłówek tabeli zostaje na ekranie, gdy tabela jest dłuższa niż okno.
+   Tło musi być nieprzezroczyste, żeby wiersze nie prześwitywały pod spodem. */
+.table > thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--bs-table-bg, var(--kolor-panel));
 }
 
 .tablica-symboli td:first-child {
@@ -167,18 +309,135 @@ body {
   text-align: left;
 }
 
-.podpowiedz-czytanie {
-  border-left: 4px solid var(--kolor-akcent);
-  padding-left: 1rem;
-  color: #3d3a4d;
+/* --- ekran szeroki ---------------------------------------------------- */
+
+@media (min-width: 992px) {
+  .sekcja {
+    padding: 2rem;
+  }
+
+  .naglowek-strony {
+    margin-bottom: 2.5rem;
+  }
 }
 
-a:focus-visible,
-button:focus-visible {
-  outline: 3px solid var(--kolor-akcent);
-  outline-offset: 2px;
+/* --- telefon (do 576px) ----------------------------------------------- */
+
+@media (max-width: 576px) {
+  /* Marginesy 1rem: treść nie klei się do krawędzi ekranu. */
+  main.container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .navbar-brand {
+    font-size: 1rem;
+    white-space: nowrap;
+  }
+
+  /* Okruszki skracają się zamiast łamać w środku tytułu wykładu. */
+  .okruszki .breadcrumb {
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+  }
+
+  .sekcja {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Wzór może się złamać — inaczej długi wzór wypycha tekst za ekran. */
+  .formula {
+    font-size: 1.15rem;
+    white-space: normal;
+  }
+
+  /* Wąska tabela: mniejsze komórki mieszczą więcej kolumn. */
+  .table > :not(caption) > * > * {
+    padding: 0.3rem 0.35rem;
+    font-size: 0.9rem;
+  }
+
+  /* Przyciski „poprzednia / następna” układają się jeden pod drugim. */
+  .nawigacja-dolna-praw,
+  .nawigacja-dolna-lekcja {
+    flex-direction: column;
+  }
+
+  .nawigacja-dolna-praw .btn,
+  .nawigacja-dolna-lekcja .btn {
+    width: 100%;
+    white-space: normal;
+  }
 }
 
-.stopka {
-  background: #fff;
+/* --- tryb ciemny systemu ---------------------------------------------- */
+
+/* Bootstrap 5.3 zna tylko `data-bs-theme="light"` i `"dark"` — nie ma wartości
+   „auto”, która idzie za systemem (sprawdzone w `bootstrap.min.css` 5.3.3).
+   Dlatego tryb ciemny robimy samym CSS: przełączamy własną paletę i zmienne
+   `--bs-*`, z których Bootstrap buduje menu, tabele i pola formularzy. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --kolor-tlo: #14131c;
+    --kolor-panel: #1c1b27;
+    --kolor-tekst: #e8e6f2;
+    --kolor-tekst-slaby: #b6b1c9;
+    --kolor-akcent: #b3a6ff;
+    --kolor-akcent-jasny: #2a2745;
+    --kolor-prawda: #4ec98a;
+    --kolor-falsz: #ff8a80;
+    --kolor-ramka: #3a3750;
+    --kolor-formula: #232135;
+    --cien: 0 0.5rem 1.25rem rgb(0 0 0 / 45%);
+    --cien-mocny: 0 0.75rem 1.5rem rgb(0 0 0 / 60%);
+
+    --bs-body-bg: var(--kolor-tlo);
+    --bs-body-bg-rgb: 20, 19, 28;
+    --bs-body-color: var(--kolor-tekst);
+    --bs-body-color-rgb: 232, 230, 242;
+    --bs-emphasis-color: #ffffff;
+    --bs-emphasis-color-rgb: 255, 255, 255;
+    --bs-heading-color: inherit;
+    --bs-secondary-color: rgb(232 230 242 / 75%);
+    --bs-secondary-color-rgb: 232, 230, 242;
+    --bs-secondary-bg: #26243a;
+    --bs-tertiary-color: rgb(232 230 242 / 60%);
+    --bs-tertiary-bg: #221f33;
+    --bs-border-color: var(--kolor-ramka);
+    --bs-border-color-translucent: rgb(255 255 255 / 15%);
+    --bs-link-color: var(--kolor-akcent);
+    --bs-link-color-rgb: 179, 166, 255;
+    --bs-link-hover-color: #cfc6ff;
+    --bs-link-hover-color-rgb: 207, 198, 255;
+    --bs-code-color: #f0a6c8;
+    --bs-highlight-color: var(--kolor-tekst);
+    --bs-highlight-bg: #4a3a00;
+
+    /* Pary „subtle”, z których korzystają alerty i tło kroków. */
+    --bs-info-bg-subtle: #032830;
+    --bs-info-text-emphasis: #6edff6;
+    --bs-info-border-subtle: #087990;
+    --bs-warning-bg-subtle: #332701;
+    --bs-warning-text-emphasis: #ffda6a;
+    --bs-warning-border-subtle: #997404;
+    --bs-danger-bg-subtle: #2c0b0e;
+    --bs-success-bg-subtle: #051b11;
+    --bs-success-text-emphasis: #75b798;
+  }
+
+  /* Powierzchnie malowane w innych arkuszach kolorem zapisanym wprost
+     (`reguly.css`, `dowody.css`, `wizualizacje.css`). Te arkusze ładują się po
+     `app.css`, więc podnosimy swoistość selektora przez `:root`, inaczej `#fff`
+     z tamtych plików wygrałoby kolejnością. Właściwa poprawka — zamiana `#fff`
+     na `var(--kolor-panel)` — należy do kart tych plików. */
+  :root .karta-reguly,
+  :root .karta-rodzaju,
+  :root .strzalka-regula,
+  :root .wiz-legenda {
+    background: var(--kolor-panel);
+  }
 }

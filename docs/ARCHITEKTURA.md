@@ -670,6 +670,38 @@ createStepper({
 
 ## Frontend
 
+### Paleta, typografia i tryb ciemny (`app.css`)
+
+Całą paletę projektu trzyma `:root` w `app/static/css/app.css`. Pozostałe arkusze
+korzystają z tych zmiennych — nie wpisują kolorów (`#rrggbb`) wprost, bo tryb ciemny
+przełącza sam zestaw zmiennych.
+
+| Zmienna | Rola |
+|---|---|
+| `--kolor-tlo` | tło strony |
+| `--kolor-panel` | tło kart, sekcji, menu i stopki |
+| `--kolor-tekst`, `--kolor-tekst-slaby` | tekst podstawowy i pomocniczy |
+| `--kolor-akcent`, `--kolor-akcent-jasny` | akcent (odnośniki, wyróżnienie) |
+| `--kolor-prawda`, `--kolor-falsz` | wartości logiczne (zawsze obok słowa albo cyfry) |
+| `--kolor-ramka`, `--kolor-formula` | ramki oraz tło wzoru `.formula` |
+| `--cien`, `--cien-mocny` | cień kart i cień pod kursorem |
+| `--promien`, `--odstep-sekcji` | promień zaokrąglenia i odstęp sekcji |
+| `--min-dotyk`, `--ramka-focus` | cel dotyku przycisku (44 px) i obwódka fokusu (2 px) |
+
+Zasady obowiązujące nowe arkusze:
+
+* kolor bierzemy wyłącznie ze zmiennej z `:root` — nigdy nie wpisujemy `#rrggbb`,
+* sekcja treści to karta `.sekcja` (tło `--kolor-panel`, ramka `--kolor-ramka`, cień `--cien`),
+* nagłówki `h1`–`h3` skalują się przez `clamp()`, a tekst ma maksymalnie `70ch`,
+* każdy przycisk ma `min-height: var(--min-dotyk)`, a odnośniki i przyciski jawny
+  stan `:focus-visible`.
+
+Tryb ciemny to jedno zapytanie `@media (prefers-color-scheme: dark)` w `app.css`.
+Bootstrap 5.3 nie ma wartości `data-bs-theme`, która idzie za systemem, więc blok
+ciemny przełącza także zmienne `--bs-*` (`--bs-body-bg`, `--bs-body-color`,
+`--bs-border-color`, `--bs-link-color-rgb` i pary `*-bg-subtle`). Dzięki temu menu,
+tabele i pola formularzy są ciemne bez JavaScriptu i bez własnego przełącznika.
+
 - Bootstrap 5.3 z CDN. Własne style w `app/static/css/<nazwa>.css`.
 - Skrypty jako `type="module"` w `app/static/js/`.
 - Komunikacja z API przez `fetch`, JSON. Każdy komponent pokazuje stan błędu po polsku.
