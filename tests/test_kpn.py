@@ -25,94 +25,92 @@ from app.blueprints import kpn
 from app.logic import laws, truth
 from app.logic.formula import FormulaError, evaluate, parse, to_html
 
-ADRES = "/kpn"
+URL = "/kpn"
 
 #: Formuły z wykładu, wpisane w teście dosłownie — test ma padać, gdy znikną ze strony.
-PRZYKLAD_TAUTOLOGII = "(p ∨ q ∨ ∼p) ∧ (∼p ∨ q ∨ r ∨ ∼q) ∧ (∼s ∨ s)"
-PRZYKLAD_NIE_TAUTOLOGII = "(p ∨ q) ∧ (∼p ∨ r)"
+TAUTOLOGY_FORMULA = "(p ∨ q ∨ ∼p) ∧ (∼p ∨ q ∨ r ∨ ∼q) ∧ (∼s ∨ s)"
+NON_TAUTOLOGY_FORMULA = "(p ∨ q) ∧ (∼p ∨ r)"
 
 #: Nagłówek kolumny z klauzulą na stronie — po nim znajdujemy tabelę testu tautologii.
-PODPIS_KLAUZUL = "każdą klauzulę przykładu"
+CLAUSE_CAPTION = "każdą klauzulę przykładu"
 
 #: Wyrażenie wstawiane do HTML przez filtr ``|safe``.
-WZORZEC_SAFE = re.compile(r"\{\{(?P<wyrazenie>.*?)\|\s*safe\s*\}\}", re.DOTALL)
+SAFE_PATTERN = re.compile(r"\{\{(?P<expression>.*?)\|\s*safe\s*\}\}", re.DOTALL)
 
-SZABLON = Path(__file__).resolve().parents[1] / "app" / "templates" / "kpn.html"
+TEMPLATE = Path(__file__).resolve().parents[1] / "app" / "templates" / "kpn.html"
 
-TABELA = re.compile(r"<table\b[^>]*>(?P<tresc>.*?)</table>", re.DOTALL)
-WIERSZ = re.compile(r"<tr>(?P<tresc>.*?)</tr>", re.DOTALL)
-KOMORKA = re.compile(r"<t[dh][^>]*>(?P<tresc>.*?)</t[dh]>", re.DOTALL)
-SEKCJA_TABELI = re.compile(r"<tbody>(?P<tresc>.*?)</tbody>", re.DOTALL)
+TABLE = re.compile(r"<table\b[^>]*>(?P<body>.*?)</table>", re.DOTALL)
+ROW = re.compile(r"<tr>(?P<body>.*?)</tr>", re.DOTALL)
+CELL = re.compile(r"<t[dh][^>]*>(?P<body>.*?)</t[dh]>", re.DOTALL)
+TABLE_BODY = re.compile(r"<tbody>(?P<body>.*?)</tbody>", re.DOTALL)
 
 
 @pytest.fixture(scope="module")
-def klient():
+def client():
     return create_app({"TESTING": True}).test_client()
 
 
 @pytest.fixture(scope="module")
-def html(klient):
-    odpowiedz = klient.get(ADRES)
-    assert odpowiedz.status_code == 200
-    return odpowiedz.get_data(as_text=True)
+def html(client):
+    response = client.get(URL)
+    assert response.status_code == 200
+    return response.get_data(as_text=True)
 
 
 @pytest.fixture(scope="module")
-def tekst(html):
+def text(html):
     """Cała strona jako tekst: bez znaczników, z pojedynczymi spacjami."""
-    return _tekst(html)
+    return _text(html)
 
 
 # --- narzędzia ---------------------------------------------------------------
 
 
-def _tekst(fragment: str) -> str:
+def _text(fragment: str) -> str:
     """Zamienia fragment HTML na tekst: usuwa znaczniki, odmienia encje i skleja spacje."""
     return unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", fragment))).strip()
 
 
-def _wzor_html(wzor: str, styl: str = "wyklad") -> str:
+def _formula_html(formula: str, style: str = "wyklad") -> str:
     """Wzór jako HTML z ``formula.to_html`` — to samo, co wstawia strona."""
-    return str(kpn.formula_to_html(wzor, styl))
+    return str(kpn.formula_to_html(formula, style))
 
 
-def _wiersze(tabela: str) -> list[list[str]]:
+def _rows(table: str) -> list[list[str]]:
     """Teksty komórek kolejnych wierszy tablicy."""
-    tresc = SEKCJA_TABELI.search(tabela).group("tresc")
-    return [
-        [_tekst(komorka) for komorka in KOMORKA.findall(wiersz)] for wiersz in WIERSZ.findall(tresc)
-    ]
+    body = TABLE_BODY.search(table).group("body")
+    return [[_text(cell) for cell in CELL.findall(row)] for row in ROW.findall(body)]
 
 
-def _tabela(html: str, podpis: str) -> str:
+def _table(html: str, caption: str) -> str:
     """Treść tablicy, której podpis (``<caption>``) zawiera dany fragment."""
-    pasujace = [tresc for tresc in TABELA.findall(html) if podpis in tresc]
-    assert len(pasujace) == 1, f"nie znalazłem dokładnie jednej tablicy z {podpis!r}"
-    return pasujace[0]
+    matches = [body for body in TABLE.findall(html) if caption in body]
+    assert len(matches) == 1, f"nie znalazłem dokładnie jednej tablicy z {caption!r}"
+    return matches[0]
 
 
-def _pary_z_reguly(formula: str) -> list[bool]:
+def _pairs_per_rule(formula: str) -> list[bool]:
     """Werdykt reguły z lekcji: czy każda klauzula ma parę ``x`` i ``∼x``."""
-    return [bool(klauzula.pary) for klauzula in kpn.klauzule_i_pary(formula)]
+    return [bool(clause.pairs) for clause in kpn.clauses_with_pairs(formula)]
 
 
 # --- szkielet strony ---------------------------------------------------------
 
 
-def test_strona_odpowiada_200_i_html_utf8(klient):
-    odpowiedz = klient.get(ADRES)
-    assert odpowiedz.status_code == 200
-    typ_tresci = odpowiedz.headers["Content-Type"]
-    assert typ_tresci.startswith("text/html")
-    assert "charset=utf-8" in typ_tresci.lower()
+def test_page_returns_200_and_utf8_html(client):
+    response = client.get(URL)
+    assert response.status_code == 200
+    content_type = response.headers["Content-Type"]
+    assert content_type.startswith("text/html")
+    assert "charset=utf-8" in content_type.lower()
 
 
-def test_strona_ma_jezyk_polski_i_dokladnie_jeden_h1(html):
+def test_page_is_polish_and_has_exactly_one_h1(html):
     assert 'lang="pl"' in html
     assert len(re.findall(r"<h1\b", html)) == 1
 
 
-def test_strona_nie_zostawia_nieuzupelnionych_szablonow(html):
+def test_page_leaves_no_unfilled_templates(html):
     assert "{{" not in html
     assert "{%" not in html
 
@@ -120,57 +118,57 @@ def test_strona_nie_zostawia_nieuzupelnionych_szablonow(html):
 # --- klauzula ----------------------------------------------------------------
 
 
-def test_strona_podaje_definicje_klauzuli(tekst):
-    assert "klauzula" in tekst.lower()
-    assert "alternatywa zmiennych zdaniowych" in tekst
-    assert "lista warunków połączonych słowem lub" in tekst
+def test_page_gives_clause_definition(text):
+    assert "klauzula" in text.lower()
+    assert "alternatywa zmiennych zdaniowych" in text
+    assert "lista warunków połączonych słowem lub" in text
 
 
-@pytest.mark.parametrize("klauzula", kpn.PRZYKLADY_KLAUZUL)
-def test_strona_pokazuje_trzy_klauzule_z_wykladu(html, klauzula):
-    assert _wzor_html(klauzula) in html
-    assert klauzula in kpn.PRZYKLADY_KLAUZUL
+@pytest.mark.parametrize("clause", kpn.CLAUSE_EXAMPLES)
+def test_page_shows_three_clause_examples(html, clause):
+    assert _formula_html(clause) in html
+    assert clause in kpn.CLAUSE_EXAMPLES
 
 
-def test_klauzule_z_wykladu_to_trzy_przyklady():
-    assert len(kpn.PRZYKLADY_KLAUZUL) == 3
+def test_clause_examples_are_three():
+    assert len(kpn.CLAUSE_EXAMPLES) == 3
 
 
 # --- koniunkcyjna postać normalna --------------------------------------------
 
 
-def test_strona_podaje_definicje_kpn(tekst):
-    assert "koniunkcyjna postać normalna" in tekst.lower()
-    assert "koniunkcją pewnej liczby klauzul" in tekst
+def test_page_gives_cnf_definition(text):
+    assert "koniunkcyjna postać normalna" in text.lower()
+    assert "koniunkcją pewnej liczby klauzul" in text
 
 
-@pytest.mark.parametrize("wzor", kpn.PRZYKLADY_KPN)
-def test_strona_pokazuje_oba_przyklady_kpn(html, wzor):
-    assert _wzor_html(wzor) in html
+@pytest.mark.parametrize("formula", kpn.CNF_EXAMPLES)
+def test_page_shows_both_cnf_examples(html, formula):
+    assert _formula_html(formula) in html
 
 
-def test_przyklady_kpn_to_konjunkcje_klauzul():
-    for wzor in kpn.PRZYKLADY_KPN:
-        assert len(kpn.podziel_na_klauzule(parse(wzor))) >= 2
+def test_cnf_examples_are_conjunctions_of_clauses():
+    for formula in kpn.CNF_EXAMPLES:
+        assert len(kpn.split_clauses(parse(formula))) >= 2
 
 
 # --- wyprowadzenie (p → q) → ∼r ----------------------------------------------
 
 
-def test_strona_pokazuje_cale_wyprowadzenie_implikacji(html):
-    assert _wzor_html(kpn.FORMULA_IMPLIKACJI) in html
-    for krok in kpn.KROKI_IMPLIKACJI:
-        assert _wzor_html(krok.po) in html, f"brak kroku wyprowadzenia: {krok.po!r}"
+def test_page_shows_full_implication_derivation(html):
+    assert _formula_html(kpn.IMPLICATION_FORMULA) in html
+    for step in kpn.IMPLICATION_STEPS:
+        assert _formula_html(step.formula) in html, f"brak kroku wyprowadzenia: {step.formula!r}"
 
 
-def test_wyprowadzenie_implikacji_konczy_sie_wnioskiem_z_karty(html):
-    ostatni = kpn.KROKI_IMPLIKACJI[-1].po
-    assert ostatni == "(p ∨ ∼r) ∧ (∼q ∨ ∼r)"
-    assert _wzor_html(ostatni) in html
+def test_implication_derivation_ends_with_card_conclusion(html):
+    last = kpn.IMPLICATION_STEPS[-1].formula
+    assert last == "(p ∨ ∼r) ∧ (∼q ∨ ∼r)"
+    assert _formula_html(last) in html
 
 
-def test_wyprowadzenie_implikacji_ma_tyle_krokow_co_wyklad():
-    assert [krok.po for krok in kpn.KROKI_IMPLIKACJI] == [
+def test_implication_derivation_has_as_many_steps_as_lecture():
+    assert [step.formula for step in kpn.IMPLICATION_STEPS] == [
         "(∼p ∨ q) → ∼r",
         "∼(∼p ∨ q) ∨ ∼r",
         "(p ∧ ∼q) ∨ ∼r",
@@ -178,134 +176,134 @@ def test_wyprowadzenie_implikacji_ma_tyle_krokow_co_wyklad():
     ]
 
 
-def test_krok_implikacji_rozdzielnosci_powoluje_II_prawo_rozdzielnosci():
-    assert kpn.KROKI_IMPLIKACJI[-1].prawa == ("rozdzielnosc-2",)
+def test_distributivity_step_invokes_second_law():
+    assert kpn.IMPLICATION_STEPS[-1].laws == ("rozdzielnosc-2",)
 
 
 # --- wyprowadzenie p ≡ q -----------------------------------------------------
 
 
-def test_strona_pokazuje_wyprowadzenie_rownowaznosci(html):
-    assert _wzor_html(kpn.FORMULA_ROWNOZNOSCI) in html
-    for krok in kpn.KROKI_ROWNOZNOSCI:
-        assert _wzor_html(krok.po) in html, f"brak kroku wyprowadzenia: {krok.po!r}"
+def test_page_shows_equivalence_derivation(html):
+    assert _formula_html(kpn.EQUIVALENCE_FORMULA) in html
+    for step in kpn.EQUIVALENCE_STEPS:
+        assert _formula_html(step.formula) in html, f"brak kroku wyprowadzenia: {step.formula!r}"
 
 
-def test_wyprowadzenie_rownowaznosci_konczy_sie_wzorem_z_karty(html):
-    ostatni = kpn.KROKI_ROWNOZNOSCI[-1].po
-    assert ostatni == "∼(∼(∼p ∨ q) ∨ ∼(∼q ∨ p))"
-    assert _wzor_html(ostatni) in html
+def test_equivalence_derivation_ends_with_card_formula(html):
+    last = kpn.EQUIVALENCE_STEPS[-1].formula
+    assert last == "∼(∼(∼p ∨ q) ∨ ∼(∼q ∨ p))"
+    assert _formula_html(last) in html
 
 
 # --- nazwy praw przy krokach -------------------------------------------------
 
 
-def test_kroki_powoluja_prawa_z_rejestru(html, tekst):
-    slugi = {
+def test_steps_invoke_laws_from_registry(html, text):
+    slugs = {
         slug
-        for kroki in (kpn.KROKI_IMPLIKACJI, kpn.KROKI_ROWNOZNOSCI)
-        for krok in kroki
-        for slug in krok.prawa
+        for steps in (kpn.IMPLICATION_STEPS, kpn.EQUIVALENCE_STEPS)
+        for step in steps
+        for slug in step.laws
     }
 
-    assert slugi, "wyprowadzenia muszą powoływać prawa z rejestru"
-    for slug in slugi:
-        prawo = laws.get(slug)
-        assert prawo is not None, f"krok powołuje prawo spoza rejestru: {slug}"
+    assert slugs, "wyprowadzenia muszą powoływać prawa z rejestru"
+    for slug in slugs:
+        law = laws.get(slug)
+        assert law is not None, f"krok powołuje prawo spoza rejestru: {slug}"
         assert f'href="/prawa/{slug}"' in html
-        assert prawo.nazwa in tekst
+        assert law.nazwa in text
 
 
-def test_kazdy_krok_ma_co_najmniej_jedno_prawo():
-    for kroki in (kpn.KROKI_IMPLIKACJI, kpn.KROKI_ROWNOZNOSCI):
-        assert all(krok.prawa for krok in kroki)
+def test_every_step_has_at_least_one_law():
+    for steps in (kpn.IMPLICATION_STEPS, kpn.EQUIVALENCE_STEPS):
+        assert all(step.laws for step in steps)
 
 
 # --- test tautologiczności ---------------------------------------------------
 
 
-def test_strona_podaje_regule_testu_tautologicznosci(tekst):
-    assert "każdej klauzuli" in tekst
-    assert "zmienna zdaniowa i jej negacja" in tekst
+def test_page_gives_tautology_test_rule(text):
+    assert "każdej klauzuli" in text
+    assert "zmienna zdaniowa i jej negacja" in text
 
 
-def test_strona_pokazuje_przyklad_tautologii(html, tekst):
-    assert _wzor_html(PRZYKLAD_TAUTOLOGII) in html
-    assert _wzor_html(kpn.PRZYKLAD_TAUTOLOGII) in html
-    assert "Formuła jest tautologią" in tekst
+def test_page_shows_tautology_example(html, text):
+    assert _formula_html(TAUTOLOGY_FORMULA) in html
+    assert _formula_html(kpn.TAUTOLOGY_EXAMPLE) in html
+    assert "Formuła jest tautologią" in text
 
 
-def test_truth_mowi_ze_przyklad_jest_tautologia():
-    assert truth.is_tautology(parse(PRZYKLAD_TAUTOLOGII)) is True
+def test_truth_says_example_is_tautology():
+    assert truth.is_tautology(parse(TAUTOLOGY_FORMULA)) is True
 
 
-def test_truth_mowi_ze_kontrprzyklad_nie_jest_tautologia():
-    assert truth.is_tautology(parse(PRZYKLAD_NIE_TAUTOLOGII)) is False
+def test_truth_says_counterexample_is_not_tautology():
+    assert truth.is_tautology(parse(NON_TAUTOLOGY_FORMULA)) is False
 
 
-def test_regula_z_lekcji_daje_ten_sam_werdykt_co_truth():
+def test_lesson_rule_agrees_with_truth():
     """Reguła z lekcji i ``truth.is_tautology`` muszą się zgadzać w obie strony."""
-    for formula, werdykt in ((PRZYKLAD_TAUTOLOGII, True), (PRZYKLAD_NIE_TAUTOLOGII, False)):
-        assert all(_pary_z_reguly(formula)) is werdykt
-        assert truth.is_tautology(parse(formula)) is werdykt
+    for formula, verdict in ((TAUTOLOGY_FORMULA, True), (NON_TAUTOLOGY_FORMULA, False)):
+        assert all(_pairs_per_rule(formula)) is verdict
+        assert truth.is_tautology(parse(formula)) is verdict
 
 
-def test_strona_pokazuje_pary_uzupelniajace_w_klauzulach_tautologii(html):
-    wiersze = _wiersze(_tabela(html, PODPIS_KLAUZUL))
+def test_page_shows_complementary_pairs_in_tautology_clauses(html):
+    rows = _rows(_table(html, CLAUSE_CAPTION))
 
-    assert [wiersz[0] for wiersz in wiersze] == [
-        _tekst(_wzor_html(wzor)) for wzor in ("p ∨ q ∨ ∼p", "∼p ∨ q ∨ r ∨ ∼q", "∼s ∨ s")
+    assert [row[0] for row in rows] == [
+        _text(_formula_html(formula)) for formula in ("p ∨ q ∨ ∼p", "∼p ∨ q ∨ r ∨ ∼q", "∼s ∨ s")
     ]
-    assert [wiersz[1] for wiersz in wiersze] == ["p", "q", "s"]
+    assert [row[1] for row in rows] == ["p", "q", "s"]
 
 
 # --- kontrprzykład -----------------------------------------------------------
 
 
-def test_strona_pokazuje_kontrprzyklad_z_wyjasnieniem(html, tekst):
-    assert _wzor_html(PRZYKLAD_NIE_TAUTOLOGII) in html
-    assert "nie jest tautologią" in tekst
-    assert "nie ma pary" in tekst
-    assert "∼p" in tekst
+def test_page_shows_counterexample_with_explanation(html, text):
+    assert _formula_html(NON_TAUTOLOGY_FORMULA) in html
+    assert "nie jest tautologią" in text
+    assert "nie ma pary" in text
+    assert "∼p" in text
 
 
-def test_kontrprzyklad_ma_klauzule_bez_pary():
-    klauzule = kpn.klauzule_i_pary(PRZYKLAD_NIE_TAUTOLOGII)
+def test_counterexample_has_clauses_without_pairs():
+    clauses = kpn.clauses_with_pairs(NON_TAUTOLOGY_FORMULA)
 
-    assert [klauzula.wzor for klauzula in klauzule] == ["p ∨ q", "∼p ∨ r"]
-    assert [klauzula.pary for klauzula in klauzule] == [[], []]
+    assert [clause.formula for clause in clauses] == ["p ∨ q", "∼p ∨ r"]
+    assert [clause.pairs for clause in clauses] == [[], []]
 
 
-def test_kontrprzyklad_podaje_wartosciowanie_falsyfikujace(html):
-    uklad = kpn.falsyfikujacy_uklad(PRZYKLAD_NIE_TAUTOLOGII)
+def test_counterexample_gives_falsifying_assignment(html):
+    assignment = kpn.falsifying_assignment(NON_TAUTOLOGY_FORMULA)
 
-    assert uklad is not None
-    assert evaluate(parse(PRZYKLAD_NIE_TAUTOLOGII), uklad) is False
-    for nazwa, wartosc in uklad.items():
-        assert f"{nazwa} = {1 if wartosc else 0}" in _tekst(html)
+    assert assignment is not None
+    assert evaluate(parse(NON_TAUTOLOGY_FORMULA), assignment) is False
+    for name, value in assignment.items():
+        assert f"{name} = {1 if value else 0}" in _text(html)
 
 
 # --- dlaczego KPN jest przydatna i wynik silnika -----------------------------
 
 
-def test_strona_mowi_po_co_jest_kpn(tekst):
-    assert "bez wypisywania całej tablicy prawdy" in tekst
+def test_page_says_why_cnf_is_useful(text):
+    assert "bez wypisywania całej tablicy prawdy" in text
 
 
-def test_klauzule_silnika_dziela_wynik_to_cnf():
-    wynik = kpn.klauzule_silnika("(p → q) → ∼r")
+def test_engine_clauses_split_to_cnf_result():
+    result = kpn.engine_clauses("(p → q) → ∼r")
 
-    assert wynik["koniec"] == "(p ∨ ∼r) ∧ (∼q ∨ ∼r)"
-    assert wynik["klauzule"] == ["p ∨ ∼r", "∼q ∨ ∼r"]
-
-
-def test_strona_pokazuje_klauzule_z_silnika(html):
-    wynik = kpn.klauzule_silnika(kpn.FORMULA_IMPLIKACJI)
-    for klauzula in wynik["klauzule"]:
-        assert _wzor_html(klauzula) in html
+    assert result["cnf"] == "(p ∨ ∼r) ∧ (∼q ∨ ∼r)"
+    assert result["clauses"] == ["p ∨ ∼r", "∼q ∨ ∼r"]
 
 
-def test_strona_linkuje_do_placu_zabaw_z_formula(html):
+def test_page_shows_engine_clauses(html):
+    result = kpn.engine_clauses(kpn.IMPLICATION_FORMULA)
+    for clause in result["clauses"]:
+        assert _formula_html(clause) in html
+
+
+def test_page_links_to_playground_with_formula(html):
     assert 'href="/plac-zabaw?formula=' in html
     assert "cel=cnf" in html
 
@@ -313,82 +311,82 @@ def test_strona_linkuje_do_placu_zabaw_z_formula(html):
 # --- nawigacja i bezpieczeństwo szablonu -------------------------------------
 
 
-def test_strona_ma_odnosniki_poprzedniej_i_nastepnej_lekcji(html, tekst):
+def test_page_has_previous_and_next_lesson_links(html, text):
     assert 'href="/przeksztalcanie"' in html
     assert 'href="/prawa"' in html
-    assert "Poprzednia lekcja" in tekst
-    assert "Następna lekcja" in tekst
+    assert "Poprzednia lekcja" in text
+    assert "Następna lekcja" in text
 
 
-def test_szablon_uzywa_safe_tylko_na_wyniku_to_html():
-    wyrazenia = [d["wyrazenie"].strip() for d in WZORZEC_SAFE.finditer(SZABLON.read_text("utf-8"))]
+def test_template_uses_safe_only_on_to_html_output():
+    expressions = [
+        match["expression"].strip() for match in SAFE_PATTERN.finditer(TEMPLATE.read_text("utf-8"))
+    ]
 
-    assert wyrazenia, "szablon nie wstawia wzorów przez |safe"
-    for wyrazenie in wyrazenia:
-        assert "to_html" in wyrazenie, f"|safe na {wyrazenie!r}"
+    assert expressions, "szablon nie wstawia wzorów przez |safe"
+    for expression in expressions:
+        assert "to_html" in expression, f"|safe na {expression!r}"
 
 
 # --- funkcje pomocnicze modułu -----------------------------------------------
 
 
-def test_formula_to_html_zamienia_zwykly_tekst_bez_bledu():
-    wynik = kpn.formula_to_html("to nie jest formuła ((")
+def test_formula_to_html_returns_plain_text_without_error():
+    result = kpn.formula_to_html("to nie jest formuła ((")
 
-    assert isinstance(wynik, Markup)
-    assert wynik == "to nie jest formuła (("
+    assert isinstance(result, Markup)
+    assert result == "to nie jest formuła (("
 
 
-def test_formula_to_html_zwraca_html_dla_wzoru():
+def test_formula_to_html_returns_html_for_formula():
     assert str(kpn.formula_to_html("∼p")) == str(to_html(parse("∼p")))
 
 
-def test_podziel_na_klauzule_zwraca_skladniki_koniunkcji():
-    klauzule = kpn.podziel_na_klauzule(parse("(p ∨ q) ∧ ∼p ∧ (r ∨ ∼s)"))
+def test_split_clauses_returns_conjunction_parts():
+    clauses = kpn.split_clauses(parse("(p ∨ q) ∧ ∼p ∧ (r ∨ ∼s)"))
 
-    assert [to_html(kl) for kl in klauzule] == [
+    assert [to_html(clause) for clause in clauses] == [
         to_html(parse("p ∨ q")),
         to_html(parse("∼p")),
         to_html(parse("r ∨ ∼s")),
     ]
 
 
-def test_podziel_na_klauzule_nie_gubi_pojedynczej_klauzuli():
-    assert len(kpn.podziel_na_klauzule(parse("p ∨ ∼q"))) == 1
+def test_split_clauses_keeps_single_clause():
+    assert len(kpn.split_clauses(parse("p ∨ ∼q"))) == 1
 
 
-def test_pary_uzupelniajace_znajduje_zmienna_z_negacja():
-    assert kpn.pary_uzupelniajace("p ∨ q ∨ ∼p") == ["p"]
-    assert kpn.pary_uzupelniajace("∼p ∨ q ∨ r ∨ ∼q") == ["q"]
-    assert kpn.pary_uzupelniajace("∼s ∨ s") == ["s"]
-    assert kpn.pary_uzupelniajace("p ∨ q") == []
+def test_complementary_pairs_find_variable_with_negation():
+    assert kpn.complementary_pairs("p ∨ q ∨ ∼p") == ["p"]
+    assert kpn.complementary_pairs("∼p ∨ q ∨ r ∨ ∼q") == ["q"]
+    assert kpn.complementary_pairs("∼s ∨ s") == ["s"]
+    assert kpn.complementary_pairs("p ∨ q") == []
 
 
-def test_pary_uzupelniajace_odrzucaja_cos_co_nie_jest_klauzula():
+def test_complementary_pairs_reject_non_clause():
     with pytest.raises(FormulaError):
-        kpn.pary_uzupelniajace("p → q")
+        kpn.complementary_pairs("p → q")
 
 
-def test_klauzule_i_pary_zwracaja_tekst_i_pary():
-    klauzule = kpn.klauzule_i_pary(PRZYKLAD_NIE_TAUTOLOGII)
+def test_clauses_with_pairs_return_text_and_pairs():
+    clauses = kpn.clauses_with_pairs(NON_TAUTOLOGY_FORMULA)
 
-    assert [klauzula.wzor for klauzula in klauzule] == ["p ∨ q", "∼p ∨ r"]
-    assert [klauzula.pary for klauzula in klauzule] == [[], []]
-
-
-def test_falsyfikujacy_uklad_dla_tautologii_to_none():
-    assert kpn.falsyfikujacy_uklad(PRZYKLAD_TAUTOLOGII) is None
+    assert [clause.formula for clause in clauses] == ["p ∨ q", "∼p ∨ r"]
+    assert [clause.pairs for clause in clauses] == [[], []]
 
 
-def test_kroki_do_widoku_bierze_nazwy_praw_z_rejestru():
-    krok = kpn.Krok(po="∼p ∨ q", prawa=("definiowanie-implikacji",))
+def test_falsifying_assignment_for_tautology_is_none():
+    assert kpn.falsifying_assignment(TAUTOLOGY_FORMULA) is None
 
-    widok = kpn.kroki_do_widoku([krok])
 
-    assert widok == [
+def test_steps_for_view_takes_law_names_from_registry():
+    step = kpn.Step(formula="∼p ∨ q", laws=("definiowanie-implikacji",))
+
+    view = kpn.steps_for_view([step])
+
+    assert view == [
         {
-            "po": "∼p ∨ q",
-            "prawa": [
-                {"slug": "definiowanie-implikacji", "nazwa": "Prawo definiowania implikacji"}
-            ],
+            "formula": "∼p ∨ q",
+            "laws": [{"slug": "definiowanie-implikacji", "name": "Prawo definiowania implikacji"}],
         }
     ]
