@@ -1,0 +1,143 @@
+/* Style wizualizacji: schemat bramek logicznych i diagramy zbiorów (karta PRZ-012).
+   Kolor nigdy nie jest jedynym nośnikiem informacji: każdy kształt ma napis i opis
+   w elemencie `<title>`, a pod rysunkiem stoi legenda. */
+
+.gates-mount,
+.sets-mount {
+  --wiz-akcent: var(--kolor-akcent, #4c3bcf);
+  --wiz-tlo-kształtu: var(--kolor-akcent-jasny, #ece9ff);
+  --wiz-linia: #475569;
+  --wiz-tekst: #1f2937;
+}
+
+.wiz-figura {
+  overflow-x: auto;
+}
+
+.wiz-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Szeroki schemat bramek nie rozciąga się na całą wysokość ekranu. */
+.wiz-svg-bramki {
+  max-height: 30rem;
+  min-width: 22rem;
+}
+
+/* --- schemat bramek ---------------------------------------------------- */
+
+.wiz-przewody {
+  fill: none;
+}
+
+.wiz-przewod {
+  fill: none;
+  stroke: var(--wiz-linia);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.wiz-kształt {
+  fill: var(--wiz-tlo-kształtu);
+  stroke: var(--wiz-akcent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.wiz-zmienna .wiz-kształt {
+  fill: #ffffff;
+}
+
+.wiz-symbol,
+.wiz-napis {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 15px;
+  fill: var(--wiz-tekst);
+}
+
+.wiz-symbol {
+  fill: var(--wiz-akcent);
+  font-weight: 700;
+}
+
+.wiz-napis {
+  font-size: 14px;
+}
+
+.wiz-wynik {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
+  font-size: 13px;
+  font-style: italic;
+  fill: var(--wiz-linia);
+}
+
+.wiz-legenda {
+  border: 1px solid var(--kolor-ramka, #dcd8ee);
+  border-radius: 0.5rem;
+  background: #ffffff;
+  padding: 0.75rem 1rem;
+}
+
+.wiz-legenda-tytul {
+  margin-bottom: 0.25rem;
+}
+
+.wiz-legenda-lista dt,
+.wiz-legenda-lista dd {
+  margin-bottom: 0.35rem;
+}
+
+.wiz-legenda-lista dt {
+  font-weight: 600;
+}
+
+/* --- diagramy zbiorów -------------------------------------------------- */
+
+.wiz-diagramy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.wiz-diagram {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.wiz-diagram-tytul {
+  overflow-wrap: anywhere;
+}
+
+.wiz-przestrzen {
+  fill: #fbfbfe;
+  stroke: var(--kolor-ramka, #dcd8ee);
+  stroke-width: 2;
+}
+
+.wiz-obszar {
+  fill: var(--wiz-akcent);
+  opacity: 0.55;
+}
+
+.wiz-obrys {
+  fill: none;
+  stroke: var(--wiz-tekst);
+  stroke-width: 2;
+}
+
+.wiz-podpis {
+  font-weight: 500;
+}
+
+.wiz-blad {
+  /* Komunikat błędu jest w kolorze i opisany tekstem — kolor tylko wspiera treść. */
+  border-left: 4px solid currentColor;
+}
+
+@media print {
+  .wiz-svg {
+    max-height: none;
+  }
+}
