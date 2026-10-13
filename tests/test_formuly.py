@@ -60,6 +60,9 @@ SEKCJA_NAGLOWKOW = re.compile(r"<thead>(?P<tresc>.*?)</thead>", re.DOTALL)
 #: Wyrażenie wstawiane do HTML przez filtr ``|safe``.
 WZORZEC_SAFE = re.compile(r"\{\{(?P<wyrazenie>.*?)\|\s*safe\s*\}\}", re.DOTALL)
 
+#: Punkt montażu tablicy prawdy — partial czyta z niego formułę (karta PRZ-011).
+PUNKT_MONTAZU = re.compile(r'<div class="truth-table-mount"[^>]*data-formula="(?P<wzor>[^"]+)"')
+
 SZABLON = Path(__file__).resolve().parents[1] / "app" / "templates" / "formuly.html"
 
 
@@ -346,10 +349,26 @@ def test_strona_objasnia_ze_jedynka_to_prawda(tekst):
 
 
 def test_strona_wstawia_partial_tablicy_prawdy(html):
-    """Punkt 8 wykładu: pełna tablica dla ``p → q`` przez partial (karta PRZ-011)."""
-    assert 'class="truth-table-mount"' in html
-    assert f'data-formula="{formuly.FORMULA_POKAZOWA}"' in html
+    """Punkt 8 wykładu: tablica prawdy dla formuły ``p → q`` (karta PRZ-011).
+
+    Partial to dziś sam punkt montażu — tablicę dorysuje skrypt. Dlatego sprawdzamy
+    także, że pełna tablica tej samej formuły jest już w HTML-u, policzona przez
+    ``evaluate``: lekcja uczy wartościowań, zanim skrypt się wczyta.
+    """
     assert "partials/_truth_table.html" in SZABLON.read_text("utf-8")
+
+    punkt_montazu = PUNKT_MONTAZU.search(html)
+    assert punkt_montazu, "brak punktu montażu tablicy prawdy"
+    wzor = punkt_montazu.group("wzor")
+    assert wzor == formuly.FORMULA_POKAZOWA, f"punkt montażu dostał {wzor!r}"
+
+    naglowki, wyniki = _wyniki(html, PODPIS_SPOJNIKOW, 2)
+    kolumny_wynikowe = naglowki[len(formuly.ZMIENNE_PQ) :]
+    kolumna = kolumny_wynikowe.index(_tekst(_wzor_html(wzor)))
+    for klucz, wartosci in wyniki.items():
+        assert wartosci[kolumna] == _oczekiwane(wzor, "pq", klucz), (
+            f"pełna tablica dla {wzor!r} nie zgadza się z evaluate w wierszu {klucz}"
+        )
 
 
 # --- nawigacja i bezpieczeństwo szablonu -------------------------------------
