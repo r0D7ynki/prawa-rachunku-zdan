@@ -11,7 +11,8 @@ Sprawdzamy to, o co prosi karta:
 * każda tabela na stronach ``/prawa/<slug>``, ``/tautologie`` i ``/formuly``
   stoi w opakowaniu ``.table-responsive``,
 * dotyk i klawiatura: ``min-height: 44px`` dla przycisków i ``:focus-visible``,
-* struktura nagłówków bez zmian — jedna ``<h1>`` na stronę.
+* struktura nagłówków bez zmian — jedna ``<h1>`` na stronę,
+* dolna nawigacja lekcji trzyma klasę, którą zwęża arkusz na telefonie.
 """
 
 from __future__ import annotations
@@ -28,10 +29,18 @@ KATALOG = Path(__file__).resolve().parents[1]
 KATALOG_CSS = KATALOG / "app" / "static" / "css"
 ARKUSZ_APP = KATALOG_CSS / "app.css"
 ARKUSZ_NAWIGACJI = KATALOG_CSS / "nawigacja.css"
-SZABLON_BAZY = KATALOG / "app" / "templates" / "base.html"
+KATALOG_SZABLONOW = KATALOG / "app" / "templates"
+SZABLON_BAZY = KATALOG_SZABLONOW / "base.html"
 
 #: Strony, na których każda tabela musi mieć opakowanie ``.table-responsive``.
 ADRESY_Z_TABELAMI = ["/formuly", "/tautologie", "/prawa/<slug>"]
+
+#: Dolna nawigacja lekcji: (szablon, klasa, adres strony). Arkusz ``app.css``
+#: zwęża przyciski pod tą klasą na telefonie, więc klasa nie może zniknąć.
+DOLNE_NAWIGACJE = [
+    ("prawo.html", "nawigacja-dolna-praw", f"/prawa/{all_laws()[0].slug}"),
+    ("tautologie.html", "nawigacja-dolna-lekcja", "/tautologie"),
+]
 
 #: Zmienne palety wymagane przez kartę — nazwy bez wiodących ``--``.
 ZMIENNE_PALETY = [
@@ -129,6 +138,12 @@ def strony():
     return {
         adres: klient.get(adres).get_data(as_text=True) for adres in ADRESY_Z_TABELAMI_ROZWINIETE
     }
+
+
+@pytest.fixture(scope="module")
+def klient():
+    """Klient testowy aplikacji dla testów pojedynczych adresów."""
+    return create_app({"TESTING": True}).test_client()
 
 
 # ---------------------------------------------------------------------------
@@ -311,3 +326,39 @@ def test_strona_ma_dokladnie_jeden_h1(strony, adres):
 def test_szkielet_nie_wstawia_wlasnego_h1():
     """Nagłówek strony pochodzi z treści, nie z ``base.html``."""
     assert "<h1" not in _arkusz(SZABLON_BAZY)
+
+
+# ---------------------------------------------------------------------------
+# Dolna nawigacja lekcji
+# ---------------------------------------------------------------------------
+
+
+def _ma_klase(html: str, klasa: str) -> bool:
+    """Czy w jakimś atrybucie ``class`` stoi szukana klasa (cała nazwa, nie prefiks)?"""
+    return any(klasa in atrybut.split() for atrybut in re.findall(r'class="([^"]*)"', html))
+
+
+@pytest.mark.parametrize(
+    ("szablon", "klasa", "adres"), DOLNE_NAWIGACJE, ids=[klasa for _, klasa, _ in DOLNE_NAWIGACJE]
+)
+def test_dolna_nawigacja_ma_swoja_klase(szablon, klasa, adres, klient):
+    """Bez klasy na ``<nav>`` arkusz nie zwęzi przycisków na telefonie (regresja)."""
+    zrodlo = (KATALOG_SZABLONOW / szablon).read_text(encoding="utf-8")
+
+    assert _ma_klase(zrodlo, klasa), f"{szablon}: brak klasy {klasa} w atrybucie class"
+    assert _ma_klase(klient.get(adres).get_data(as_text=True), klasa), (
+        f"{adres}: strona nie renderuje klasy {klasa}"
+    )
+
+
+@pytest.mark.parametrize("klasa", [klasa for _, klasa, _ in DOLNE_NAWIGACJE])
+def test_arkusz_zweza_przyciski_dolnej_nawigacji(klasa):
+    """Na telefonie przyciski „poprzednia / następna” idą jeden pod drugim."""
+    blok = _blok(_arkusz(ARKUSZ_APP), r"@media[^{]*max-width:\s*576px")
+
+    assert re.search(rf"\.{re.escape(klasa)}\b[^{{]*\{{\s*flex-direction:\s*column", blok), (
+        f"brak układu jeden pod drugim dla .{klasa}"
+    )
+    assert re.search(rf"\.{re.escape(klasa)} \.btn\b[^{{]*\{{[^}}]*width:\s*100%", blok), (
+        f"przyciski .{klasa} .btn nie zajmują całej szerokości na telefonie"
+    )
