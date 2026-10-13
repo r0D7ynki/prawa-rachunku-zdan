@@ -518,6 +518,43 @@ def test_zbiory_podpisuja_poprzednie_obszary_obrysem(skrypt_zbiorow):
     assert "sciezkiKrokow.slice(0, indeks)" in skrypt_zbiorow
 
 
+def test_zbiory_rysuja_obrys_obszaru_ponad_wypelnieniem(skrypt_zbiorow):
+    """Kryterium PRZ-075: obrys wcześniejszego kroku leży nad wypełnieniem bieżącego.
+
+    SVG nie zna ``z-index`` — późniejszy element zasłania wcześniejszy. Przy przekształceniach
+    równoważnych (na przykład krok 3 i krok 1 w prawie de Morgana) oba obszary mają ten sam
+    kształt, więc wypełnienie dołożone po obrysach zasłoniłoby obrys i student nie zobaczyłby,
+    że to ten sam obszar. Pilnujemy kolejności argumentów ``append`` na rysunku.
+    """
+    cialo = _cialo_funkcji(skrypt_zbiorow, "zbudujDiagram")
+    argumenty = [
+        dopasowanie.group(1) for dopasowanie in re.finditer(r"rysunek\.append\(([^)]*)\)", cialo)
+    ]
+    razem = [
+        argument for argument in argumenty if "wypelnienie" in argument and "obrysy" in argument
+    ]
+
+    assert razem, "wypełnienie i obrysy muszą trafić na rysunek jednym `append`"
+    kolejnosc = [czesc.strip() for czesc in razem[0].split(",")]
+    assert kolejnosc.index("wypelnienie") < kolejnosc.index("obrysy"), (
+        "wypełnienie bieżącego kroku powstaje po obrysach — zasłoni obrys obszaru o tym samym "
+        "kształcie, więc student nie zobaczy, że obszar się nie zmienił"
+    )
+
+
+def test_zbiory_nie_rysuja_kroku_bez_formuly(skrypt_zbiorow):
+    """Krok prawa z pustym ``po`` nie przewraca rysunku.
+
+    Przegląd PRZ-075 (raport ``f3ff62b``) wskazał, że ``drzewa.get(undefined)`` rzuca
+    wyjątkiem, gdy krok nie ma formuły. Krok bez drzewa musi więc zawrócić do kroków
+    z podformuł obu stron, zamiast sięgać po ``undefined``.
+    """
+    cialo = _cialo_funkcji(skrypt_zbiorow, "wypelnij")
+
+    assert "krokiPrawa.every((krok) => drzewa.has(krok.po))" in cialo, "brak sprawdzenia drzew"
+    assert "krokiZapasowe(" in cialo, "brak kroków zapasowych dla kroku bez formuły"
+
+
 def test_zbiory_pokazuja_oba_obszary_naraz(skrypt_zbiorow):
     """Kryterium PRZ-075: przełącznik pokazuje oba docelowe obszary jednocześnie."""
     assert 'pokazOba: "Pokaż oba naraz"' in skrypt_zbiorow

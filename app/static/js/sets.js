@@ -318,7 +318,14 @@ function sciezkaObszaru(node, zmienne, kola) {
  *
  *  Ścieżki obszarów dostają wszystkie kroki naraz, ale są ukryte — `ustawObszar`
  *  odkrywa tylko te, które należą do kroków już wykonanych. Dzięki temu przejście
- *  między krokami nie przebudowuje rysunku. */
+ *  między krokami nie przebudowuje rysunku.
+ *
+ *  Kolejność dokładania ma znaczenie: SVG nie zna `z-index`, więc późniejszy element
+ *  zasłania wcześniejszy. Wypełnienie bieżącego kroku powstaje **przed** obrysami, żeby
+ *  obrys obszaru z wcześniejszego kroku leżał nad nim. Gdy kroki są równoważne (na przykład
+ *  krok 3 i krok 1 w prawie de Morgana), oba obszary mają ten sam kształt — gdyby obrys
+ *  powstał pierwszy, wypełnienie zasłoniłoby go i student nie zobaczyłby, że to ten sam
+ *  obszar. */
 function zbudujDiagram(zmienne, identyfikator, podpis, liczbaKrokow) {
   const kola = UKLADY[zmienne.length];
 
@@ -349,7 +356,9 @@ function zbudujDiagram(zmienne, identyfikator, podpis, liczbaKrokow) {
 
   const wypelnienie = nowyElement("path", TEKSTY.obszarKroku);
   wypelnienie.setAttribute("class", "wiz-obszar wiz-niewidoczny");
-  rysunek.append(obrysy, wypelnienie);
+  // Najpierw wypełnienie, potem obrysy — inaczej wypełnienie zasłoniłoby obrys
+  // obszaru o tym samym kształcie (patrz komentarz przy `zbudujDiagram`).
+  rysunek.append(wypelnienie, obrysy);
 
   const obrysyKol = nowyElement("g", "Obrysy i nazwy zbiorów.");
   obrysyKol.setAttribute("class", "wiz-obrysy");
@@ -511,7 +520,12 @@ async function wypelnij(montaz) {
     }
   }
 
-  const kroki = krokiPrawa.length
+  // Krok bez formuły (puste `po`) nie ma czego narysować: `drzewa.get("")` jest `undefined`,
+  // a `operacja` przewróciłaby się na odczycie `undefined.typ`. Gdy którykolwiek krok prawa
+  // nie ma drzewa, wracamy do kroków z podformuł obu stron.
+  const krokiPrawaMajaDrzewa =
+    krokiPrawa.length > 0 && krokiPrawa.every((krok) => drzewa.has(krok.po));
+  const kroki = krokiPrawaMajaDrzewa
     ? krokiPrawa.map((krok) => {
         const op = operacja(drzewa.get(krok.po));
         return { tytul: op.nazwa, opis: krok.opis, drzewo: drzewa.get(krok.po) };
