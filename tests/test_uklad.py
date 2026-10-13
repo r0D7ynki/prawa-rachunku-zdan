@@ -9,8 +9,10 @@ Sprawdzamy to, o co proszą karty:
 * istnieje klasa ``.formula-blok`` — wzór, który lepiej przewinąć niż łamać,
 * ``prawa_lista.html`` i ``prawo.html`` używają tej klasy przy wzorach,
 * na ``/prawa`` każdy wzór stoi w elemencie z klasą ``formula``,
-* lista praw to pionowa kolumna ``article.karta-prawa`` o szerokości swojej treści,
-  bez klas siatki Bootstrapa (karta PRZ-156).
+* lista praw to pionowa kolumna kafelków ``a.karta-prawa`` o szerokości swojej treści,
+  bez klas siatki Bootstrapa (karta PRZ-156),
+* kafelek na ``/prawa`` jest jednym odnośnikiem pokazującym nazwę i wzór — bez kategorii
+  i bez odnośnika „opis” — a kursor i fokus podświetlają jego tło i obwódkę (karta PRZ-168).
 
 Zapytania ``@media`` czytamy spłaszczone: reguła z ich środka trafia na listę z własnym
 selektorem. Dzięki temu sprawdzamy **wszystkie** reguły ``.formula``, a nie tylko pierwszą.
@@ -231,15 +233,19 @@ def _klasy_siatki(tresc: str) -> list[str]:
 
 
 class ZbieraczKafelkow(HTMLParser):
-    """Zbiera kafelki ``article.karta-prawa`` i nagłówki ich sekcji ze strony ``/prawa``.
+    """Zbiera kafelki ``a.karta-prawa`` i nagłówki ich sekcji ze strony ``/prawa``.
 
-    Dla każdego kafelka notujemy nazwę, wzór, kategorię i adres odnośnika „opis”,
-    a także numer sekcji, w której kafelek stoi (``naglowki[numer]`` to jej ``<h2>``).
+    Dla każdego kafelka notujemy znacznik, nazwę, wzór, cały widoczny tekst, adres
+    odnośnika i odnośniki zagnieżdżone w kafelku, a także numer sekcji, w której
+    kafelek stoi (``naglowki[numer]`` to jej ``<h2>``).
 
     Strukturę czytamy ``html.parser``-em, nie wyrażeniem regularnym: wzór ma
     zagnieżdżone ``<span>``, więc dopasowanie po napisie skończyłoby się za wcześnie
     (ten sam powód, co w ``ZbieraczFormul``).
     """
+
+    #: Znacznik kafelka: cały kafelek jest odnośnikiem (karta PRZ-168).
+    ZNACZNIK_KAFELKA = "a"
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -263,15 +269,17 @@ class ZbieraczKafelkow(HTMLParser):
             self._naglowek = [] if (atrybuty.get("id") or "").startswith("kategoria-") else None
             return
 
-        if tag == "article" and "karta-prawa" in klasy and self._kafelek is None:
+        if tag == self.ZNACZNIK_KAFELKA and "karta-prawa" in klasy and self._kafelek is None:
             self._kafelek = {
+                "znacznik": tag,
                 "nazwa": "",
                 "wzor": "",
-                "kategoria": "",
-                "href": None,
+                "tekst": "",
+                "href": atrybuty.get("href"),
+                "odnosniki": [],
                 "sekcja": len(self.naglowki) - 1,
             }
-            self._bufor = {rola: [] for rola in ("nazwa", "wzor", "kategoria")}
+            self._bufor = {rola: [] for rola in ("nazwa", "wzor", "tekst")}
             self._glebokosc = 0
             self._stos = []
             return
@@ -285,10 +293,9 @@ class ZbieraczKafelkow(HTMLParser):
             rola = "nazwa"
         elif "formula-blok" in klasy:
             rola = "wzor"
-        elif "karta-prawa-kategoria" in klasy:
-            rola = "kategoria"
         if tag == "a":
-            self._kafelek["href"] = atrybuty.get("href")
+            # Odnośnik w środku kafelka (np. dawne „opis”) — kafelek ma być cały odnośnikiem.
+            self._kafelek["odnosniki"].append(atrybuty.get("href"))
         self._stos.append((tag, rola))
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -304,7 +311,7 @@ class ZbieraczKafelkow(HTMLParser):
         if self._kafelek is None:
             return
 
-        if tag == "article" and self._glebokosc == 0:
+        if tag == self.ZNACZNIK_KAFELKA and self._glebokosc == 0:
             for rola, czesci in self._bufor.items():
                 self._kafelek[rola] = " ".join("".join(czesci).split())
             self.kafelki.append(self._kafelek)
@@ -321,6 +328,7 @@ class ZbieraczKafelkow(HTMLParser):
             return
         if self._kafelek is None:
             return
+        self._bufor["tekst"].append(dane)
         rola = next((rola for _, rola in reversed(self._stos) if rola), None)
         if rola is not None:
             self._bufor[rola].append(dane)
@@ -408,6 +416,41 @@ def test_karta_prawa_ma_szerokosc_swojej_tresci():
     assert any("max-width: 100%" in tresc for tresc in tresci), ".karta-prawa bez max-width: 100%"
 
 
+def test_kafelek_odnosnika_ma_hover_i_fokus(kafelki: ZbieraczKafelkow):
+    """Kryterium karty PRZ-168: kafelek-odnośnik podświetla tło i obwódkę, bez podkreślenia.
+
+    Pytamy o pełny selektor (``.karta-prawa`` **oraz** ``:hover`` / ``:focus-visible``):
+    samą klasę dzielą z listą inne strony, więc reguła bez pseudoklasy niczego tu nie
+    dowodzi. Obwódkę fokusu czytamy z reguły ``:focus-visible``, bo tylko ona opisuje
+    stan klawiatury.
+    """
+    css = _arkusz("app.css")
+
+    assert any("text-decoration: none" in tresc for tresc in _tresci_regul(css, "karta-prawa")), (
+        ".karta-prawa jest odnośnikiem bez text-decoration: none — nazwa i wzór się podkreślą"
+    )
+
+    hover = [
+        tresc
+        for selektor, tresc in _reguly(css)
+        if _selektor_klasy(selektor, "karta-prawa") and ":hover" in selektor
+    ]
+    assert hover, "app.css nie ma reguły .karta-prawa:hover"
+    assert any("background" in tresc for tresc in hover), (
+        ".karta-prawa:hover nie podświetla tła kafelka"
+    )
+
+    fokus = [
+        tresc
+        for selektor, tresc in _reguly(css)
+        if _selektor_klasy(selektor, "karta-prawa") and ":focus-visible" in selektor
+    ]
+    assert fokus, "app.css nie ma reguły .karta-prawa:focus-visible"
+    calosc_fokusu = " ".join(fokus)
+    assert "outline" in calosc_fokusu, ".karta-prawa:focus-visible nie rysuje obwódki"
+    assert "background" in calosc_fokusu, ".karta-prawa:focus-visible nie podświetla tła"
+
+
 def test_wzor_w_kafelku_sie_nie_zawija():
     """Kryterium karty: wzór w kafelku jest w jednej linii i przewija się w środku."""
     tresci = _tresci_regul(_arkusz("app.css"), "formula-blok")
@@ -423,37 +466,51 @@ def test_wzor_w_kafelku_sie_nie_zawija():
 
 
 def test_kazde_prawo_ma_kafelek(kafelki: ZbieraczKafelkow):
-    """Kryterium karty: każdy kafelek to ``article.karta-prawa``, po jednym na prawo."""
+    """Kryterium karty: każdy kafelek to ``a.karta-prawa``, po jednym na prawo."""
     prawa = all_laws()
 
     assert len(kafelki.kafelki) == len(prawa), (
         f"na /prawa jest {len(kafelki.kafelki)} kafelków, a praw jest {len(prawa)}"
+    )
+    assert {kafelek["znacznik"] for kafelek in kafelki.kafelki} == {"a"}, (
+        "kafelek listy praw nie jest odnośnikiem"
     )
     assert {kafelek["href"] for kafelek in kafelki.kafelki} == {
         f"/prawa/{prawo.slug}" for prawo in prawa
     }, "odnośniki w kafelkach nie prowadzą do wszystkich praw"
 
 
-def test_kafelek_pokazuje_nazwe_wzor_kategorie_i_odnosnik(kafelki: ZbieraczKafelkow):
-    """Kryterium karty: w kafelku są tytuł, wzór, kategoria i odnośnik „opis”."""
+def test_kafelek_pokazuje_tylko_nazwe_i_wzor(kafelki: ZbieraczKafelkow):
+    """Kryterium karty: w kafelku są nazwa i wzór — bez kategorii i bez odnośnika „opis”.
+
+    Porównujemy **cały** widoczny tekst kafelka z nazwą i wzorem prawa. Dzięki temu
+    wychwyci każde dodatkowe słowo w kafelku — także nazwę kategorii, której napis
+    nie zawsze da się rozpoznać po samym słowie („de Morgan” siedzi w nazwie
+    „I prawo de Morgana”).
+    """
     assert kafelki.kafelki, "strona /prawa nie ma kafelków"
+    prawa = {f"/prawa/{prawo.slug}": prawo for prawo in all_laws()}
 
     for kafelek in kafelki.kafelki:
+        prawo = prawa[str(kafelek["href"])]
+        wzor = formula.to_text(formula.parse(prawo.formula))
+        assert kafelek["tekst"] == " ".join(f"{prawo.nazwa} {wzor}".split()), (
+            f"kafelek {kafelek['href']} pokazuje {kafelek['tekst']!r} — ma tylko nazwę i wzór"
+        )
         assert kafelek["nazwa"], f"kafelek {kafelek['href']} nie pokazuje nazwy prawa"
         assert kafelek["wzor"], f"kafelek {kafelek['href']} nie pokazuje wzoru"
-        assert kafelek["kategoria"], f"kafelek {kafelek['href']} nie pokazuje kategorii"
+        assert not kafelek["odnosniki"], (
+            f"kafelek {kafelek['href']} ma w środku odnośnik {kafelek['odnosniki']!r} — "
+            "cały kafelek ma być jednym odnośnikiem"
+        )
 
 
 def test_naglowek_kategorii_stoi_nad_swoimi_kafelkami(kafelki: ZbieraczKafelkow):
     """Kryterium karty: nagłówki kategorii zostają nad swoją częścią listy."""
     assert kafelki.naglowki, "strona /prawa nie ma nagłówków kategorii"
+    assert {"podstawowe", "implikacja", "algebra"} <= set(kafelki.naglowki), (
+        f"na /prawa brakuje nagłówka kategorii: {sorted(kafelki.naglowki)}"
+    )
     assert {kafelek["sekcja"] for kafelek in kafelki.kafelki} == set(
         range(len(kafelki.naglowki))
     ), "jakaś kategoria nie ma kafelków albo kafelek stoi poza sekcją"
-
-    for kafelek in kafelki.kafelki:
-        naglowek = kafelki.naglowki[int(kafelek["sekcja"])]
-        assert kafelek["kategoria"] == naglowek, (
-            f"kafelek {kafelek['href']} stoi pod nagłówkiem {naglowek!r}, "
-            f"a jego kategoria to {kafelek['kategoria']!r}"
-        )

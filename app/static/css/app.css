@@ -279,10 +279,20 @@ main li a {
   min-width: 0;
 }
 
+/* Kafelek jest odnośnikiem, więc całe jego tło i obwódka reagują na kursor i na
+   fokus z klawiatury — widać, że kliknięcie w dowolnym miejscu prowadzi do prawa
+   (karta PRZ-168). Kolor tła bierzemy z tokenu motywu, żeby działał też w trybie
+   ciemnym. */
 .karta-prawa:hover,
 .karta-prawa:focus-visible {
+  background: var(--tlo-panel-2);
   border-color: var(--kolor-akcent);
   box-shadow: var(--cien-mocny);
+}
+
+.karta-prawa:focus-visible {
+  outline: var(--ramka-focus) solid var(--kolor-akcent);
+  outline-offset: 2px;
 }
 
 .karta-prawa-kategoria {
@@ -314,15 +324,11 @@ div.lista-praw {
   align-items: flex-start;
 }
 
-/* Kafelek na liście praw mieści się w jednej linii: nazwa, wzór, kategoria, „opis”. */
+/* Kafelek na liście praw mieści się w jednej linii: nazwa i wzór. */
 div.lista-praw .karta-prawa {
   flex-direction: row;
   align-items: center;
   gap: 0.75rem;
-}
-
-.karta-prawa-opis {
-  color: var(--kolor-akcent);
 }
 
 .naglowek-strony {
