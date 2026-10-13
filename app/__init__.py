@@ -29,7 +29,9 @@ def _blueprint_module_names() -> list[str]:
 def create_app(config: dict | None = None) -> Flask:
     """Tworzy aplikację i rejestruje wszystkie widoki."""
     app = Flask(__name__, template_folder="templates", static_folder="static")
-    app.config["JSON_AS_ASCII"] = False
+    # Flask 3 nie zna już klucza configu JSON_AS_ASCII — odpowiada za to app.json.
+    # Bez tego polskie znaki w odpowiedziach JSON trafiają do przeglądarki jako \uXXXX.
+    app.json.ensure_ascii = False
     if config:
         app.config.update(config)
 
