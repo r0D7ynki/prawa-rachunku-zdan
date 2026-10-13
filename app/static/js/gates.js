@@ -333,9 +333,14 @@ function zbudujLegende(uzyte) {
   return sekcja;
 }
 
-/** Pokazuje komunikat zamiast rysunku. */
-function pokazKomunikat(montaz, tekst) {
-  montaz.append(elementHtml("p", "wiz-blad alert alert-warning mb-0", tekst));
+/** Pokazuje komunikat zamiast rysunku.
+
+    Element `status` wraca do montażu razem z komunikatem. Bez tego `replaceChildren`
+    odłączyłby go od dokumentu i `status.textContent` ustawiałby tekst na węźle poza
+    dokumentem — czytnik ekranu nie ogłosiłby wyniku. */
+function pokazKomunikat(montaz, tekst, status) {
+  montaz.replaceChildren(elementHtml("p", "wiz-blad alert alert-warning mb-0", tekst), status);
+  status.textContent = tekst;
 }
 
 /** Wypełnia jeden montaż: pobiera drzewo formuły i rysuje z niego schemat. */
@@ -357,33 +362,29 @@ async function wypelnij(montaz) {
     });
     dane = await odpowiedz.json();
   } catch (blad) {
-    montaz.replaceChildren();
-    pokazKomunikat(montaz, TEKSTY.siec);
+    pokazKomunikat(montaz, TEKSTY.siec, status);
     return;
   }
 
   if (!dane.ok) {
-    montaz.replaceChildren();
-    pokazKomunikat(montaz, dane.blad || TEKSTY.blad);
+    pokazKomunikat(montaz, dane.blad || TEKSTY.blad, status);
     return;
   }
 
   if (!dane.ast || !maPoprawneDrzewo(dane.ast)) {
-    montaz.replaceChildren();
-    pokazKomunikat(montaz, TEKSTY.brakAst);
+    pokazKomunikat(montaz, TEKSTY.brakAst, status);
     return;
   }
 
   const uklad = zaplanuj(dane.ast);
   if (uklad.liscie > MAKS_WEJSC) {
-    montaz.replaceChildren();
-    pokazKomunikat(montaz, TEKSTY.zaDuze);
+    pokazKomunikat(montaz, TEKSTY.zaDuze, status);
     return;
   }
 
   const figura = elementHtml("div", "wiz-figura");
   figura.append(zbudujRysunek(dane.ast, uklad));
-  montaz.replaceChildren(figura, zbudujLegende(zbierzTypy(dane.ast)));
+  montaz.replaceChildren(figura, zbudujLegende(zbierzTypy(dane.ast)), status);
   status.textContent = `${TEKSTY.opisRysunku}. Wykorzystane bramki: ${[...zbierzTypy(dane.ast)]
     .map((typ) => BRAMKI[typ].nazwa)
     .join(", ")}.`;

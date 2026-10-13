@@ -310,9 +310,14 @@ function zbudujStrone(tytul, node, zmienne, identyfikator) {
   return sekcja;
 }
 
-/** Pokazuje komunikat zamiast diagramów. */
-function pokazKomunikat(montaz, tekst) {
-  montaz.replaceChildren(elementHtml("p", "wiz-blad alert alert-warning mb-0", tekst));
+/** Pokazuje komunikat zamiast diagramów.
+
+    Element `status` wraca do montażu razem z komunikatem. Bez tego `replaceChildren`
+    odłączyłby go od dokumentu i `status.textContent` ustawiałby tekst na węźle poza
+    dokumentem — czytnik ekranu nie ogłosiłby wyniku. */
+function pokazKomunikat(montaz, tekst, status) {
+  montaz.replaceChildren(elementHtml("p", "wiz-blad alert alert-warning mb-0", tekst), status);
+  status.textContent = tekst;
 }
 
 /** Pobiera drzewo formuły z API. Rzuca, gdy sieć zawiedzie — łapie to `wypelnij`. */
@@ -342,17 +347,17 @@ async function wypelnij(montaz) {
   try {
     [daneLewa, danePrawa] = await Promise.all([pobierzAst(stronaLewa), pobierzAst(stronaPrawa)]);
   } catch (blad) {
-    pokazKomunikat(montaz, TEKSTY.siec);
+    pokazKomunikat(montaz, TEKSTY.siec, status);
     return;
   }
 
   for (const dane of [daneLewa, danePrawa]) {
     if (!dane.ok) {
-      pokazKomunikat(montaz, dane.blad || TEKSTY.blad);
+      pokazKomunikat(montaz, dane.blad || TEKSTY.blad, status);
       return;
     }
     if (!dane.ast || !maPoprawneDrzewo(dane.ast)) {
-      pokazKomunikat(montaz, TEKSTY.brakAst);
+      pokazKomunikat(montaz, TEKSTY.brakAst, status);
       return;
     }
   }
@@ -367,6 +372,7 @@ async function wypelnij(montaz) {
       montaz,
       `Diagram zbiorów pokazuje co najwyżej ${MAKS_ZBIOROW} zmienne. ` +
         `Ta formuła ma ich ${zmienne.length} — nie zmieszczą się na rysunku.`,
+      status,
     );
     return;
   }
@@ -376,7 +382,7 @@ async function wypelnij(montaz) {
     ["prawa strona", danePrawa],
   ]) {
     if (!sensZbiorowy(dane.ast) || !maOperatorZbiorowy(dane.ast)) {
-      pokazKomunikat(montaz, `${TEKSTY.bezSensu} (${etykieta})`);
+      pokazKomunikat(montaz, `${TEKSTY.bezSensu} (${etykieta})`, status);
       return;
     }
   }
@@ -406,7 +412,7 @@ async function wypelnij(montaz) {
     uwagi.textContent = `${TEKSTY.legenda} ${TEKSTY.obszarPelny}`;
   }
 
-  montaz.replaceChildren(diagramy, podpis, uwagi);
+  montaz.replaceChildren(diagramy, podpis, uwagi, status);
   status.textContent = `${takieSame ? TEKSTY.takiSam : TEKSTY.rozny} Zamalowanych obszarów: ${
     obszaryLewe.size
   } po lewej i ${obszaryPrawe.size} po prawej.`;
