@@ -28,6 +28,17 @@
 
    Numer kroku zostaje w tekście dla czytników ekranu pod tabelą (widok go nie pokazuje).
 
+   Ukrywanie odpowiedzi i odklikiwanie filtrów (karta PRZ-158): pod tabelą stoi
+   **jeden** przycisk odpowiedzi. „Pokaż odpowiedź” odsłania całą tabelę, a „Ukryj
+   odpowiedzi” wraca do kroku, na którym student był — nieodkryte komórki znów są
+   polami do wpisania. Ukrycie kończy próbę: wpisy studenta zostają w polach, ale
+   oceny (klasy `komorka-dobrze` i `komorka-zle` oraz znaczki) znikają, bo odpowiedzi
+   były już widoczne. Ocenianie wznawia kolejny wpis w polu albo „Sprawdź całą tabelę”.
+   Kliknięcie wartości zmiennej zakłada filtr (`aria-pressed="true"`), a kliknięcie
+   tej samej wartości zdejmuje go. Przy aktywnym filtrze obok przycisku odpowiedzi
+   stoi „Wyczyść filtry”. Co jest widoczne, mówi słowami zdanie w `aria-live`
+   („Widoczne wiersze: 2 z 4.”) — kolor i wygaszenie wiersza są tylko dla wzroku.
+
    Nie ma tu podsłuchu na zdarzenia klawiatury dla przycisków: element `<button>`
    sam obsługuje Enter i spację (przeglądarka wysyła wtedy `click`). Własny `keydown`
    ma tylko klikalny wiersz tabeli (`<tr>` nie jest przyciskiem) oraz pole wpisywania
@@ -72,6 +83,11 @@ const TEKSTY = {
   wiersz: "Wiersz",
   podsumowanie: "Podsumowanie",
   pokazOdpowiedz: "Pokaż odpowiedź",
+  ukryjOdpowiedz: "Ukryj odpowiedzi",
+  czyscFiltry: "Wyczyść filtry",
+  widoczneWiersze: "Widoczne wiersze",
+  filtrAktywny: "Filtr zmiennej jest aktywny.",
+  odpowiedziPokazane: "Odpowiedzi są pokazane.",
   sprawdzTabele: "Sprawdź całą tabelę",
   wpisz: "wpisz 0 albo 1",
   ocenaDobrze: "dobrze",
@@ -226,6 +242,13 @@ function rysuj(montaz, formula, dane, status) {
   const polaWynikow = [];
   const naglowkiWynikow = [];
 
+  /* Stan widoku odpowiedzi (karta PRZ-158). `pokazaneOdpowiedzi` odsłania całą tabelę
+     niezależnie od kroku, a `ocenyAktywne` wyłącza ocenianie wpisów po tym, jak student
+     zobaczył odpowiedzi — do następnego wpisu albo sprawdzenia tabeli. */
+  let pokazaneOdpowiedzi = false;
+  let ocenyAktywne = true;
+  let biezacyKrok = 0;
+
   const liczbaWierszy = wiersze.length;
   /* Kroki pomijają kolumny zmiennych (karta PRZ-073): te same wartości widać już
      w kolumnach zmiennych po lewej, a te są odkryte od początku. Serwer oddaje
@@ -261,9 +284,16 @@ function rysuj(montaz, formula, dane, status) {
    *
    *  W trybie czytania oceny nie ma wcale: wpis studenta nie dostaje zieleni ani
    *  czerwieni, znaczek „✓”/„✕” zostaje pusty, a etykieta mówi tylko, co wpisać.
-   *  Wartość komórki pokazuje krok, tak samo jak przed wpisaniem. */
+   *  Wartość komórki pokazuje krok, tak samo jak przed wpisaniem.
+   *
+   *  Po ukryciu odpowiedzi oceny też nie ma (karta PRZ-158): student widział już
+   *  rozwiązanie, więc jego wpisy nie dostają koloru, dopóki nie wpisze czegoś nowego
+   *  albo nie sprawdzi tabeli. Wartości w polach zostają. */
   function ocena(komorka) {
     if (!ocenaWlaczona) {
+      return null;
+    }
+    if (!ocenyAktywne) {
       return null;
     }
     const wpis = komorka.wejscie.value;
@@ -345,7 +375,11 @@ function rysuj(montaz, formula, dane, status) {
     wejscie.setAttribute("autocomplete", "off");
     wejscie.setAttribute("aria-label", opisKomorki(komorka));
 
-    wejscie.addEventListener("input", () => pokazOcene(komorka));
+    /* Nowy wpis wznawia ocenianie po ukryciu odpowiedzi (karta PRZ-158). */
+    wejscie.addEventListener("input", () => {
+      ocenyAktywne = true;
+      pokazOcene(komorka);
+    });
     /* Kliknięcie w pole nie może wybierać całego wiersza ani go filtrować. */
     wejscie.addEventListener("click", (zdarzenie) => zdarzenie.stopPropagation());
     wejscie.addEventListener("keydown", (zdarzenie) => {
@@ -412,7 +446,14 @@ function rysuj(montaz, formula, dane, status) {
       przycisk.append(wartosc(znak));
       przycisk.addEventListener("click", (zdarzenie) => {
         zdarzenie.stopPropagation(); // ustawiamy jedną zmienną, nie cały wiersz
-        ustawienie.set(nazwa, znak);
+        /* Ponowne kliknięcie tej samej wartości zdejmuje filtr (karta PRZ-158).
+           Ustawienie trzyma po jednej wartości na zmienną, więc kliknięcie „0”,
+           gdy stoi „1”, przestawia filtr — filtry `1` i `0` wykluczają się. */
+        if (ustawienie.get(nazwa) === znak) {
+          ustawienie.delete(nazwa);
+        } else {
+          ustawienie.set(nazwa, znak);
+        }
         odswiez();
       });
       przyciski.push({ przycisk, zmienna: nazwa, znak });
@@ -459,8 +500,22 @@ function rysuj(montaz, formula, dane, status) {
   montazKrokow.setAttribute("data-stepper", "");
   const przyciskiOceny = element("div", "tt-przyciski-oceny mb-2");
 
-  const pokazOdpowiedz = element("button", "btn btn-outline-primary btn-sm", TEKSTY.pokazOdpowiedz);
-  pokazOdpowiedz.type = "button";
+  /* Jeden przycisk odpowiedzi (karta PRZ-158): pokazuje całą tabelę i tym samym
+     przyciskiem się ją ukrywa. Etykietę ustawia `pokazKrok`, bo zależy od stanu. */
+  const przelacznikOdpowiedzi = element(
+    "button",
+    "btn btn-outline-primary btn-sm",
+    TEKSTY.pokazOdpowiedz,
+  );
+  przelacznikOdpowiedzi.type = "button";
+  przelacznikOdpowiedzi.addEventListener("click", przelaczOdpowiedzi);
+
+  /* „Wyczyść filtry” stoi obok i pokazuje się tylko przy założonym filtrze. */
+  const czyscFiltry = element("button", "btn btn-outline-secondary btn-sm", TEKSTY.czyscFiltry);
+  czyscFiltry.type = "button";
+  czyscFiltry.hidden = true;
+  czyscFiltry.addEventListener("click", wyczyscUstawienie);
+
   /* „Sprawdź całą tabelę” powstaje tylko tam, gdzie tablica jest sprawdzianem.
      W trybie czytania nie ma czego sprawdzać, więc przycisk w ogóle nie istnieje. */
   if (ocenaWlaczona) {
@@ -469,7 +524,7 @@ function rysuj(montaz, formula, dane, status) {
     sprawdzTabele.addEventListener("click", sprawdzCalaTabele);
     przyciskiOceny.append(sprawdzTabele);
   }
-  przyciskiOceny.append(pokazOdpowiedz);
+  przyciskiOceny.append(przelacznikOdpowiedzi, czyscFiltry);
 
   /* Wynik sprawdzenia to zdanie po polsku — widoczne i ogłaszane przez `aria-live`. */
   const wynikSprawdzenia = element("p", "tt-wynik-sprawdzenia mb-0");
@@ -489,10 +544,7 @@ function rysuj(montaz, formula, dane, status) {
   const opisWyniku = element("p", "tt-wynik-ustawienia small text-muted mb-1", TEKSTY.czekanie);
   const czysc = element("button", "btn btn-outline-secondary btn-sm", TEKSTY.wyczysc);
   czysc.type = "button";
-  czysc.addEventListener("click", () => {
-    ustawienie.clear();
-    odswiez();
-  });
+  czysc.addEventListener("click", wyczyscUstawienie);
   panel.append(tytul, opisUstawienia, opisWyniku);
   /* Zdanie „Ta formuła jest tautologią…” to ocena formuły — w trybie czytania
      panel zostaje bez niego, a „Wyczyść wybór” działa dalej (karta PRZ-142). */
@@ -502,6 +554,30 @@ function rysuj(montaz, formula, dane, status) {
     panel.append(element("p", "tt-klasyfikacja small mb-2", klasyfikacja));
   }
   panel.append(czysc);
+
+  /** Zdejmuje wszystkie filtry naraz („Wyczyść filtry” i „Wyczyść wybór” w panelu). */
+  function wyczyscUstawienie() {
+    ustawienie.clear();
+    odswiez();
+  }
+
+  /** Zdanie o stanie widoku dla czytnika ekranu (karta PRZ-158).
+   *
+   *  Wygaszenie wiersza i kolor są tylko dla wzroku — tu słowami idzie to samo:
+   *  ile wierszy widać, czy działa filtr i czy odpowiedzi są pokazane. */
+  function zglosStan(pasujace, wynik) {
+    const czesci = [`${TEKSTY.widoczneWiersze}: ${pasujace} z ${wiersze.length}.`];
+    if (ustawienie.size > 0) {
+      czesci.push(TEKSTY.filtrAktywny);
+    }
+    if (pokazaneOdpowiedzi) {
+      czesci.push(TEKSTY.odpowiedziPokazane);
+    }
+    if (wynik === 0 || wynik === 1) {
+      czesci.push(`${TEKSTY.wynik}: ${slownie(wynik)}.`);
+    }
+    status.textContent = czesci.join(" ");
+  }
 
   /** Przelicza widok po każdej zmianie ustawienia: filtry, podświetlenie i panel. */
   function odswiez() {
@@ -546,14 +622,15 @@ function rysuj(montaz, formula, dane, status) {
     if (wynik === 0 || wynik === 1) {
       opisWyniku.className = "tt-wynik-ustawienia alert alert-success py-1 px-2 mb-1";
       opisWyniku.textContent = `${TEKSTY.wynik}: ${wynik} (${slownie(wynik)}).`;
-      status.textContent = `${TEKSTY.wynik}: ${slownie(wynik)}. Pasuje ${pasujace} z ${wiersze.length} wierszy.`;
     } else {
       opisWyniku.className = "tt-wynik-ustawienia small text-muted mb-1";
       opisWyniku.textContent = TEKSTY.czekanie;
-      status.textContent = `Pasuje ${pasujace} z ${wiersze.length} wierszy.`;
     }
+    zglosStan(pasujace, wynik);
 
+    /* Przycisk czyszczenia filtrów pokazuje się tylko wtedy, gdy jest co zdejmować. */
     czysc.disabled = ustawienie.size === 0;
+    czyscFiltry.hidden = ustawienie.size === 0;
   }
 
   /** „Sprawdź całą tabelę”: maluje wpisy i mówi słowami, ile z nich jest dobrych.
@@ -561,6 +638,8 @@ function rysuj(montaz, formula, dane, status) {
    *  Liczą się komórki jeszcze zakryte, w które student wpisał `0` albo `1` — odkryte
    *  pokazują już wartość z tabeli, więc nie są jego odpowiedzią. */
   function sprawdzCalaTabele() {
+    /* Sprawdzenie wznawia ocenianie także po tym, jak student ukrył odpowiedzi. */
+    ocenyAktywne = true;
     let dobre = 0;
     let wpisane = 0;
     for (const komorka of polaWynikow) {
@@ -591,21 +670,25 @@ function rysuj(montaz, formula, dane, status) {
     dane.klasyfikacja,
     ocenaWlaczona,
   );
-  let stepper = null;
 
   /** Pokazuje stan po wejściu w krok o numerze `indeks` (liczonym od zera).
    *
    *  Numer kroku jest numerem komórki, więc komórka o numerze `n` jest odkryta, gdy
    *  `n <= indeks` — każde „›” odsłania dokładnie jedną. Komórki kolumn zmiennych
    *  nie mają numeru i są odkryte od początku. Krok podsumowania (numer równy liczbie
-   *  komórek) pokazuje już całą tabelę i nie ma własnej kolumny. */
+   *  komórek) pokazuje już całą tabelę i nie ma własnej kolumny.
+   *
+   *  Gdy odpowiedzi są pokazane (karta PRZ-158), odkryte są wszystkie komórki — także
+   *  te przed bieżącym krokiem, więc ten sam przebieg rysuje oba stany. */
   function pokazKrok(indeks) {
+    biezacyKrok = indeks;
     const krok = kroki[indeks] || {};
     const biezaca = krok.kolumna === null || krok.kolumna === undefined ? null : krok;
 
     for (const rzad of komorkiWyniku) {
       for (const komorka of rzad) {
-        const odkryta = komorka.numer === null || komorka.numer <= indeks;
+        const doKroku = komorka.numer === null || komorka.numer <= indeks;
+        const odkryta = pokazaneOdpowiedzi || doKroku;
         const jestBiezaca = komorka.numer !== null && komorka.numer === indeks;
         komorka.odkryta = odkryta;
         komorka.element.classList.toggle("tt-odkryta", odkryta);
@@ -623,25 +706,37 @@ function rysuj(montaz, formula, dane, status) {
       naglowek.classList.toggle("tt-biezaca-kolumna", biezaca !== null && kolumna === biezaca.kolumna);
     });
 
-    /* Na ostatnim kroku nie ma czego odsłaniać — przycisk traci sens. */
-    pokazOdpowiedz.disabled = indeks >= kroki.length - 1;
+    /* Etykieta zależy od stanu (karta PRZ-158): ten sam przycisk pokazuje i ukrywa. */
+    przelacznikOdpowiedzi.textContent = pokazaneOdpowiedzi
+      ? TEKSTY.ukryjOdpowiedz
+      : TEKSTY.pokazOdpowiedz;
 
     zdanieKroku.textContent = `${TEKSTY.krok} ${indeks + 1} z ${kroki.length}. ${krok.opis || ""}`;
   }
 
-  pokazOdpowiedz.addEventListener("click", () => {
-    if (stepper) {
-      stepper.go(stepper.length - 1);
+  /** Przełącza widok odpowiedzi: „Pokaż odpowiedź” ↔ „Ukryj odpowiedzi”.
+   *
+   *  Ukrycie wraca do bieżącego kroku, więc nieodkryte komórki znów są polami
+   *  do wpisania, i kończy próbę: wpisy zostają, ale oceny znikają, bo odpowiedzi
+   *  były już widoczne (karta PRZ-158). */
+  function przelaczOdpowiedzi() {
+    pokazaneOdpowiedzi = !pokazaneOdpowiedzi;
+    if (!pokazaneOdpowiedzi) {
+      ocenyAktywne = false;
     }
-  });
+    pokazKrok(biezacyKrok);
+    /* Zdanie o stanie mówi słowami także to, czy odpowiedzi są pokazane. */
+    odswiez();
+  }
 
   montaz.replaceChildren(podpowiedz, legenda, przewijanie, pasek, panel, status);
   odswiez();
   /* Pasek kroków to wspólny komponent (karty PRZ-072 i PRZ-124): dokładnie dwie
      strzałki „‹” i „›” i opis kroku między nimi, bez numerków i guzików. Karta nie
      nadpisuje napisów paska — numer kroku trafia tylko do czytnika ekranu
-     (`zdanieKroku`). */
-  stepper = createStepper({
+     (`zdanieKroku`). Zwróconego obiektu nie trzymamy: kroki zmienia tylko pasek,
+     a widok odpowiedzi przełącza własny przycisk (karta PRZ-158). */
+  createStepper({
     mount: montazKrokow,
     steps: kroki,
     onStep: (indeks) => pokazKrok(indeks),

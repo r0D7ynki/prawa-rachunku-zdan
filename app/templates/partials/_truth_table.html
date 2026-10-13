@@ -1,5 +1,5 @@
 {# Partial: interaktywna tablica prawdy z wpisywaniem wartości. Wypełniają karty
-   PRZ-011, PRZ-073, PRZ-121 i PRZ-142.
+   PRZ-011, PRZ-073, PRZ-121, PRZ-142 i PRZ-158.
    Wejście: `formula` (tekst formuły w Unicode) oraz opcjonalne `pokaz_ocene`
    (domyślnie `True`). Strony praw i tautologii podają `pokaz_ocene=false`: tablica
    służy tam do czytania, więc `truth-table.js` nie rysuje pod nią panelu
@@ -8,6 +8,11 @@
    filtry, panel „Twoje ustawienie” oraz pasek kroków ze wspólnego komponentu
    `stepper.js`. Zakryta komórka wyniku to pole na jeden znak: student wpisuje `0`
    albo `1` i od razu widzi, czy dobrze.
+   Pod tabelą stoi jeden przycisk odpowiedzi (karta PRZ-158): „Pokaż odpowiedź”
+   odsłania całą tabelę, a „Ukryj odpowiedzi” wraca do kroku i zdejmuje oceny wpisów.
+   Kliknięcie wartości zmiennej zakłada filtr, ponowne kliknięcie go zdejmuje,
+   a przy aktywnym filtrze obok pojawia się „Wyczyść filtry”. Stan widoku opisuje
+   na bieżąco zdanie w `aria-live` („Widoczne wiersze: 2 z 4.”).
    Partial nie liczy żadnych wartości — dokłada tylko style komponentu i paska. #}
 {% set pokaz_oceny = pokaz_ocene if pokaz_ocene is defined else true %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/truth-table.css') }}" />

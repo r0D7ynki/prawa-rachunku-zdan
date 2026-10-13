@@ -1,4 +1,5 @@
-"""Testy komponentu interaktywnej tablicy prawdy (karty PRZ-011, PRZ-073, PRZ-121 i PRZ-142).
+"""Testy komponentu interaktywnej tablicy prawdy (karty PRZ-011, PRZ-073, PRZ-121,
+PRZ-142 i PRZ-158).
 
 Tablica powstaje w przeglądarce z danych API, więc testy nie mogą jej narysować.
 Sprawdzają to, co da się sprawdzić bez przeglądarki (patrz ``AGENTS.md``, zasada 6):
@@ -9,13 +10,18 @@ Sprawdzają to, co da się sprawdzić bez przeglądarki (patrz ``AGENTS.md``, za
 * jak zbudowany jest skrypt — czy adres bierze z atrybutu, czy pokazuje słowa
   ``PRAWDA``/``FAŁSZ`` obok koloru, czy obsługuje klawiaturę i błędy po polsku,
 * czy tablica rośnie krok po kroku: import wspólnego ``createStepper``,
-  ``aria-current`` na bieżącej komórce i przycisk „Pokaż odpowiedź”,
+  ``aria-current`` na bieżącej komórce i przycisk odpowiedzi,
 * czy da się wpisywać wartości (karta PRZ-121): pole ``input`` w zakrytej komórce,
   klasy oceny ``komorka-dobrze`` i ``komorka-zle``, wynik „Sprawdź całą tabelę”
   słowami oraz klawisze ``Enter`` i ``Backspace`` w polu,
 * czy strony praw i tautologii (karta PRZ-142) pokazują tablicę bez oceny:
   ``data-pokaz-oceny="false"``, brak przycisku „Sprawdź całą tabelę” i brak zdania
   o klasyfikacji formuły,
+* czy odpowiedzi da się pokazać i ukryć (karta PRZ-158): jedna etykieta przycisku
+  na każdy stan, powrót do kroku i zdjęcie ocen,
+* czy filtry zmiennych dają się odklikać (karta PRZ-158): ponowne kliknięcie tej
+  samej wartości zdejmuje filtr, „Wyczyść filtry” pojawia się tylko przy aktywnym
+  filtrze, a stan widoku idzie słowami przez ``aria-live``,
 * czy z widoku zniknęły guziki kroków („Odtwórz”, „Pauza”, „Od nowa”) i kropki kroków.
 
 Wzorzec testu źródłowego jest ten sam, co w ``tests/test_czesc_kroki.py``.
@@ -41,6 +47,10 @@ WZORZEC_WYBIERZ_WIERSZ = re.compile(
     r"ustawienie\.set\(nazwa, wiersz\[nazwa\]\);\s*"
     r"\}\s*"
     r"odswiez\(\);\s*\};"
+)
+#: Wywołanie tworzące przycisk odpowiedzi: klasa i etykieta razem (karta PRZ-158).
+WZORZEC_PRZYCISKU_ODPOWIEDZI = re.compile(
+    r'element\(\s*"button",\s*"btn btn-outline-primary btn-sm",\s*TEKSTY\.pokazOdpowiedz'
 )
 #: Napisy, których w widoku tablicy być nie może (karta PRZ-121 usuwa guziki kroków).
 NAPISY_GUZIKOW = ("Odtwórz", "Pauza", "Od nowa")
@@ -448,10 +458,10 @@ def test_skrypt_wyroznia_biezaca_kolumne_naglowkiem(skrypt):
 
 
 def test_skrypt_ma_przycisk_pokaz_odpowiedz(skrypt):
-    """Przycisk odsłania całą tabelę — to ocena, nie krok."""
+    """Przycisk odpowiedzi to nie krok: od PRZ-158 nie rusza paska kroków."""
     assert 'pokazOdpowiedz: "Pokaż odpowiedź"' in skrypt
-    assert 'element("button", "btn btn-outline-primary btn-sm", TEKSTY.pokazOdpowiedz)' in skrypt
-    assert "stepper.go(stepper.length - 1)" in skrypt
+    assert WZORZEC_PRZYCISKU_ODPOWIEDZI.search(skrypt)
+    assert "stepper.go(stepper.length - 1)" not in skrypt
 
 
 def test_skrypt_konczy_podsumowaniem_z_klasyfikacja(skrypt):
@@ -607,6 +617,123 @@ def test_pole_nie_przechwytuje_strzalek(skrypt):
 
 
 # ---------------------------------------------------------------------------
+# Ukrywanie odpowiedzi i odklikiwanie filtrów (karta PRZ-158)
+# ---------------------------------------------------------------------------
+
+
+def test_przycisk_odpowiedzi_ma_obie_etykiety(skrypt):
+    """Kryterium karty: jedna etykieta na każdy stan i tylko jeden taki przycisk."""
+    assert 'pokazOdpowiedz: "Pokaż odpowiedź"' in skrypt
+    assert 'ukryjOdpowiedz: "Ukryj odpowiedzi"' in skrypt
+    assert skrypt.count('"btn btn-outline-primary btn-sm"') == 1, (
+        "drugi przycisk odpowiedzi znaczyłby, że nie da się wrócić jednym kliknięciem"
+    )
+
+
+def test_przycisk_odpowiedzi_przelacza_w_obie_strony(skrypt):
+    """Kliknięcie przełącza stan, a rysowanie dobiera napis do stanu."""
+    przelaczenie = _blok(skrypt, "function przelaczOdpowiedzi(")
+    assert "pokazaneOdpowiedzi = !pokazaneOdpowiedzi;" in przelaczenie
+    assert "pokazKrok(biezacyKrok);" in przelaczenie
+    assert "odswiez();" in przelaczenie, "bez odświeżenia czytnik nie usłyszy stanu"
+
+    rysowanie = _blok(skrypt, "function pokazKrok(")
+    assert "TEKSTY.ukryjOdpowiedz" in rysowanie
+    assert "TEKSTY.pokazOdpowiedz" in rysowanie
+
+
+def test_przycisk_odpowiedzi_zostaje_czynny_po_pokazaniu(skrypt):
+    """Ten sam przycisk musi wrócić ze stanu pokazanego, więc nie gasimy go na końcu."""
+    assert "przelacznikOdpowiedzi.disabled" not in skrypt
+    assert 'przelacznikOdpowiedzi.type = "button";' in skrypt
+
+
+def test_pokazane_odpowiedzi_odslaniaja_cala_tabele(skrypt):
+    """Stan „odpowiedzi pokazane” odsłania komórki niezależnie od numeru kroku."""
+    rysowanie = _blok(skrypt, "function pokazKrok(")
+    assert "const doKroku = komorka.numer === null || komorka.numer <= indeks;" in rysowanie
+    assert "const odkryta = pokazaneOdpowiedzi || doKroku;" in rysowanie
+    assert 'komorka.element.classList.toggle("tt-odkryta", odkryta);' in rysowanie
+
+
+def test_ukrycie_odpowiedzi_wraca_do_kroku_i_zdejmuje_oceny(skrypt):
+    """Kryterium karty: pola wracają, a klasy ``komorka-dobrze``/``komorka-zle`` znikają.
+
+    Ukrycie zdejmuje oceny, bo student widział już rozwiązanie; przerysowanie widoku
+    (``pokazKrok``) jest tym, co faktycznie zdejmuje klasy i przywraca pola.
+    """
+    przelaczenie = _blok(skrypt, "function przelaczOdpowiedzi(")
+    assert "ocenyAktywne = false;" in przelaczenie
+    assert "pokazKrok(biezacyKrok);" in przelaczenie, "bez przerysowania klasy zostają"
+
+    ocena = _blok(skrypt, "function ocena(")
+    assert "if (!ocenyAktywne)" in ocena
+    assert ocena.index("if (!ocenyAktywne)") > ocena.index("if (!ocenaWlaczona)")
+
+    rysowanie = _blok(skrypt, "function pokazOcene(")
+    assert 'classList.toggle(KLASA_DOBRZE, stan === "dobrze")' in rysowanie
+    assert 'classList.toggle(KLASA_ZLE, stan === "zle")' in rysowanie
+
+
+def test_ocenianie_wraca_po_nowym_wpisie_albo_sprawdzeniu(skrypt):
+    """Ukrycie odpowiedzi nie blokuje oceniania na stałe."""
+    wpis = _blok(skrypt, 'wejscie.addEventListener("input"')
+    assert "ocenyAktywne = true;" in wpis
+    assert "pokazOcene(komorka);" in wpis
+
+    sprawdzenie = _blok(skrypt, "function sprawdzCalaTabele(")
+    assert "ocenyAktywne = true;" in sprawdzenie
+
+
+def test_ponowne_klikniecie_wartosci_zdejmuje_filtr(skrypt):
+    """Kryterium karty: ten sam klik zdejmuje filtr, więc ``aria-pressed`` wraca na ``false``."""
+    obsluga = _blok(skrypt, 'przycisk.addEventListener("click", (zdarzenie)')
+    assert "if (ustawienie.get(nazwa) === znak) {" in obsluga
+    assert "ustawienie.delete(nazwa);" in obsluga
+    assert "ustawienie.set(nazwa, znak);" in obsluga
+
+    odswiez = _blok(skrypt, "function odswiez(")
+    assert 'przycisk.setAttribute("aria-pressed", aktywny ? "true" : "false");' in odswiez
+
+
+def test_filtry_jeden_i_zero_wykluczaja_sie(skrypt):
+    """Jedna zmienna ma w ustawieniu jedną wartość, więc filtr ``1`` zdejmuje filtr ``0``."""
+    assert "const ustawienie = new Map();" in skrypt
+    obsluga = _blok(skrypt, 'przycisk.addEventListener("click", (zdarzenie)')
+    assert "else {" in obsluga, "bez gałęzi „else” druga wartość nie przestawiłaby filtra"
+
+
+def test_skrypt_ma_przycisk_wyczysc_filtry(skrypt):
+    """Kryterium karty: przycisk stoi obok odpowiedzi i widać go tylko przy filtrze."""
+    assert 'czyscFiltry: "Wyczyść filtry"' in skrypt
+    assert 'element("button", "btn btn-outline-secondary btn-sm", TEKSTY.czyscFiltry)' in skrypt
+    assert 'czyscFiltry.type = "button";' in skrypt
+    assert 'czyscFiltry.addEventListener("click", wyczyscUstawienie);' in skrypt
+    assert "przyciskiOceny.append(przelacznikOdpowiedzi, czyscFiltry);" in skrypt
+
+    odswiez = _blok(skrypt, "function odswiez(")
+    assert "czyscFiltry.hidden = ustawienie.size === 0;" in odswiez
+
+    czyszczenie = _blok(skrypt, "function wyczyscUstawienie(")
+    assert "ustawienie.clear();" in czyszczenie
+    assert "odswiez();" in czyszczenie
+
+
+def test_licznik_widocznych_wierszy_idzie_przez_aria_live(skrypt):
+    """Kryterium karty: stan filtrów i odpowiedzi jest opisany tekstem."""
+    assert 'widoczneWiersze: "Widoczne wiersze"' in skrypt
+    assert 'filtrAktywny: "Filtr zmiennej jest aktywny."' in skrypt
+    assert 'odpowiedziPokazane: "Odpowiedzi są pokazane."' in skrypt
+    assert 'status.setAttribute("aria-live", "polite")' in skrypt
+
+    zgloszenie = _blok(skrypt, "function zglosStan(")
+    assert 'status.textContent = czesci.join(" ");' in zgloszenie
+    assert "${TEKSTY.widoczneWiersze}: ${pasujace} z ${wiersze.length}." in zgloszenie
+    assert "if (ustawienie.size > 0) {" in zgloszenie
+    assert "if (pokazaneOdpowiedzi) {" in zgloszenie
+
+
+# ---------------------------------------------------------------------------
 # Tryb czytania: strony praw i tautologii bez oceny tablicy (karta PRZ-142)
 # ---------------------------------------------------------------------------
 
@@ -733,3 +860,14 @@ def test_styl_wyroznia_biezaca_komorke_i_kolumne(styl):
     assert ".tt-komorka-wyniku.tt-biezaca" in styl
     assert ".tt-naglowek-podformuly.tt-biezaca-kolumna" in styl
     assert ".tt-kroki-pasek" in styl
+
+
+def test_styl_gasi_przycisk_wyczysc_filtry(styl):
+    """„Wyczyść filtry” czeka zdjęty z widoku (atrybut ``hidden``, karta PRZ-158).
+
+    Klasa ``btn`` ustawia własne ``display``, więc sam atrybut z ``truth-table.js``
+    nie wystarczy — arkusz komponentu musi go pogasić, jak ``steps.css``.
+    """
+    assert ".tt-przyciski-oceny [hidden] {" in styl
+    blok = _blok(styl, ".tt-przyciski-oceny [hidden] {")
+    assert "display: none;" in blok
