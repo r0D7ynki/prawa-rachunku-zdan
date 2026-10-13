@@ -13,54 +13,64 @@
   <section class="sekcja" aria-labelledby="naglowek-symbole">
     <h2 id="naglowek-symbole">Symbole</h2>
     <p>
-      Poniżej każdy symbol razem z nazwą i zdaniem z życia.
-      W kolumnie „Na klawiaturze” znajdziesz znaki, którymi zastąpisz symbol.
+      Tabela podaje zapis z wykładu. W kolumnie „Na klawiaturze” znajdziesz znaki,
+      którymi zastąpisz symbol, gdy nie możesz go wpisać.
     </p>
     <div class="table-responsive">
       <table class="table tablica-symboli align-middle">
-        <caption>Symbole rachunku zdań: znaczenie, zapis z klawiatury i przykład z życia.</caption>
+        <caption>Symbole rachunku zdań: zapis z wykładu, znaczenie, zapis z klawiatury i przykład z życia.</caption>
         <thead>
           <tr>
-            <th scope="col">Symbol</th>
+            <th scope="col">Symbol z wykładu</th>
             <th scope="col">Jak czytamy</th>
+            <th scope="col">Nazwa</th>
             <th scope="col">Na klawiaturze</th>
             <th scope="col">Przykład z życia</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><span class="formula">¬p</span></td>
-            <td>nie p (negacja)</td>
+            <td><span class="formula">∼p</span></td>
+            <td>nie p</td>
+            <td>negacja</td>
             <td><code>~</code>, <code>!</code>, <code>not</code></td>
             <td>„Nie pada deszcz.”</td>
           </tr>
           <tr>
             <td><span class="formula">p ∧ q</span></td>
-            <td>p i q (koniunkcja)</td>
+            <td>p i q</td>
+            <td>koniunkcja</td>
             <td><code>&amp;</code>, <code>and</code></td>
             <td>„Pada deszcz i wieje wiatr.”</td>
           </tr>
           <tr>
             <td><span class="formula">p ∨ q</span></td>
-            <td>p lub q (alternatywa)</td>
+            <td>p lub q</td>
+            <td>alternatywa</td>
             <td><code>|</code>, <code>+</code>, <code>or</code></td>
             <td>„Jadę autobusem lub idę pieszo.”</td>
           </tr>
           <tr>
             <td><span class="formula">p → q</span></td>
-            <td>jeśli p, to q (implikacja)</td>
+            <td>jeśli p, to q</td>
+            <td>implikacja</td>
             <td><code>-&gt;</code>, <code>implies</code></td>
             <td>„Jeśli pada deszcz, to biorę parasol.”</td>
           </tr>
           <tr>
-            <td><span class="formula">p ↔ q</span></td>
-            <td>p wtedy i tylko wtedy, gdy q (równoważność)</td>
+            <td><span class="formula">p ≡ q</span></td>
+            <td>p wtedy i tylko wtedy, gdy q</td>
+            <td>równoważność</td>
             <td><code>&lt;-&gt;</code>, <code>iff</code></td>
             <td>„Zdam egzamin wtedy i tylko wtedy, gdy się nauczę.”</td>
           </tr>
         </tbody>
       </table>
     </div>
+    <p>
+      W innych książkach spotkasz <span class="formula">¬p</span> i <span class="formula">p ↔ q</span>.
+      To ten sam spójnik.
+    </p>
   </section>
 
   <section class="sekcja" aria-labelledby="naglowek-nawiasy">
@@ -70,18 +80,18 @@
       Bez nawiasów kolejność wyznacza siła wiązania symboli.
     </p>
     <p>
-      Najsilniej wiąże ¬, potem ∧, potem ∨, potem →, a najsłabiej ↔.
-      Dlatego <span class="formula">¬p ∧ q</span> czytamy jako „nie p, ale q”.
+      Najsilniej wiąże ∼, potem ∧, potem ∨, potem →, a najsłabiej ≡.
+      Dlatego <span class="formula">∼p ∧ q</span> czytamy jako „nie p, ale q”.
     </p>
     <p>
       Nawias zmienia sens zdania. Porównaj dwa zapisy:
     </p>
     <ul>
       <li>
-        <span class="formula">¬(p ∧ q)</span> — „nie jest tak, że oba naraz”.
+        <span class="formula">∼(p ∧ q)</span> — „nie jest tak, że oba naraz”.
       </li>
       <li>
-        <span class="formula">¬p ∧ q</span> — „p jest fałszywe, a q prawdziwe”.
+        <span class="formula">∼p ∧ q</span> — „p jest fałszywe, a q prawdziwe”.
       </li>
     </ul>
     <p>
