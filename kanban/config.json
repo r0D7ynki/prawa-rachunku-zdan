@@ -2,8 +2,8 @@
   "prefix": "PRZ",
   "headings": "en",
   "tool_dir": "scripts/kanban",
-  "swarmboard_version": "0.6.34",
-  "swarmboard_tool_hash": "08623593a2ac974f9e19d2a271f5d7f669e0458989908cfde82c66c58d7f9a59",
+  "swarmboard_version": "0.6.38",
+  "swarmboard_tool_hash": "8def57f64ee6f6681e8bd2efdb6e13a0368f6ebc64b51720982bc7f899092f95",
   "wip": {
     "in-progress": 8,
     "in-progress-per-model": 6,
