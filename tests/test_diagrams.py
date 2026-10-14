@@ -8,6 +8,11 @@ strona prawa pokazuje oba diagramy i nie wraca do rysowania w przeglądarce.
 Karta PRZ-141 dokłada drugi warunek: **każdy krok musi być widocznie inny** od
 poprzedniego. Dlatego testy porównują zamalowane komórki kolejnych kroków, liczą
 bramki policzone i zapalone oraz sprawdzają numer kroku z adresu (``?krok=N``).
+
+Karta PRZ-172 dokłada trzeci: rysunek zbiorów to **dwie** figury — lewa i prawa
+strona prawa — a lista kroków pod nimi nazywa operację każdego kroku. Krok zbiorów
+liczy się wtedy po operacjach, a nie po samych podformułach: zbiór ``p`` nie jest
+operacją, tylko punktem wyjścia.
 """
 
 from __future__ import annotations
@@ -31,6 +36,17 @@ ARKUSZ = Path(__file__).resolve().parents[1] / "app" / "static" / "css" / "wizua
 FORMULA_ZBIOROW = "∼(p ∨ q)"
 FORMULA_BRAMKI = "p → q"
 FORMULA_DRZEWA = "(p ∧ q) → r"
+FORMULA_DE_MORGANA = "∼(p ∨ q) ≡ (∼p ∧ ∼q)"
+
+#: Wzór, w którym dwie operacje jednej strony zachodzą na siebie — na nim obie
+#: warstwy obszaru są niepuste (karta PRZ-141).
+FORMULA_WARSTW = "∼p ∨ q"
+
+#: Slugi praw, dla których karty PRZ-172 i PRZ-123 pokazują diagram zbiorów.
+PRAWA_ZBIOROW = ("de-morgan-1", "rozdzielnosc-1")
+
+#: Nazwy operacji, które karta PRZ-172 wymaga w punkcie listy kroków.
+NAZWY_OPERACJI = ("suma", "część wspólna", "dopełnienie")
 
 #: Prostokąt próbki razem z jej położeniem na siatce — po tym poznajemy obszar.
 PROBKA = re.compile(r'<rect class="wiz-probka" x="(\d+)" y="(\d+)" width="(\d+)"')
@@ -142,10 +158,10 @@ def test_sets_svg_pokazuje_przestrzen_i_kola():
 def test_sets_svg_rozroznia_obszar_nowy_i_poprzedni():
     """Kryterium PRZ-141: krok ma obie warstwy i różne klasy obszaru.
 
-    Krok „zbiór q” rysuje część wspólną z krokiem „zbiór p” (słabym akcentem)
-    i to, co dokłada (mocnym), więc obie warstwy są niepuste.
+    Krok „suma ∼p ∨ q” rysuje część wspólną z krokiem „dopełnienie ∼p” (słabym
+    akcentem) i to, co dokłada (mocnym), więc obie warstwy są niepuste.
     """
-    node = parse(FORMULA_ZBIOROW)
+    node = parse(FORMULA_WARSTW)
 
     svg = str(sets_svg(node, krok=1))
 
@@ -346,28 +362,30 @@ def test_gates_svg_przycina_numer_kroku():
 
 
 def test_kroki_sets_nazywaja_operacje():
-    """Kryterium PRZ-123: co najmniej dwa kroki, w opisach „suma” i „dopełnienie”."""
+    """Kryterium PRZ-172: krok zbiorów to operacja, a nie samo zaznaczenie zbioru."""
     kroki = kroki_sets(parse(FORMULA_ZBIOROW))
 
-    assert len(kroki) >= 2
-    opis = " ".join(krok["opis"] for krok in kroki).lower()
-    assert "suma" in opis
-    assert "dopełnienie" in opis
-    assert kroki[0]["operacja"] == "zbiór"
-    assert kroki[-1]["operacja"] == "dopełnienie"
+    assert [krok["operacja"] for krok in kroki] == ["suma", "dopełnienie"]
+    assert [krok["wzor"] for krok in kroki] == ["p ∨ q", "∼(p ∨ q)"]
+    assert kroki[0]["opis"] == "obszar, który pokrywa p albo q."
+    assert all(krok["strona"] == "lewa" for krok in kroki), "wzór bez ≡ to jedna strona"
     for krok in kroki:
         assert krok["opis"].endswith("."), "opis kroku to zdanie"
 
 
-def test_kroki_sets_ida_od_najmniejszej_podformuly():
-    kroki = kroki_sets(parse(FORMULA_ZBIOROW))
+def test_kroki_sets_ida_po_operacjach_stron():
+    """Kryterium PRZ-172: najpierw operacje lewej strony prawa, potem prawej."""
+    kroki = kroki_sets(parse(FORMULA_DE_MORGANA))
 
-    assert [krok["opis"] for krok in kroki] == [
-        "Zaznaczamy zbiór p.",
-        "Zaznaczamy zbiór q.",
-        "Suma zbiorów p i q.",
-        "Dopełnienie: bierzemy wszystko poza zbiorem p ∨ q.",
+    assert [(krok["strona"], krok["operacja"]) for krok in kroki] == [
+        ("lewa", "suma"),
+        ("lewa", "dopełnienie"),
+        ("prawa", "dopełnienie"),
+        ("prawa", "dopełnienie"),
+        ("prawa", "część wspólna"),
     ]
+    lewe = [krok for krok in kroki if krok["strona"] == "lewa"]
+    assert len(lewe) == len(kroki_sets(parse("∼(p ∨ q)"))), "lista zaczyna się od lewej strony"
 
 
 def test_kroki_sets_roznia_sie_miedzy_krokami():
@@ -423,10 +441,13 @@ def test_diagramy_prawa_maja_oba_rysunki_i_kroki():
     rysunki = widoki.diagramy(prawo)
 
     for rodzaj in ("bramki", "zbiory"):
-        kroki = rysunki[rodzaj]["kroki"]
-        assert kroki, f"brak kroków rysunku {rodzaj}"
-        assert all("<svg" in str(krok["svg"]) for krok in kroki)
-        assert all(krok["wzor"] for krok in kroki), "krok bez wzoru"
+        assert rysunki[rodzaj]["kroki"], f"brak kroków rysunku {rodzaj}"
+    for krok in rysunki["bramki"]["kroki"]:
+        assert "<svg" in str(krok["svg"])
+        assert krok["wzor"], "krok bramek bez wzoru"
+    for krok in rysunki["zbiory"]["kroki"]:
+        assert str(krok["svg"]).count("wiz-svg-zbiory") == 2, "krok zbiorów to dwa diagramy"
+        assert krok["opis"], "krok zbiorów bez napisu punktu listy"
 
 
 def test_diagramy_prawa_z_blednym_wzorem_daja_puste_kroki():
@@ -483,26 +504,123 @@ def test_strzalki_maja_polskie_etykiety(strony, law):
 
 
 # ---------------------------------------------------------------------------
+# Dwie strony prawa na diagramie zbiorów (karta PRZ-172)
+# ---------------------------------------------------------------------------
+
+
+def _widoczny_rysunek_zbiorow(html: str) -> str:
+    """Widoczna figura diagramu zbiorów — od kontenera do pierwszego ``<template>``.
+
+    Gotowe kroki czekają w szablonach dalej, więc ten fragment to dokładnie to,
+    co widać bez JavaScriptu.
+    """
+    poczatek = html.index('data-rola="rysunek-zbiorow"')
+    return html[poczatek : html.index("<template", poczatek)]
+
+
+def _punkty_listy(html: str) -> list[str]:
+    """Punkty widocznej listy kroków — ``<li>`` z ``<ol class="wiz-opisy">``."""
+    lista = re.search(r'<ol class="wiz-opisy">(.*?)</ol>', html, re.DOTALL)
+
+    assert lista, "brak listy kroków pod rysunkiem"
+    return re.findall(r"<li[^>]*>(.*?)</li>", lista.group(1), re.DOTALL)
+
+
+def _bez_znacznikow(html: str) -> str:
+    """Tekst bez znaczników — wzór w nagłówku i w punkcie listy jest opakowany w ``<span>``."""
+    return re.sub(r"<[^>]+>", "", html)
+
+
+def _warstwy_obu_stron(krok: dict) -> tuple[dict, dict]:
+    """Warstwy obszaru obu diagramów jednego kroku: lewa strona i prawa."""
+    diagramy = str(krok["svg"]).split('class="wiz-svg wiz-svg-zbiory"')[1:]
+
+    assert len(diagramy) == 2, "krok zbiorów to dwa diagramy"
+    return _warstwy(diagramy[0]), _warstwy(diagramy[1])
+
+
+def _prawo(slug: str):
+    """Prawo z rejestru po slugu — na nim liczymy kroki rysunku."""
+    return next(law for law in all_laws() if law.slug == slug)
+
+
+@pytest.mark.parametrize("slug", PRAWA_ZBIOROW)
+def test_strona_prawa_ma_dwa_diagramy_zbiorow(strony, slug):
+    """Kryterium PRZ-172: widoczna figura zbiorów pokazuje obie strony prawa."""
+    rysunek = _widoczny_rysunek_zbiorow(strony[slug])
+
+    assert rysunek.count('class="wiz-svg wiz-svg-zbiory"') == 2, "dwa diagramy zbiorów"
+
+
+@pytest.mark.parametrize("slug", PRAWA_ZBIOROW)
+def test_naglowki_stron_stoja_nad_diagramami(strony, slug):
+    """Kryterium PRZ-172: nad każdym diagramem stoi wzór jego strony prawa."""
+    prawo = _prawo(slug)
+    rysunek = _widoczny_rysunek_zbiorow(strony[slug])
+    naglowki = re.findall(r'<p class="wiz-strona-tytul">(.*?)</p>', rysunek, re.DOTALL)
+
+    assert [_bez_znacznikow(naglowek) for naglowek in naglowki] == [
+        f"Lewa strona: {to_text(parse(prawo.lewa))}",
+        f"Prawa strona: {to_text(parse(prawo.prawa))}",
+    ]
+    assert rysunek.index(naglowki[0]) < rysunek.index("<svg"), "nagłówek nad diagramem"
+    assert rysunek.index(naglowki[1]) < rysunek.rindex("<svg"), "nagłówek nad diagramem"
+
+
+@pytest.mark.parametrize("slug", PRAWA_ZBIOROW)
+def test_lista_krokow_nazywa_operacje_i_wzor(strony, slug):
+    """Kryterium PRZ-172: punkt mówi, jaką operację robi krok i jaki ma wzór."""
+    kroki = kroki_sets(parse(_prawo(slug).formula))
+    punkty = _punkty_listy(_widoczny_rysunek_zbiorow(strony[slug]))
+
+    assert len(punkty) == len(kroki), "tyle punktów, ile kroków zwraca ``kroki_sets``"
+    for punkt, krok in zip(punkty, kroki, strict=True):
+        assert krok["operacja"] in punkt.lower(), f"punkt bez nazwy operacji: {punkt!r}"
+        assert krok["wzor"] in _bez_znacznikow(punkt), f"punkt bez wzoru: {punkt!r}"
+        assert any(nazwa in punkt.lower() for nazwa in NAZWY_OPERACJI), (
+            f"punkt bez nazwy operacji z karty: {punkt!r}"
+        )
+
+
+@pytest.mark.parametrize("slug", PRAWA_ZBIOROW)
+def test_kazdy_krok_zbiorow_ma_obie_warstwy_i_rozni_sie_od_poprzedniego(slug):
+    """Kryterium PRZ-172: krok ma oba obszary i maluje inne komórki niż poprzedni."""
+    kroki = widoki.diagramy(_prawo(slug))["zbiory"]["kroki"]
+    stany = [_warstwy_obu_stron(krok) for krok in kroki]
+
+    for numer, stan in enumerate(stany):
+        for diagram in stan:
+            assert NOWY in diagram and POPRZEDNI in diagram, f"krok {numer} bez warstwy"
+    for numer, (stan, nastepny) in enumerate(zip(stany, stany[1:], strict=False)):
+        assert stan != nastepny, f"kroki {numer} i {numer + 1} rysują to samo"
+
+
+@pytest.mark.parametrize("law", all_laws(), ids=lambda law: law.slug)
+def test_bez_javascriptu_widac_diagramy_i_cala_liste(strony, law):
+    """Kryterium PRZ-172: pierwszy krok i cała lista kroków są na stronie bez skryptu."""
+    rysunek = _widoczny_rysunek_zbiorow(strony[law.slug])
+
+    assert "<svg" in rysunek, "bez JavaScriptu nie widać żadnego diagramu"
+    assert len(_punkty_listy(rysunek)) == len(kroki_sets(parse(law.formula)))
+
+
+# ---------------------------------------------------------------------------
 # Numer kroku z adresu (karta PRZ-141)
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="module")
 def prawo_z_krokami():
-    """Prawo o czterech krokach rysunku — na nim sprawdzamy numer z adresu."""
+    """Prawo o pięciu krokach rysunku — na nim sprawdzamy numer z adresu."""
     return next(law for law in all_laws() if law.slug == "de-morgan-1")
 
 
-def _widoczna_etykieta(html: str) -> str:
-    """Etykieta operacji z rysunku, który widać po otwarciu strony.
+def _krok_z_adresu(klient, adres: str) -> str:
+    """Widoczna figura diagramu zbiorów po otwarciu ``adres``."""
+    odpowiedz = klient.get(adres)
 
-    ``_rysunek`` kończy się na pierwszym ``</svg>``, a gotowe kroki czekają dalej
-    w ``<template>`` — więc trafiamy w rysunek widoczny od razu, bez JavaScriptu.
-    """
-    etykieta = ETYKIETA.search(_rysunek(html, "rysunek-zbiorow"))
-
-    assert etykieta, "widoczny diagram zbiorów bez etykiety operacji"
-    return etykieta.group(1)
+    assert odpowiedz.status_code == 200
+    return _widoczny_rysunek_zbiorow(odpowiedz.get_data(as_text=True))
 
 
 def test_strona_prawa_otwiera_krok_z_adresu(klient, prawo_z_krokami):
@@ -512,26 +630,23 @@ def test_strona_prawa_otwiera_krok_z_adresu(klient, prawo_z_krokami):
     i pierwszy szablon kroków to też krok 2 — inaczej ``wizualizacje.js``
     przeskoczyłby na początek listy po wczytaniu strony.
     """
-    svg = str(sets_svg(parse(prawo_z_krokami.formula), krok=2))
-
     odpowiedz = klient.get("/prawa/de-morgan-1?krok=2")
 
     assert odpowiedz.status_code == 200
+    svg = str(widoki.diagramy(prawo_z_krokami)["zbiory"]["kroki"][2]["svg"])
     html = odpowiedz.get_data(as_text=True)
-    assert _widoczna_etykieta(html) == ETYKIETA.search(svg).group(1)
     szablony = re.findall(r"<template data-wiz-krok>(.*?)</template>", html, re.DOTALL)
+
+    assert svg in _widoczny_rysunek_zbiorow(html), "widoczny rysunek to nie krok z adresu"
     assert szablony, "brak szablonów kroków"
     assert svg in szablony[0], "skrypt zacznie od innego kroku, niż pokazuje strona"
 
 
 def test_strona_prawa_przycina_krok_spoza_zakresu(klient, prawo_z_krokami):
     """Kryterium PRZ-141: ``?krok=999`` pokazuje ostatni krok, a nie błąd."""
-    ostatni = str(sets_svg(parse(prawo_z_krokami.formula), krok=999))
+    ostatni = str(widoki.diagramy(prawo_z_krokami)["zbiory"]["kroki"][-1]["svg"])
 
-    odpowiedz = klient.get("/prawa/de-morgan-1?krok=999")
-
-    assert odpowiedz.status_code == 200
-    assert _widoczna_etykieta(odpowiedz.get_data(as_text=True)) == ETYKIETA.search(ostatni).group(1)
+    assert ostatni in _krok_z_adresu(klient, "/prawa/de-morgan-1?krok=999")
 
 
 @pytest.mark.parametrize(
@@ -540,13 +655,9 @@ def test_strona_prawa_przycina_krok_spoza_zakresu(klient, prawo_z_krokami):
 )
 def test_strona_prawa_bez_dobrego_numeru_zaczyna_od_pierwszego(klient, prawo_z_krokami, adres):
     """Brak numeru albo śmieć w adresie to „od początku”, a nie błąd 500."""
-    pierwszy = str(sets_svg(parse(prawo_z_krokami.formula), krok=0))
-    etykieta = ETYKIETA.search(pierwszy).group(1)
+    pierwszy = str(widoki.diagramy(prawo_z_krokami)["zbiory"]["kroki"][0]["svg"])
 
-    odpowiedz = klient.get(adres)
-
-    assert odpowiedz.status_code == 200
-    assert _widoczna_etykieta(odpowiedz.get_data(as_text=True)) == etykieta
+    assert pierwszy in _krok_z_adresu(klient, adres)
 
 
 class _PanelParser(HTMLParser):

@@ -11,11 +11,18 @@ z elementem ``<svg>``. Wynik wstawiamy do szablonu przez ``markupsafe.Markup``
 Dwie listy kroków prowadzą czytelnika przez wzór:
 
 * :func:`kroki_gates` — bramki w kolejności liczenia (od zmiennych do całości),
-* :func:`kroki_sets` — operacje na zbiorach (zbiór, suma, część wspólna, dopełnienie).
+* :func:`kroki_sets` — operacje na zbiorach: najpierw lewa strona prawa, potem
+  prawa (karta PRZ-172).
 
 Krok ``i`` (liczony od zera) pokazuje stan po ``i``-tej operacji, a ``krok=None``
 znaczy „cała formuła”. Numer spoza listy jest przycinany do jej końców, tak jak
 w komponencie kroków ``stepper.js``.
+
+Karta PRZ-172 zmieniła rysunek zbiorów: zamiast jednego diagramu całego wzoru są
+**dwa** — lewa i prawa strona prawa obok siebie (:func:`sets_strony_svg`), a lista
+kroków pod nimi nazywa operację każdego kroku („Suma — p ∨ q — obszar, który
+pokrywa p albo q.”). Same zmienne nie są już krokami: zbiór ``p`` nie jest operacją,
+tylko punktem wyjścia, więc nie ma go ani na liście, ani w numeracji kroków.
 
 Od karty PRZ-141 każdy krok rysunku zbiorów jest **widocznie inny** od poprzedniego:
 obszar bieżącego kroku dzielimy na dwa kolory. Mocnym akcentem (``obszar-nowy``)
@@ -40,6 +47,7 @@ from app.logic.formula import (
     Var,
     evaluate,
     subformulas,
+    to_html,
     to_text,
     variables,
 )
@@ -80,6 +88,15 @@ OPERACJE: dict[type, str] = {
     Imp: "implikacja",
     Iff: "równoważność",
 }
+
+#: Strony prawa na diagramie zbiorów (karta PRZ-172). Pole ``strona`` kroku mówi,
+#: na którym diagramie ten krok się dzieje.
+LEWA = "lewa"
+PRAWA = "prawa"
+
+#: Nagłówki obu diagramów zbiorów (karta PRZ-172).
+TYTUL_LEWEJ = "Lewa strona"
+TYTUL_PRAWEJ = "Prawa strona"
 
 #: Wartość logiczna słowem — kolor nigdy nie jest jedynym nośnikiem informacji.
 PRAWDA = "PRAWDA"
@@ -368,20 +385,75 @@ def _krawedzie(node: Node) -> list[tuple[Node, Node]]:
 # --- diagram zbiorów -------------------------------------------------------
 
 
-def kroki_sets(node: Node) -> list[dict]:
-    """Kroki diagramu zbiorów: kolejne operacje na zbiorach.
+def strony(node: Node) -> tuple[Node, Node]:
+    """Lewa i prawa strona prawa (karta PRZ-172).
 
-    Jeden krok to jedna podformuła, tak samo jak w :func:`kroki_gates`.
-    Pole ``operacja`` to nazwa operacji („suma”, „dopełnienie”, …).
+    Równoważność ma je jako dzieci. Wzór, który nią nie jest, stoi po obu
+    stronach — dzięki temu sekcja rysunków nie znika z nietypowej treści.
     """
+    if isinstance(node, Iff):
+        return node.left, node.right
+    return node, node
+
+
+def operacje_zbiorow(node: Node) -> list[Node]:
+    """Podformuły będące operacją na zbiorach — bez samych zmiennych.
+
+    Karta PRZ-172: punkt listy kroków nazywa operację, a zbiór ``p`` nie jest
+    operacją, tylko punktem wyjścia. Krok ``i`` rysunku to ``i``-ta operacja
+    z tej listy, więc numer kroku znaczy to samo na liście i na rysunku.
+    """
+    return [czesc for czesc in subformulas(node) if not isinstance(czesc, Var)]
+
+
+def kroki_sets(node: Node) -> list[dict]:
+    """Kroki obu diagramów zbiorów: operacje lewej strony, potem prawej (PRZ-172).
+
+    Jeden krok to jedna operacja na zbiorach (:func:`operacje_zbiorow`). Kolejność
+    jest kolejnością nauki: czytelnik przechodzi najpierw lewą stronę prawa, potem
+    prawą, a ostatni krok domyka obie. Pola kroku: ``operacja`` („suma”,
+    „dopełnienie”, …), ``wzor`` (tekst formuły po kroku), ``opis`` (co obejmuje
+    obszar) i ``strona`` (``LEWA`` albo ``PRAWA``).
+    """
+    lewa, prawa = strony(node)
+    grupy = [(LEWA, operacje_zbiorow(lewa))]
+    if prawa is not lewa:
+        grupy.append((PRAWA, operacje_zbiorow(prawa)))
     return [
-        {"opis": _opis_zbioru(czesc), "operacja": OPERACJE[type(czesc)]}
-        for czesc in subformulas(node)
+        {
+            "operacja": OPERACJE[type(czesc)],
+            "wzor": to_text(czesc),
+            "opis": _opis_obszaru(czesc),
+            "strona": strona,
+        }
+        for strona, czesci in grupy
+        for czesc in czesci
     ]
 
 
+def _opis_obszaru(czesc: Node) -> str:
+    """Co obejmuje obszar tego kroku — zdanie bez nazwy operacji.
+
+    Nazwę operacji i wzór dokłada punkt listy kroków (``laws._punkt_kroku``),
+    żeby napis brzmiał „Dopełnienie — ∼(p ∨ q) — obszar poza zbiorem p ∨ q.”
+    (karta PRZ-172).
+    """
+    if isinstance(czesc, Var):
+        return f"całe koło zbioru {czesc.name}."
+    if isinstance(czesc, Not):
+        return f"obszar poza zbiorem {to_text(czesc.child)}."
+    if isinstance(czesc, And):
+        return f"obszar wspólny zbiorów {to_text(czesc.left)} i {to_text(czesc.right)}."
+    if isinstance(czesc, Or):
+        return f"obszar, który pokrywa {to_text(czesc.left)} albo {to_text(czesc.right)}."
+    if isinstance(czesc, Imp):
+        lewa, prawa = to_text(czesc.left), to_text(czesc.right)
+        return f"obszar {lewa} mieści się w obszarze {prawa}."
+    return f"oba obszary wzoru {to_text(czesc)} pokrywają się."
+
+
 def _opis_zbioru(czesc: Node) -> str:
-    """Zdanie po polsku opisujące operację na zbiorach."""
+    """Zdanie po polsku opisujące operację na zbiorach — opis rysunku dla czytnika."""
     wzor = to_text(czesc)
     if isinstance(czesc, Var):
         return f"Zaznaczamy zbiór {czesc.name}."
@@ -487,28 +559,13 @@ def _rysunek_zbiorow(
 def _etykieta_zbioru(czesc: Node) -> str:
     """Etykieta operacji nad rysunkiem: nazwa operacji i obszar, którego dotyczy.
 
-    Nazwy są te same co w ``kroki_sets`` („suma”, „dopełnienie”, „część wspólna”),
-    więc etykieta i opis kroku mówią o tym samym (karta PRZ-141).
+    Nazwy są te same co w :func:`kroki_sets` („suma”, „dopełnienie”, „część
+    wspólna”), więc etykieta nad rysunkiem i punkt listy mówią o tym samym
+    (karty PRZ-141 i PRZ-172).
     """
     if isinstance(czesc, Var):
         return f"Zbiór {czesc.name} — całe koło tej zmiennej."
-    if isinstance(czesc, Not):
-        return f"Dopełnienie — wszystko poza zbiorem {to_text(czesc.child)}."
-    if isinstance(czesc, And):
-        return (
-            f"Część wspólna — obszar wspólny zbiorów "
-            f"{to_text(czesc.left)} i {to_text(czesc.right)}."
-        )
-    if isinstance(czesc, Or):
-        return f"Suma — obszar, który pokrywa {to_text(czesc.left)} albo {to_text(czesc.right)}."
-    if isinstance(czesc, Imp):
-        return (
-            f"Implikacja — obszar {to_text(czesc.left)} mieści się "
-            f"w obszarze {to_text(czesc.right)}."
-        )
-    if isinstance(czesc, Iff):
-        return f"Równoważność — obie strony wzoru {to_text(czesc)} wskazują ten sam obszar."
-    return f"Obszar wzoru {to_text(czesc)}."
+    return f"{OPERACJE[type(czesc)].capitalize()} — {_opis_obszaru(czesc)}"
 
 
 def _etykieta_svg(tekst: str) -> str:
@@ -545,8 +602,12 @@ def _warstwy_kroku(
     (``obszar-nowy``) to to, co dokłada bieżąca operacja, a słaby
     (``obszar-poprzedni``) — część, która przyszła z poprzedniego kroku.
     Ich suma to zawsze cały obszar kroku, więc widać, co się właśnie zmieniło.
+
+    Kroki liczymy po operacjach (:func:`operacje_zbiorow`), tak samo jak lista
+    pod rysunkiem (karta PRZ-172); krok ``0`` to pierwsza operacja, więc warstwa
+    poprzednia jest przy nim pusta.
     """
-    czesci = subformulas(node)
+    czesci = operacje_zbiorow(node)
     biezaca = czesci[krok]
     siatka = _obszar(biezaca, zmienne, uklad)
     nowy = (siatka, "obszar-1 obszar-nowy", f"Nowy obszar: {_etykieta_zbioru(biezaca)}")
@@ -568,14 +629,32 @@ def _warstwy_kroku(
     ]
 
 
+def _warstwy_calej_formuly(
+    node: Node, zmienne: list[str], uklad: tuple[tuple[float, float, float], ...]
+) -> list[tuple[list[list[bool]], str, str]]:
+    """Warstwy rysunku bez wybranego kroku: cały obszar wzoru i pusta warstwa poprzednia.
+
+    Pusta warstwa jest po to, żeby **każdy** rysunek — także ten bez wybranego
+    kroku — miał obie warstwy obszaru, tak samo jak pierwszy krok (PRZ-141, PRZ-172).
+    """
+    return [
+        ([], "obszar-2 obszar-poprzedni", "Nie ma poprzedniego kroku — to cały obszar wzoru."),
+        (_obszar(node, zmienne, uklad), "obszar-1 obszar-nowy", "Obszar całej formuły."),
+    ]
+
+
 def sets_svg(node: Node, krok: int | None = None) -> Markup:
-    """Rysuje diagram zbiorów dla formuły.
+    """Rysuje diagram zbiorów **jednej strony prawa**.
 
     Prostokąt to cała przestrzeń, a koła — zbiory zmiennych (najwyżej trzy).
-    Obszar zamalowany to próbki siatki, w których formuła jest prawdziwa.
-    Bez ``krok`` rysujemy całą formułę, z ``krok`` — stan po tej operacji:
-    mocnym akcentem to, co dokłada operacja, słabym — część z poprzedniego
-    kroku, a nad rysunkiem stoi etykieta operacji (karta PRZ-141).
+    Obszar zamalowany to próbki siatki, w których formuła ``node`` jest prawdziwa.
+    Bez ``krok`` rysujemy cały wzór, z ``krok`` — stan po tej operacji: mocnym
+    akcentem to, co dokłada operacja, słabym — część z poprzedniego kroku, a nad
+    rysunkiem stoi etykieta operacji (karta PRZ-141). Kroki liczymy po operacjach
+    na zbiorach (:func:`operacje_zbiorow`) — sam zbiór ``p`` nie jest krokiem
+    (karta PRZ-172). Wzór bez operacji (na przykład sama zmienna) rysujemy w całości.
+
+    Obie strony prawa stawia obok siebie :func:`sets_strony_svg`.
     """
     zmienne = variables(node)
     if len(zmienne) > MAX_ZBIOROW:
@@ -585,12 +664,12 @@ def sets_svg(node: Node, krok: int | None = None) -> Markup:
         )
 
     uklad = UKLADY[len(zmienne)]
-    czesci = subformulas(node)
-    numer_kroku = _przytnij(krok, len(czesci))
-    if krok is None:
-        warstwy = [(_obszar(node, zmienne, uklad), "obszar-1 obszar-nowy", "Obszar całej formuły.")]
+    czesci = operacje_zbiorow(node)
+    if krok is None or not czesci:
+        warstwy = _warstwy_calej_formuly(node, zmienne, uklad)
         opis_kroku, etykieta = "Cała formuła.", None
     else:
+        numer_kroku = _przytnij(krok, len(czesci))
         warstwy = _warstwy_kroku(node, numer_kroku, zmienne, uklad)
         czesc = czesci[numer_kroku]
         opis_kroku, etykieta = _opis_zbioru(czesc), _etykieta_zbioru(czesc)
@@ -609,3 +688,29 @@ def sets_svg(node: Node, krok: int | None = None) -> Markup:
         + ("\n".join([_etykieta_svg(etykieta)] + elementy) if etykieta else "\n".join(elementy))
         + "\n</svg>"
     )
+
+
+def sets_strony_svg(lewa: Node, prawa: Node, krok_lewa: int, krok_prawa: int) -> Markup:
+    """Dwa diagramy zbiorów obok siebie: lewa i prawa strona prawa (karta PRZ-172).
+
+    Nad każdym diagramem stoi wzór jego strony, a ``krok`` liczy się **osobno** dla
+    każdej strony: lewa może stać na swojej ostatniej operacji, gdy prawa dopiero
+    zaczyna (patrz ``laws._kroki_zbiorow``). Ostatni krok listy pokazuje obie
+    strony w całości, więc widać, że pokrywają ten sam obszar.
+
+    Wynik wstawiamy do szablonu tak samo jak pojedynczy rysunek: makro ``figura``
+    z ``partials/_diagramy.html`` kładzie go w ``[data-wiz-rysunek]``, a
+    ``wizualizacje.js`` podmienia całą tę zawartość przy przejściu do następnego
+    kroku — dlatego oba diagramy stoją w jednym kontenerze.
+    """
+    figury = "\n".join(
+        f'      <div class="wiz-strona">\n'
+        f'        <p class="wiz-strona-tytul">{tytul}: {to_html(strona)}</p>\n'
+        f"        {sets_svg(strona, krok=krok)}\n"
+        f"      </div>"
+        for tytul, strona, krok in (
+            (TYTUL_LEWEJ, lewa, krok_lewa),
+            (TYTUL_PRAWEJ, prawa, krok_prawa),
+        )
+    )
+    return Markup(f'      <div class="wiz-strony">\n{figury}\n      </div>')

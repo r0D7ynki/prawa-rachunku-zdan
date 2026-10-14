@@ -27,7 +27,16 @@ from dataclasses import dataclass
 from flask import Blueprint, render_template, request
 from markupsafe import Markup, escape
 
-from app.logic.diagrams import gates_svg, kroki_gates, kroki_sets, sets_svg
+from app.logic.diagrams import (
+    LEWA,
+    PRAWA,
+    gates_svg,
+    kroki_gates,
+    kroki_sets,
+    operacje_zbiorow,
+    sets_strony_svg,
+    strony,
+)
 from app.logic.formula import FormulaError, Node, parse, subformulas, to_html, to_text, variables
 from app.logic.law_model import Law, Step
 from app.logic.laws import all_laws, by_category, dlaczego_wolno, get
@@ -117,6 +126,61 @@ def _kroki_rysunku(
     ]
 
 
+def _punkt_kroku(krok: dict) -> Markup:
+    """Punkt listy kroków: operacja, wzór po kroku i opis obszaru (karta PRZ-172).
+
+    Karta chce, żeby punkt mówił wprost, co się w kroku robi:
+    „Dopełnienie — ∼(p ∨ q) — obszar poza zbiorem p ∨ q.” Numer punktu dokłada
+    ``<ol>`` z ``partials/_diagramy.html`` — tutaj powstaje sam napis.
+    """
+    return Markup(
+        '<span class="wiz-operacja">{operacja}</span> — '
+        '<span class="formula">{wzor}</span> — {opis}'
+    ).format(
+        operacja=escape(krok["operacja"].capitalize()),
+        wzor=formula_to_html(krok["wzor"]),
+        opis=escape(krok["opis"]),
+    )
+
+
+def _kroki_zbiorow(node: Node) -> list[dict]:
+    """Kroki diagramów zbiorów razem z oboma rysunkami (karta PRZ-172).
+
+    Lista kroków idzie najpierw po operacjach lewej strony, potem prawej
+    (``diagrams.kroki_sets``). Lewy rysunek stoi na ostatniej operacji zrobionej
+    na lewej stronie. Prawy — dopóki nie przyjdzie jego kolej — stoi na ostatniej
+    operacji prawej strony, czyli pokazuje prawą stronę w całości: obok budowanej
+    lewej strony widać od razu, do czego ona zmierza. Ostatni krok domyka prawą
+    stronę, więc oba rysunki pokazują wtedy swoje strony w całości.
+
+    Pole ``wzor`` zostaje puste: wzór jest już częścią napisu punktu (``opis``),
+    bo ``partials/_diagramy.html`` wypisuje w punkcie listy tylko opis.
+    """
+    lewa, prawa = strony(node)
+    kroki_prawe = operacje_zbiorow(prawa)
+    numer_lewy = 0
+    numer_prawy = max(len(kroki_prawe) - 1, 0)
+    zrobione = {LEWA: 0, PRAWA: 0}
+    kroki: list[dict] = []
+    for krok in kroki_sets(node):
+        if krok["strona"] == LEWA:
+            numer_lewy = zrobione[LEWA]
+        else:
+            numer_prawy = zrobione[PRAWA]
+        zrobione[krok["strona"]] += 1
+        if prawa is lewa:
+            # Wzór bez równoważności stoi po obu stronach — oba rysunki idą razem.
+            numer_prawy = numer_lewy
+        kroki.append(
+            {
+                "opis": _punkt_kroku(krok),
+                "wzor": "",
+                "svg": sets_strony_svg(lewa, prawa, numer_lewy, numer_prawy),
+            }
+        )
+    return kroki
+
+
 def _od_kroku(kroki: list[dict], krok: int | None) -> list[dict]:
     """Przestawia kroki rysunku tak, żeby krok ``krok`` stał pierwszy.
 
@@ -163,14 +227,9 @@ def diagramy(law: Law, krok: int | None = None) -> dict[str, dict]:
         kroki_gates(node),
         lambda numer: gates_svg(node, wartosci, krok=numer),
     )
-    zbiory = _kroki_rysunku(
-        czesci,
-        kroki_sets(node),
-        lambda numer: sets_svg(node, krok=numer),
-    )
     return {
         "bramki": {"kroki": _od_kroku(bramki, krok)},
-        "zbiory": {"kroki": _od_kroku(zbiory, krok)},
+        "zbiory": {"kroki": _od_kroku(_kroki_zbiorow(node), krok)},
     }
 
 
