@@ -63,6 +63,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/static/css/nawigacja.css` | style menu, okruszków, spisu lekcji i kart sąsiadów | PRZ-069 |
 | `app/static/css/motyw.css` | paleta jasna i ciemna dla wybranego motywu, suwak motywu w menu | PRZ-138, PRZ-155 |
 | `app/static/js/motyw.js` | wybór motywu: zapis w `localStorage`, reakcja na system | PRZ-138, PRZ-155 |
+| `app/static/js/api.js` | wspólny klient API: jedno miejsce obsługi błędów sieci i czasu | PRZ-174 |
 | `app/templates/reguly.html` | karty reguł wnioskowania | PRZ-090 |
 | `app/static/css/reguly.css` | style kart reguł | PRZ-090 |
 | `app/templates/dowody.html` | tabela dowodu, pasek kroków, kontrprzykład | PRZ-091 |
@@ -724,6 +725,43 @@ Dzięki temu szablony nie wołają funkcji Pythona — czytają `NAV.lesson.tytu
 bo strony spoza kursu (np. `/slowniczek`) też dostają `NAV`, tyle że bez lekcji.
 
 
+## Wspólny klient API: `api.js`
+
+Każde wywołanie API idzie przez `pobierzJson` z `app/static/js/api.js` (karta PRZ-174).
+Jeden plik trzyma całą obsługę awarii, więc komponenty nie powtarzają `try/catch`,
+a student wszędzie widzi ten sam komunikat po polsku.
+
+```js
+import { pobierzJson } from "/static/js/api.js";
+
+const wynik = await pobierzJson(adres, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ formula }),
+});
+if (!wynik.ok) {
+  pokazBlad(kontener, wynik.blad);   // napis po polsku, wstawiany przez `textContent`
+  return;
+}
+const dane = wynik.dane;
+```
+
+`pobierzJson(adres, dane)` nigdy nie rzuca. Wynik to `{ ok: true, dane }` albo
+`{ ok: false, blad }`, gdzie `blad` jest gotowym komunikatem:
+
+| Sytuacja | Komunikat |
+|---|---|
+| brak sieci albo zerwane połączenie | „Nie udało się połączyć z serwerem. Sprawdź połączenie i spróbuj ponownie.” |
+| odpowiedź HTTP z kodem błędu | „Serwer zwrócił błąd (kod N). Spróbuj ponownie.” |
+| treść, której nie da się sparsować | „Serwer zwrócił nieprawidłową odpowiedź.” |
+| `ok: false` z API | komunikat z pola `blad` (zapasowy, gdy API go nie da) |
+| brak odpowiedzi w 15 s (`AbortController`) | „Serwer nie odpowiedział w porę.” |
+
+Komponenty, które rysują kroki z serwera (`tautologie.js`, `dowody.js`, `rezolucja.js`),
+do API nie zaglądają — kroki przychodzą w atrybucie `data-kroki`. Nie importują więc
+`api.js`; pilnuje tego `tests/test_api_js.py`.
+
+
 ## Komponent kroków: `stepper.js`, `_stepper.html`, `stepper.css`
 
 Jeden pasek prowadzi użytkownika krok po kroku. Korzystają z niego tablica prawdy,
@@ -895,7 +933,8 @@ palety dla wybranego motywu. Każdy nowy arkusz bierze kolory ze zmiennych.
 
 - Bootstrap 5.3 z CDN. Własne style w `app/static/css/<nazwa>.css`.
 - Skrypty jako `type="module"` w `app/static/js/`.
-- Komunikacja z API przez `fetch`, JSON. Każdy komponent pokazuje stan błędu po polsku.
+- Komunikacja z API przez `fetch`, JSON — zawsze przez wspólny klient `api.js` (PRZ-174).
+  Każdy komponent pokazuje stan błędu po polsku.
 - Strony muszą działać bez JavaScriptu w zakresie treści (tekst i wzory są w HTML).
   JavaScript dodaje interakcję.
 - Bez zależności z npm. Bez nowych bibliotek w `pyproject.toml`.

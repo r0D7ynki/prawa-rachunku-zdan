@@ -282,7 +282,7 @@ def test_bramki_daja_kazdemu_elementowi_tytul(skrypt_bramek):
 
 def test_bramki_wola_api_i_obsluguja_jego_bledy(skrypt_bramek):
     assert "/api/formula/parse" in skrypt_bramek
-    assert "fetch(" in skrypt_bramek
+    assert "pobierzJson(" in skrypt_bramek, "skrypt nie korzysta ze wspólnego klienta API"
     assert "if (!dane.ok)" in skrypt_bramek
 
 

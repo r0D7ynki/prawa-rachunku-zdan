@@ -18,6 +18,7 @@
    Każdy element SVG tworzymy przez `document.createElementNS`, a treść wstawiamy tylko
    przez `textContent` — napisy z API nie trafiają do DOM jako kod. */
 
+import { pobierzJson } from "/static/js/api.js";
 import { createStepper } from "/static/js/stepper.js";
 
 const ADRES = "/api/formula/parse";
@@ -446,18 +447,22 @@ function krokiZapasowe(lewa, prawa) {
  *  odłączyłby go od dokumentu i `status.textContent` ustawiałby tekst na węźle poza
  *  dokumentem — czytnik ekranu nie ogłosiłby wyniku. */
 function pokazKomunikat(montaz, tekst, status) {
-  montaz.replaceChildren(elementHtml("p", "wiz-blad alert alert-warning mb-0", tekst), status);
+  const komunikat = elementHtml("p", "wiz-blad alert alert-warning mb-0", tekst);
+  komunikat.setAttribute("role", "alert");
+  montaz.replaceChildren(komunikat, status);
   status.textContent = tekst;
 }
 
-/** Pobiera drzewo formuły z API. Rzuca, gdy sieć zawiedzie — łapie to `wypelnij`. */
-async function pobierzAst(formula) {
-  const odpowiedz = await fetch(ADRES, {
+/** Pobiera drzewo formuły z API wspólnym klientem (karta PRZ-174).
+
+    Zwraca `{ ok, dane }` albo `{ ok: false, blad }` — nigdy nie rzuca, więc `wypelnij`
+    sprawdza wynik zwykłym `if`, a nie `try/catch`. */
+function pobierzAst(formula) {
+  return pobierzJson(ADRES, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ formula }),
   });
-  return odpowiedz.json();
 }
 
 /** Wypełnia jeden montaż: liczy obszary obu stron i prowadzi przez kroki prawa. */
@@ -477,13 +482,13 @@ async function wypelnij(montaz) {
   // pobieramy raz — kroki przekształcenia często powtarzają formuły sąsiadów.
   const formuly = [...new Set([stronaLewa, stronaPrawa, ...krokiPrawa.map((krok) => krok.po)])]
     .filter((tekst) => tekst);
-  let odpowiedzi;
-  try {
-    odpowiedzi = await Promise.all(formuly.map(pobierzAst));
-  } catch (blad) {
-    pokazKomunikat(montaz, TEKSTY.siec, status);
+  const wyniki = await Promise.all(formuly.map(pobierzAst));
+  const zly = wyniki.find((wynik) => !wynik.ok);
+  if (zly) {
+    pokazKomunikat(montaz, zly.blad || TEKSTY.siec, status);
     return;
   }
+  const odpowiedzi = wyniki.map((wynik) => wynik.dane);
 
   for (const dane of odpowiedzi) {
     if (!dane.ok) {

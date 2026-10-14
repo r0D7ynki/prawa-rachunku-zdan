@@ -352,7 +352,8 @@ def test_skrypt_bierze_adres_z_atrybutu(skrypt):
 
 
 def test_skrypt_wola_api_postem_z_jsonem(skrypt):
-    assert "fetch(" in skrypt
+    """Karta PRZ-174: żądanie idzie przez wspólnego klienta `api.js`, nie własnym `fetch`."""
+    assert 'import { pobierzJson } from "/static/js/api.js"' in skrypt
     assert '"POST"' in skrypt
     assert "Content-Type" in skrypt
     assert "application/json" in skrypt

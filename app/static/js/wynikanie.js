@@ -6,6 +6,8 @@
    Ten sam formularz działa bez JavaScriptu: wtedy wysyła się zwykłym POST-em
    na `/konsekwencja`, a wynik rysuje szablon `partials/_wynikanie.html`. */
 
+import { pobierzJson } from "/static/js/api.js";
+
 const ADRES = "/api/wynikanie";
 
 const TEKSTY = {
@@ -31,14 +33,15 @@ function element(znacznik, klasa, tekst) {
   return nowy;
 }
 
-/** Wysyła JSON na endpoint i zwraca odpowiedź. Sieć sprawdza wywołujący. */
-async function pobierz(adres, dane) {
-  const odpowiedz = await fetch(adres, {
+/** Wysyła JSON na endpoint wspólnym klientem (karta PRZ-174).
+
+    Wynik ma pola `ok` oraz `dane` albo `blad` — obsługę błędów sprawdza wywołujący. */
+function pobierz(adres, dane) {
+  return pobierzJson(adres, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dane),
   });
-  return odpowiedz.json();
 }
 
 /** Bierze założenia z pola tekstowego: jedna formuła w wierszu, puste wiersze precz. */
@@ -94,10 +97,12 @@ function pokazWynik(dane) {
   );
 }
 
-/** Pokazuje komunikat błędu po polsku i czyści wynik. */
+/** Pokazuje komunikat błędu po polsku i czyści wynik.
+ *  `role="alert"` sprawia, że czytnik ekranu ogłasza komunikat od razu. */
 function pokazBlad(tekst) {
   wynik.replaceChildren();
   komunikatBledu.className = "wynikanie-blad alert alert-warning mt-3 mb-0";
+  komunikatBledu.setAttribute("role", "alert");
   komunikatBledu.textContent = tekst;
   komunikatBledu.hidden = false;
 }
@@ -108,13 +113,12 @@ async function sprawdz() {
   const teza = poleTezy.value;
   wynik.replaceChildren(element("p", "text-muted small mb-0", TEKSTY.ladowanie));
 
-  let dane;
-  try {
-    dane = await pobierz(ADRES, { zalozenia, teza });
-  } catch (blad) {
-    pokazBlad(TEKSTY.siec);
+  const wynik = await pobierz(ADRES, { zalozenia, teza });
+  if (!wynik.ok) {
+    pokazBlad(wynik.blad || TEKSTY.siec);
     return;
   }
+  const dane = wynik.dane;
 
   if (!dane.ok) {
     pokazBlad(dane.blad || TEKSTY.bladOgolny);

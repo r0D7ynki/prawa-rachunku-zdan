@@ -265,7 +265,7 @@ def test_skrypt_wola_cztery_endpointy():
 
     for endpoint in ENDPOINTY:
         assert endpoint in zrodlo, f"brak wywołania endpointu {endpoint}"
-    assert "fetch(" in zrodlo, "skrypt nie używa fetch"
+    assert "pobierzJson(" in zrodlo, "skrypt nie korzysta ze wspólnego klienta API"
 
 
 def test_skrypt_obsluguje_blad_ok_false():

@@ -14,6 +14,7 @@
    Przewody mają groty strzałek (`marker-end`), a wartości na nich są opisane słowami
    PRAWDA i FAŁSZ — kolor tylko wspiera tekst, nigdy nie jest jedynym nośnikiem informacji. */
 
+import { pobierzJson } from "/static/js/api.js";
 import { createStepper } from "/static/js/stepper.js";
 
 const ADRES = "/api/formula/parse";
@@ -643,20 +644,24 @@ function zbudujLegende(uzyte) {
 
     Element `status` wraca do montażu razem z komunikatem. Bez tego `replaceChildren`
     odłączyłby go od dokumentu i `status.textContent` ustawiałby tekst na węźle poza
-    dokumentem — czytnik ekranu nie ogłosiłby wyniku. */
+    dokumentem — czytnik ekranu nie ogłosiłby wyniku. Sam komunikat ma `role="alert"`,
+    więc czytnik ogłasza go od razu, bez szukania po stronie. */
 function pokazKomunikat(montaz, tekst, status) {
-  montaz.replaceChildren(elementHtml("p", "wiz-blad alert alert-warning mb-0", tekst), status);
+  const komunikat = elementHtml("p", "wiz-blad alert alert-warning mb-0", tekst);
+  komunikat.setAttribute("role", "alert");
+  montaz.replaceChildren(komunikat, status);
   status.textContent = tekst;
 }
 
-/** Wysyła żądanie do API i zwraca odpowiedź jako obiekt. */
-async function pobierz(adres, tresc) {
-  const odpowiedz = await fetch(adres, {
+/** Wysyła żądanie do API wspólnym klientem (karta PRZ-174).
+
+    Wynik ma pola `ok` oraz `dane` albo `blad` — tak samo dla każdego komponentu. */
+function pobierz(adres, tresc) {
+  return pobierzJson(adres, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(tresc),
   });
-  return odpowiedz.json();
 }
 
 /** Wypełnia jeden montaż: drzewo formuły, wartości podformuł, kroki i przełączniki. */
@@ -669,17 +674,16 @@ async function wypelnij(montaz) {
   status.setAttribute("aria-live", "polite");
   montaz.append(elementHtml("p", "wiz-ladowanie text-muted small mb-1", TEKSTY.ladowanie), status);
 
-  let dane;
-  let tabela;
-  try {
-    [dane, tabela] = await Promise.all([
-      pobierz(ADRES, { formula }),
-      pobierz(ADRES_TABLICY, { formula, podformuly: true }),
-    ]);
-  } catch (blad) {
-    pokazKomunikat(montaz, TEKSTY.siec, status);
+  const wyniki = await Promise.all([
+    pobierz(ADRES, { formula }),
+    pobierz(ADRES_TABLICY, { formula, podformuly: true }),
+  ]);
+  const zly = wyniki.find((wynik) => !wynik.ok);
+  if (zly) {
+    pokazKomunikat(montaz, zly.blad || TEKSTY.siec, status);
     return;
   }
+  const [dane, tabela] = wyniki.map((wynik) => wynik.dane);
 
   if (!dane.ok) {
     pokazKomunikat(montaz, dane.blad || TEKSTY.blad, status);

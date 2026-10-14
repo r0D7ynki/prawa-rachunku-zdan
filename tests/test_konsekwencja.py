@@ -420,7 +420,7 @@ def test_skrypt_wola_endpoint_wynikania():
     zrodlo = _zrodlo(JS)
 
     assert API in zrodlo, "brak wywołania /api/wynikanie"
-    assert "fetch(" in zrodlo, "skrypt nie używa fetch"
+    assert "pobierzJson(" in zrodlo, "skrypt nie korzysta ze wspólnego klienta API"
 
 
 def test_skrypt_obsluguje_blad_ok_false():
