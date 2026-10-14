@@ -35,20 +35,24 @@ from app.logic.laws import all_laws, by_category, dlaczego_wolno, get
 bp = Blueprint("laws", __name__)
 
 #: Partial rysunku dla każdej wartości pola ``Law.wizualizacja``.
-#: ``switch`` (wyłącznik) pokazujemy bramkami, ``chain`` — śladem kroków.
-#: Te same reguły opisuje karta PRZ-010 w sekcji „Context”. Od PRZ-123 strona prawa
-#: pokazuje **oba** diagramy, więc ``_gates.html`` i ``_sets.html`` różni tylko
-#: kolejność figur (patrz ``partials/_diagramy.html``).
+#: ``switch`` (wyłącznik) i ``chain`` pokazujemy diagramami, więc każda strona prawa
+#: ma dziś **oba** diagramy: ``_gates.html`` i ``_sets.html`` różni tylko kolejność
+#: figur (patrz ``partials/_diagramy.html``). Dawniej ``chain`` prowadził do
+#: ``_steps.html``, a ten montował ``steps.js`` — komponent pobierał z
+#: ``/api/formula/simplify`` pełny ślad upraszczania i dla wzoru prawa potrafił mieć
+#: kilkadziesiąt kroków (karta PRZ-171).
 RYSUNKI: dict[str, str] = {
     "gates": "partials/_gates.html",
     "switch": "partials/_gates.html",
     "sets": "partials/_sets.html",
-    "chain": "partials/_steps.html",
+    "chain": "partials/_sets.html",
 }
 
 #: Rysunek dla nieznanej wartości ``Law.wizualizacja``. Rejestr już sprawdza to pole
 #: (``laws.validate``), więc to tylko zabezpieczenie przed pustą sekcją na stronie.
-RYSUNEK_ZAPASOWY = "partials/_steps.html"
+#: Diagram zbiorów, a nie komponent kroków: strona z nieznaną wizualizacją pokazuje
+#: rysunek tak samo jak pozostałe (karta PRZ-171).
+RYSUNEK_ZAPASOWY = "partials/_sets.html"
 
 #: Token formuły: nazwa zmiennej, operator albo nawias. Spacje nie tworzą tokenów —
 #: nie zmieniają formuły, a tylko rozpychają zapis (karta PRZ-143).
