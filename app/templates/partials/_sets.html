@@ -7,16 +7,27 @@
    Od PRZ-172 diagram zbiorów to **dwie** figury: lewa i prawa strona prawa obok
    siebie (na wąskim ekranie jedna pod drugą), każda z własnym wzorem nad rysunkiem.
    Lista kroków pod nimi nazywa operację każdego kroku: „Dopełnienie — ∼(p ∨ q) —
-   obszar poza zbiorem p ∨ q.” Składa to ``laws._kroki_zbiorow``
-   z ``diagrams.sets_strony_svg`` — oba diagramy lądują w jednym kontenerze
-   ``[data-wiz-rysunek]``, bo ``wizualizacje.js`` podmienia całą jego zawartość
-   przy przejściu do następnego kroku.
+   obszar poza zbiorem p ∨ q.” Składa to ``laws._kroki_zbiorow``.
+
+   Od PRZ-182 każda z tych figur to **osobny panel kroków** z własnymi strzałkami
+   ``‹`` i ``›``: lewa strona przechodzi swoje operacje, prawa swoje, a kliknięcie
+   w jednej nie rusza drugiej. Tytuł figury niesie nazwę strony i jej wzór
+   (``zbiory.lewa.tytul`` ze ``strona_prawa`` w ``app/blueprints/laws.py``).
 
    Wejście: ``formula`` (wzór prawa) oraz ``bramki`` i ``zbiory`` ze ``strona_prawa``
    w ``app/blueprints/laws.py``. #}
 {% from "partials/_diagramy.html" import figura, stopka, zasoby %}
 
 {{ zasoby() }}
-{{ figura(formula, zbiory, "sets-mount", "diagramy-zbiorow", "Diagram zbiorów", "rysunek-zbiorow") }}
+{% if zbiory %}
+  <div class="wiz-strony">
+    {{ figura(formula, zbiory.lewa, "sets-mount", "diagramy-zbiorow", zbiory.lewa.tytul, "rysunek-zbiorow") }}
+    {{ figura(formula, zbiory.prawa, "sets-mount", "diagramy-zbiorow-prawa", zbiory.prawa.tytul, "rysunek-zbiorow-prawa") }}
+  </div>
+{% else %}
+  {# Partial renderuje się także bez danych rysunków (testy, strona w budowie) —
+     wtedy pokazujemy komunikat zamiast się wywracać. #}
+  {{ figura(formula, zbiory, "sets-mount", "diagramy-zbiorow", "Diagram zbiorów", "rysunek-zbiorow") }}
+{% endif %}
 {{ figura(formula, bramki, "gates-mount", "bramki-logiczne", "Schemat bramek", "rysunek-bramek") }}
 {{ stopka() }}

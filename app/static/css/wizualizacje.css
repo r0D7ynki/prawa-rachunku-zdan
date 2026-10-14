@@ -240,9 +240,14 @@
   stroke-width: 2;
 }
 
-/* Prostokąt próbki nie ma własnego koloru — bierze go z warstwy obszaru
-   (`<g class="obszar-…">`). Własne `fill` na prostokącie przesłaniałoby kolor
-   grupy, więc obszar zostałby niewidoczny (błąd naprawiony kartą PRZ-141). */
+/* Kontur obszaru nie ma własnego koloru — bierze go z warstwy obszaru
+   (`<g class="obszar-…">`). Własne `fill` na ścieżce przesłaniałoby kolor grupy,
+   więc obszar zostałby niewidoczny (błąd naprawiony kartą PRZ-141, kontur od
+   PRZ-182). Ścieżkę rysujemy z `stroke-linejoin: round`, więc zaokrąglone
+   załamania nie robią szpiców na krawędzi obszaru. */
+.wiz-obszar {
+  stroke-linejoin: round;
+}
 
 /* Dwa obszary mają różne kolory i własne opisy, więc kolor tylko wspiera treść.
    Krok rysunku dzieli obszar na „nowy” (mocny akcent) i „z poprzedniego kroku”
@@ -261,24 +266,24 @@
   opacity: 0.85;
 }
 
-/* --- dwie strony prawa na diagramie zbiorów (karta PRZ-172) ------------- */
+/* --- dwie strony prawa na diagramie zbiorów (karty PRZ-172 i PRZ-182) --- */
 
-/* Diagramy stoją obok siebie, a na wąskim ekranie przechodzą jeden pod drugim. */
+/* Od PRZ-182 każda strona prawa to osobna figura z własnymi strzałkami, więc
+   obok siebie stawiamy całe figury: na wąskim ekranie przechodzą jedna pod drugą. */
 .wiz-strony {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
 }
 
-.wiz-strona {
+.wiz-strony .wiz-figura {
   flex: 1 1 16rem;
   min-width: 0;
 }
 
-/* Nad każdym diagramem stoi wzór jego strony: „Lewa strona: ∼(p ∨ q)”. */
-.wiz-strona-tytul {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+/* Tytuł figury niesie nazwę strony i jej wzór: „Lewa strona: ∼(p ∨ q)”. */
+.wiz-strony .wiz-figura-tytul {
+  font-family: "Latin Modern Math", "Cambria Math", Georgia, serif;
 }
 
 /* Nazwa operacji w punkcie listy kroków: „Dopełnienie — ∼(p ∨ q) — …”. */

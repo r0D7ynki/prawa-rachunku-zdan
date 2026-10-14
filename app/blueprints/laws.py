@@ -30,11 +30,13 @@ from markupsafe import Markup, escape
 from app.logic.diagrams import (
     LEWA,
     PRAWA,
+    TYTUL_LEWEJ,
+    TYTUL_PRAWEJ,
     gates_svg,
+    krok_punktu_wyjscia,
     kroki_gates,
     kroki_sets,
-    operacje_zbiorow,
-    sets_strony_svg,
+    sets_svg,
     strony,
 )
 from app.logic.formula import FormulaError, Node, parse, subformulas, to_html, to_text, variables
@@ -143,42 +145,73 @@ def _punkt_kroku(krok: dict) -> Markup:
     )
 
 
-def _kroki_zbiorow(node: Node) -> list[dict]:
-    """Kroki diagramów zbiorów razem z oboma rysunkami (karta PRZ-172).
+def _kroki_zbiorow(node: Node) -> dict[str, list[dict]]:
+    """Kroki obu diagramów zbiorów — każda strona prawa osobno (karta PRZ-182).
 
     Lista kroków idzie najpierw po operacjach lewej strony, potem prawej
-    (``diagrams.kroki_sets``). Lewy rysunek stoi na ostatniej operacji zrobionej
-    na lewej stronie. Prawy — dopóki nie przyjdzie jego kolej — stoi na ostatniej
-    operacji prawej strony, czyli pokazuje prawą stronę w całości: obok budowanej
-    lewej strony widać od razu, do czego ona zmierza. Ostatni krok domyka prawą
-    stronę, więc oba rysunki pokazują wtedy swoje strony w całości.
+    (``diagrams.kroki_sets``). Od PRZ-182 każdy diagram jest osobną figurą
+    z własnymi strzałkami, więc dzielimy kroki na dwie listy: lewa strona ma
+    swoje operacje, prawa swoje. Razem dają tę samą kolejność nauki co dotąd —
+    czytelnik przechodzi najpierw lewą stronę prawa, potem prawą — ale każdy
+    diagram przechodzi swoje kroki niezależnie.
+
+    Wzór bez równoważności stoi po obu stronach (``diagrams.strony``), więc oba
+    rysunki dostają tę samą listę kroków.
+
+    Strona bez operacji — na przykład sama zmienna ``p`` w prawie „∼∼p ≡ p” —
+    dostaje jeden krok z całym wzorem (:func:`diagrams.krok_punktu_wyjscia`), żeby
+    **każdy** diagram miał własne strzałki (karta PRZ-182).
 
     Pole ``wzor`` zostaje puste: wzór jest już częścią napisu punktu (``opis``),
     bo ``partials/_diagramy.html`` wypisuje w punkcie listy tylko opis.
     """
     lewa, prawa = strony(node)
-    kroki_prawe = operacje_zbiorow(prawa)
-    numer_lewy = 0
-    numer_prawy = max(len(kroki_prawe) - 1, 0)
-    zrobione = {LEWA: 0, PRAWA: 0}
-    kroki: list[dict] = []
+    kroki: dict[str, list[dict]] = {LEWA: [], PRAWA: []}
+    licznik = {LEWA: 0, PRAWA: 0}
     for krok in kroki_sets(node):
-        if krok["strona"] == LEWA:
-            numer_lewy = zrobione[LEWA]
-        else:
-            numer_prawy = zrobione[PRAWA]
-        zrobione[krok["strona"]] += 1
-        if prawa is lewa:
-            # Wzór bez równoważności stoi po obu stronach — oba rysunki idą razem.
-            numer_prawy = numer_lewy
-        kroki.append(
+        strona = krok["strona"]
+        numer = licznik[strona]
+        licznik[strona] += 1
+        kroki[strona].append(
             {
                 "opis": _punkt_kroku(krok),
                 "wzor": "",
-                "svg": sets_strony_svg(lewa, prawa, numer_lewy, numer_prawy),
+                "svg": sets_svg(lewa if strona == LEWA else prawa, krok=numer),
             }
         )
+    if prawa is lewa:
+        kroki[PRAWA] = list(kroki[LEWA])
+    for strona, wzor in ((LEWA, lewa), (PRAWA, prawa)):
+        if not kroki[strona]:
+            kroki[strona] = [
+                {
+                    "opis": _punkt_kroku(krok_punktu_wyjscia(wzor)),
+                    "wzor": "",
+                    "svg": sets_svg(wzor),
+                }
+            ]
     return kroki
+
+
+def _zbiory_dla_szablonu(node: Node, krok: int | None) -> dict[str, dict]:
+    """Oba diagramy zbiorów dla szablonu: tytuł strony i jej kroki (karta PRZ-182).
+
+    Numer z adresu (``?krok=N``) ustawia **każdy** diagram na swoim kroku ``N``
+    (przyciętym do jego długości) — diagramy są niezależne, więc jeden może stać
+    na ostatniej operacji, gdy drugi dopiero zaczyna.
+    """
+    lewa, prawa = strony(node)
+    kroki = _kroki_zbiorow(node)
+    return {
+        strona: {
+            "tytul": f"{tytul}: {to_text(wzor)}",
+            "kroki": _od_kroku(kroki[strona], krok),
+        }
+        for strona, tytul, wzor in (
+            (LEWA, TYTUL_LEWEJ, lewa),
+            (PRAWA, TYTUL_PRAWEJ, prawa),
+        )
+    }
 
 
 def _od_kroku(kroki: list[dict], krok: int | None) -> list[dict]:
@@ -209,6 +242,10 @@ def _krok_z_adresu(wartosc: str | None) -> int | None:
 def diagramy(law: Law, krok: int | None = None) -> dict[str, dict]:
     """Oba rysunki prawa razem z krokami, gotowe dla szablonu (PRZ-123, PRZ-141).
 
+    Diagram zbiorów ma od PRZ-182 **dwie niezależne figury** — ``lewa`` i ``prawa``
+    — a każda niesie własny tytuł i własną listę kroków. Schemat bramek zostaje
+    jeden (``bramki``).
+
     Gdy wzór prawa się nie parsuje, zwracamy puste listy kroków — strona pokaże wzór
     i komunikat, a nie błąd 500 (tak samo zachowuje się ``formula_to_html``).
 
@@ -218,7 +255,10 @@ def diagramy(law: Law, krok: int | None = None) -> dict[str, dict]:
     try:
         node = parse(law.formula)
     except FormulaError:
-        return {"bramki": {"kroki": []}, "zbiory": {"kroki": []}}
+        return {
+            "bramki": {"kroki": []},
+            "zbiory": {LEWA: {"kroki": []}, PRAWA: {"kroki": []}},
+        }
 
     wartosci = _wartosciowanie(node)
     czesci = subformulas(node)
@@ -229,7 +269,7 @@ def diagramy(law: Law, krok: int | None = None) -> dict[str, dict]:
     )
     return {
         "bramki": {"kroki": _od_kroku(bramki, krok)},
-        "zbiory": {"kroki": _od_kroku(_kroki_zbiorow(node), krok)},
+        "zbiory": _zbiory_dla_szablonu(node, krok),
     }
 
 

@@ -139,25 +139,34 @@ def test_partial_nie_rysuje_juz_w_przegladarce(aplikacja):
     ("partial", "prawo", "zbior"), PARTIALE_Z_KROKAMI, ids=["bramki", "zbiory"]
 )
 def test_partial_ma_dwie_strzalki_i_tyle_szablonow_co_krokow(aplikacja, partial, prawo, zbior):
-    """Bez numerków kroków: dwie strzałki na rysunek i gotowe kroki w ``<template>``.
+    """Dwie strzałki i gotowe kroki w ``<template>`` na każdym z trzech rysunków.
 
     Partial pokazuje oba rysunki (kryterium PRZ-123), więc strzałek jest dwa razy
-    tyle, ile ma jeden rysunek. Od PRZ-172 diagram zbiorów ma własną listę kroków
-    (operacje obu stron prawa), a schemat bramek nadal idzie po podformułach —
+    tyle, ile ma jeden rysunek. Od PRZ-182 diagram zbiorów to **dwie osobne figury
+    kroków** — lewa i prawa strona prawa — a schemat bramek idzie po podformułach,
     dlatego szablony i punkty listy liczymy osobno dla każdej figury.
     """
-    kroki = widoki.diagramy(prawo)[zbior]["kroki"]
-    drugi = "zbiory" if zbior == "bramki" else "bramki"
-    wszystkie = len(kroki) + len(widoki.diagramy(prawo)[drugi]["kroki"])
+    rysunki = widoki.diagramy(prawo)
+    wszystkie = (
+        len(rysunki["bramki"]["kroki"])
+        + len(rysunki["zbiory"]["lewa"]["kroki"])
+        + len(rysunki["zbiory"]["prawa"]["kroki"])
+    )
 
     html = _renderuj(aplikacja, partial, **_rysunki(prawo))
 
-    assert html.count("<button") == 4, "dwie strzałki na każdy z dwóch rysunków"
+    assert html.count("<button") == 6, "dwie strzałki na każdy z trzech rysunków"
     assert 'aria-label="Poprzedni krok"' in html
     assert 'aria-label="Następny krok"' in html
     assert html.count("<template") == wszystkie
     assert html.count("</li>") == wszystkie, "lista opisów ma po jednym punkcie na krok"
-    assert kroki[0]["opis"] in html
+    pierwszy = (
+        rysunki["bramki"]["kroki"][0]["opis"]
+        if zbior == "bramki"
+        else rysunki["zbiory"]["lewa"]["kroki"][0]["opis"]
+    )
+
+    assert pierwszy in html
 
 
 def test_partial_ma_noscript(aplikacja):
@@ -495,7 +504,8 @@ def test_zbiory_uzywaja_wspolnego_komponentu_krokow(skrypt_zbiorow):
 def test_zbiory_biora_kroki_z_formuly_prawa(aplikacja, slug):
     """Kryterium PRZ-123: kroki rysunku powstają z wzoru prawa, a nie z pola ``kroki``."""
     prawo = next(law for law in all_laws() if law.slug == slug)
-    kroki = widoki.diagramy(prawo)["zbiory"]["kroki"]
+    zbiory = widoki.diagramy(prawo)["zbiory"]
+    kroki = zbiory["lewa"]["kroki"] + zbiory["prawa"]["kroki"]
 
     html = _renderuj(aplikacja, "partials/_sets.html", **_rysunki(prawo))
 
@@ -510,10 +520,12 @@ def test_zbiory_kroki_pokrywaja_operacje_obu_stron(slug):
 
     Karta PRZ-172 zastąpiła dla diagramu zbiorów kryterium PRZ-123 „każdy krok to
     jedna podformuła”: kroki liczą się teraz po operacjach na zbiorach i idą
-    najpierw po lewej stronie prawa, potem po prawej.
+    najpierw po lewej stronie prawa, potem po prawej. Od PRZ-182 każda strona to
+    osobny panel kroków, więc listę widoku składamy z obu paneli.
     """
     prawo = next(law for law in all_laws() if law.slug == slug)
-    kroki = widoki.diagramy(prawo)["zbiory"]["kroki"]
+    zbiory = widoki.diagramy(prawo)["zbiory"]
+    kroki = zbiory["lewa"]["kroki"] + zbiory["prawa"]["kroki"]
     zrodlo = kroki_sets(parse(prawo.formula))
     pary = [(krok["strona"], krok["wzor"]) for krok in zrodlo]
 

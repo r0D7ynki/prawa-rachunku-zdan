@@ -1,4 +1,4 @@
-/* Rysunki na stronie prawa: dwie strzałki prowadzą przez kroki (karta PRZ-123).
+/* Rysunki na stronie prawa: własne strzałki każdego diagramu (karty PRZ-123 i PRZ-182).
 
    Rysunki liczy serwer (``app/logic/diagrams.py``), więc ten skrypt nic nie pobiera:
    podmienia gotowy krok czekający w ``<template>``. Bez JavaScriptu widać pierwszy
@@ -7,7 +7,12 @@
    Użycie: sekcja rysunku ma ``[data-wiz-kroki]``, a w niej kontener ``[data-wiz-rysunek]``,
    opis ``[data-wiz-opis]``, strzałki ``[data-wiz-poprzedni]`` i ``[data-wiz-nastepny]``
    oraz szablony kroków ``template[data-wiz-krok]``. Szablony **muszą leżeć w tej samej
-   sekcji** — szukamy ich przez ``panel.querySelectorAll``. */
+   sekcji** — szukamy ich przez ``panel.querySelectorAll``.
+
+   Na stronie prawa są trzy takie sekcje: schemat bramek, diagram zbiorów lewej strony
+   i diagram zbiorów prawej strony. Każda trzyma **własny numer kroku** w domknięciu
+   swojej funkcji, więc kliknięcie „›” w jednym diagramie nie rusza pozostałych
+   (karta PRZ-182). Dlatego nie ma tu zmiennej modułu z numerem kroku. */
 
 const RYSUNEK = ".wiz-rysunek";
 const OPIS = ".wiz-krok-opis";
@@ -44,7 +49,10 @@ function pokazKrok(panel, indeks) {
   return numer;
 }
 
-/** Podłącza strzałki i klawiaturę do jednej sekcji rysunku. */
+/** Podłącza strzałki i klawiaturę do jednej sekcji rysunku.
+
+    Numer kroku (`indeks`) żyje w tym domknięciu, a nie w module: każdy diagram
+    przechodzi swoje kroki niezależnie (karta PRZ-182). */
 function uruchomPanel(panel) {
   let indeks = 0;
   const idz = (krok) => {
