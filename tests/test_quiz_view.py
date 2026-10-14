@@ -322,7 +322,7 @@ def test_skrypt_wola_oba_endpointy():
 
     assert GENERUJ in zrodlo, "brak wywołania generowania pytań"
     assert SPRAWDZ in zrodlo, "brak wywołania sprawdzania odpowiedzi"
-    assert "fetch(" in zrodlo, "skrypt nie używa fetch"
+    assert "pobierzJson(" in zrodlo, "skrypt nie korzysta ze wspólnego klienta API"
 
 
 def test_skrypt_czyta_zakres_z_adresu():

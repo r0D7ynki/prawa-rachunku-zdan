@@ -7,6 +7,8 @@
    Cyfry działają tylko wtedy, gdy pytanie nie jest jeszcze rozstrzygnięte.
 */
 
+import { pobierzJson } from "/static/js/api.js";
+
 const ADRESY = {
   generate: "/api/quiz/generate",
   check: "/api/quiz/check",
@@ -72,23 +74,28 @@ function element(znacznik, klasa, tekst) {
   return nowy;
 }
 
-/** Wysyła JSON na endpoint i zwraca odpowiedź. Sieć sprawdza wywołujący. */
-async function pobierz(adres, dane) {
-  const odpowiedz = await fetch(adres, {
+/** Wysyła JSON na endpoint wspólnym klientem (karta PRZ-174).
+
+    Wynik ma pola `ok` oraz `dane` albo `blad` — obsługę błędów sprawdza wywołujący. */
+function pobierz(adres, dane) {
+  return pobierzJson(adres, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dane),
   });
-  return odpowiedz.json();
 }
 
-/** Pokazuje komunikat błędu po polsku; pusty tekst ukrywa pasek komunikatu. */
+/** Pokazuje komunikat błędu po polsku; pusty tekst ukrywa pasek komunikatu.
+ *  Błąd dostaje `role="alert"`, żeby czytnik ekranu ogłosił go od razu. */
 function pokazKomunikat(tekst) {
   if (!komunikat) {
     return;
   }
   komunikat.textContent = tekst || "";
   komunikat.hidden = !tekst;
+  if (tekst) {
+    komunikat.setAttribute("role", "alert");
+  }
 }
 
 /** Ustawia zakres z adresu, gdy parametr `?prawo=` wskazuje prawo z listy. */
@@ -115,14 +122,14 @@ async function start() {
   pokazKomunikat("");
   kontener.replaceChildren(element("p", "text-muted mb-0", TEKSTY.ladowanie));
 
-  let dane;
-  try {
-    dane = await pobierz(ADRESY.generate, { prawo: stan.prawo, ile: stan.ile });
-  } catch (blad) {
-    pokazKomunikat(TEKSTY.siec);
-    kontener.replaceChildren(element("p", "text-muted mb-0", TEKSTY.siec));
+  const wynik = await pobierz(ADRESY.generate, { prawo: stan.prawo, ile: stan.ile });
+  if (!wynik.ok) {
+    const tresc = wynik.blad || TEKSTY.siec;
+    pokazKomunikat(tresc);
+    kontener.replaceChildren(element("p", "text-muted mb-0", tresc));
     return;
   }
+  const dane = wynik.dane;
 
   if (!dane.ok) {
     const tresc = dane.blad || TEKSTY.bladOgolny;
@@ -318,20 +325,19 @@ async function wybierz(wybrany) {
   }
   stan.trwa = true;
 
-  let dane;
-  try {
-    dane = await pobierz(ADRESY.check, {
-      prawo: stan.prawo,
-      seed: stan.seed,
-      id: pytanie.id,
-      odpowiedz: wybrany,
-    });
-  } catch (blad) {
-    stan.trwa = false;
-    pokazKomunikat(TEKSTY.siec);
+  const wynik = await pobierz(ADRESY.check, {
+    prawo: stan.prawo,
+    seed: stan.seed,
+    id: pytanie.id,
+    odpowiedz: wybrany,
+  });
+  stan.trwa = false;
+
+  if (!wynik.ok) {
+    pokazKomunikat(wynik.blad || TEKSTY.siec);
     return;
   }
-  stan.trwa = false;
+  const dane = wynik.dane;
 
   if (!dane.ok) {
     pokazKomunikat(dane.blad || TEKSTY.bladOgolny);

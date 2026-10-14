@@ -3,6 +3,8 @@
    Każdy tekst z API wstawiamy przez `textContent`, nigdy przez `innerHTML`,
    dzięki temu żadna treść nie trafia do DOM jako kod. */
 
+import { pobierzJson } from "/static/js/api.js";
+
 const ADRESY = {
   parse: "/api/formula/parse",
   table: "/api/formula/table",
@@ -47,14 +49,15 @@ function komorkaWartosci(wartosc) {
   return element("td", prawda ? "prawda" : "falsz", prawda ? "1" : "0");
 }
 
-/** Wysyła JSON na endpoint i zwraca odpowiedź. Sieć sprawdza wywołujący. */
-async function pobierz(adres, dane) {
-  const odpowiedz = await fetch(adres, {
+/** Wysyła JSON na endpoint wspólnym klientem (karta PRZ-174).
+
+    Wynik ma pola `ok` oraz `dane` albo `blad` — obsługę błędów sprawdza wywołujący. */
+function pobierz(adres, dane) {
+  return pobierzJson(adres, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dane),
   });
-  return odpowiedz.json();
 }
 
 /** Wstawia symbol w miejscu kursora i zostawia kursor zaraz za nim. */
@@ -209,19 +212,17 @@ async function sprawdz() {
     element("p", "text-muted small mb-0", TEKSTY.ladowanie),
   );
 
-  let zapis;
-  let tablica;
-  let slad;
-  try {
-    [zapis, tablica, slad] = await Promise.all([
-      pobierz(ADRESY.parse, { formula }),
-      pobierz(ADRESY.table, { formula, podformuly: true }),
-      pobierz(ADRESY.simplify, { formula, cel: poleCel ? poleCel.value : "auto" }),
-    ]);
-  } catch (blad) {
-    pokazBlad(TEKSTY.siec);
+  const wyniki = await Promise.all([
+    pobierz(ADRESY.parse, { formula }),
+    pobierz(ADRESY.table, { formula, podformuly: true }),
+    pobierz(ADRESY.simplify, { formula, cel: poleCel ? poleCel.value : "auto" }),
+  ]);
+  const zlyWynik = wyniki.find((wynik) => !wynik.ok);
+  if (zlyWynik) {
+    pokazBlad(zlyWynik.blad || TEKSTY.siec);
     return;
   }
+  const [zapis, tablica, slad] = wyniki.map((wynik) => wynik.dane);
 
   const zly = [zapis, tablica, slad].find((dane) => !dane.ok);
   if (zly) {
@@ -235,13 +236,15 @@ async function sprawdz() {
   rysujKroki(wynikKroki, slad.slad);
 }
 
-/** Pokazuje komunikat błędu po polsku i czyści wyniki. */
+/** Pokazuje komunikat błędu po polsku i czyści wyniki.
+ *  `role="alert"` sprawia, że czytnik ekranu ogłasza komunikat od razu. */
 function pokazBlad(tekst) {
   wynikKlasyfikacja.replaceChildren();
   wynikFormula.replaceChildren();
   wynikTablica.replaceChildren();
   wynikKroki.replaceChildren();
   komunikatBledu.className = "komunikat-bledu alert alert-warning mt-3 mb-0";
+  komunikatBledu.setAttribute("role", "alert");
   komunikatBledu.textContent = tekst;
   komunikatBledu.hidden = false;
 }
@@ -265,24 +268,26 @@ async function porownaj() {
     element("p", "text-muted small mb-0", TEKSTY.ladowanie),
   );
 
-  let dane;
-  try {
-    dane = await pobierz(ADRESY.equivalence, { lewa, prawa });
-  } catch (blad) {
-    wynikRownowaznosc.replaceChildren(
-      element("p", "alert alert-warning mb-0", TEKSTY.siec),
-    );
+  const wynik = await pobierz(ADRESY.equivalence, { lewa, prawa });
+  if (!wynik.ok) {
+    pokazBladPorownania(wynik.blad || TEKSTY.siec);
     return;
   }
+  const dane = wynik.dane;
 
   if (!dane.ok) {
-    wynikRownowaznosc.replaceChildren(
-      element("p", "alert alert-warning mb-0", dane.blad || TEKSTY.bladOgolny),
-    );
+    pokazBladPorownania(dane.blad || TEKSTY.bladOgolny);
     return;
   }
 
   rysujRownowaznosc(wynikRownowaznosc, dane);
+}
+
+/** Pokazuje komunikat błędu pod polem porównania — z `role="alert"`. */
+function pokazBladPorownania(tekst) {
+  const komunikat = element("p", "alert alert-warning mb-0", tekst);
+  komunikat.setAttribute("role", "alert");
+  wynikRownowaznosc.replaceChildren(komunikat);
 }
 
 /** Czyści pole i zostawia w nim kursor. */

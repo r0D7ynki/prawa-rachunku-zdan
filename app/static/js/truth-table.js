@@ -44,6 +44,7 @@
    ma tylko klikalny wiersz tabeli (`<tr>` nie jest przyciskiem) oraz pole wpisywania
    (Enter przechodzi do następnej komórki, Backspace czyści). */
 
+import { pobierzJson } from "/static/js/api.js";
 import { createStepper } from "/static/js/stepper.js";
 
 const ADRES_ZAPASOWY = "/api/formula/table";
@@ -143,9 +144,12 @@ function wartosc(znak) {
   return opakowanie;
 }
 
-/** Pokazuje komunikat błędu po polsku w miejscu tabeli. */
+/** Pokazuje komunikat błędu po polsku w miejscu tabeli.
+ *  `role="alert"` sprawia, że czytnik ekranu ogłasza komunikat od razu — użytkownik
+ *  nie musi szukać, co się stało. */
 function pokazBlad(miejsce, tekst) {
   miejsce.className = "tt-blad alert alert-warning mb-0";
+  miejsce.setAttribute("role", "alert");
   miejsce.textContent = tekst;
 }
 
@@ -761,18 +765,16 @@ async function wypelnij(montaz) {
   const komunikat = element("p", "tt-ladowanie text-muted small mb-1", TEKSTY.ladowanie);
   montaz.append(komunikat, status);
 
-  let dane;
-  try {
-    const odpowiedz = await fetch(adres, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ formula }),
-    });
-    dane = await odpowiedz.json();
-  } catch (blad) {
-    pokazBlad(komunikat, TEKSTY.siec);
+  const wynik = await pobierzJson(adres, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ formula }),
+  });
+  if (!wynik.ok) {
+    pokazBlad(komunikat, wynik.blad || TEKSTY.siec);
     return;
   }
+  const dane = wynik.dane;
 
   if (!dane.ok) {
     pokazBlad(komunikat, dane.blad || TEKSTY.brakTablicy);
