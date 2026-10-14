@@ -5,9 +5,9 @@
   "swarmboard_version": "0.6.38",
   "swarmboard_tool_hash": "8def57f64ee6f6681e8bd2efdb6e13a0368f6ebc64b51720982bc7f899092f95",
   "wip": {
-    "in-progress": 8,
-    "in-progress-per-model": 6,
-    "review": 30
+    "in-progress": 10,
+    "in-progress-per-model": 8,
+    "review": 40
   },
   "test_column": false,
   "sizes": {
