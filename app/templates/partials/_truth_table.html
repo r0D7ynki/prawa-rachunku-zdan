@@ -1,5 +1,5 @@
 {# Partial: interaktywna tablica prawdy z wpisywaniem wartości. Wypełniają karty
-   PRZ-011, PRZ-073, PRZ-121, PRZ-142 i PRZ-158.
+   PRZ-011, PRZ-073, PRZ-121, PRZ-142, PRZ-158 i PRZ-173.
    Wejście: `formula` (tekst formuły w Unicode) oraz opcjonalne `pokaz_ocene`
    (domyślnie `True`). Strony praw i tautologii podają `pokaz_ocene=false`: tablica
    służy tam do czytania, więc `truth-table.js` nie rysuje pod nią panelu
@@ -13,24 +13,31 @@
    Kliknięcie wartości zmiennej zakłada filtr, ponowne kliknięcie go zdejmuje,
    a przy aktywnym filtrze obok pojawia się „Wyczyść filtry”. Stan widoku opisuje
    na bieżąco zdanie w `aria-live` („Widoczne wiersze: 2 z 4.”).
-   Partial nie liczy żadnych wartości — dokłada tylko style komponentu i paska. #}
+   Partial nie liczy żadnych wartości — dokłada tylko style komponentu, paska
+   i kontener przewijania tabeli (karta PRZ-173). #}
 {% set pokaz_oceny = pokaz_ocene if pokaz_ocene is defined else true %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/truth-table.css') }}" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
-<div class="truth-table-mount"
-     data-formula="{{ formula }}"
-     data-adres="{{ url_for('api_formula.formula_table') }}"
-     data-pokaz-oceny="{{ 'true' if pokaz_oceny else 'false' }}"
-     data-rola="tablica-prawdy">
-  <noscript>
-    <p class="alert alert-info mb-2">
-      Tablica prawdy, wpisywanie wartości i prowadzenie krok po kroku liczą się
-      w przeglądarce i wymagają włączonego JavaScriptu.
+{# Kontener przewijania (karta PRZ-173). Tabelę rysuje `truth-table.js`, więc
+   szerokość liczy przeglądarka — kontener stoi już w znaczniku i to on zwęża
+   komponent w kolumnie grid lub flex. Przy bardzo szerokiej tabeli przewija się
+   tylko ona, a nie cała strona. #}
+<div class="tt-przewijanie">
+  <div class="truth-table-mount"
+       data-formula="{{ formula }}"
+       data-adres="{{ url_for('api_formula.formula_table') }}"
+       data-pokaz-oceny="{{ 'true' if pokaz_oceny else 'false' }}"
+       data-rola="tablica-prawdy">
+    <noscript>
+      <p class="alert alert-info mb-2">
+        Tablica prawdy, wpisywanie wartości i prowadzenie krok po kroku liczą się
+        w przeglądarce i wymagają włączonego JavaScriptu.
+      </p>
+      <p class="mb-0">Wzór formuły: <span class="formula">{{ formula }}</span>.</p>
+    </noscript>
+    <p class="tt-ladowanie text-muted small mb-1">
+      Tablica prawdy pojawi się tutaj po wczytaniu skryptu.
     </p>
-    <p class="mb-0">Wzór formuły: <span class="formula">{{ formula }}</span>.</p>
-  </noscript>
-  <p class="tt-ladowanie text-muted small mb-1">
-    Tablica prawdy pojawi się tutaj po wczytaniu skryptu.
-  </p>
+  </div>
 </div>
 <script type="module" src="{{ url_for('static', filename='js/truth-table.js') }}"></script>
