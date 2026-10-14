@@ -294,15 +294,16 @@ a `tests/test_diagrams.py` sprawdza go bez przeglądarki.
 ```python
 def gates_svg(node: Node, wartosci: dict[str, bool], krok: int | None = None) -> Markup
 def sets_svg(node: Node, krok: int | None = None) -> Markup   # diagram jednej strony
-def sets_strony_svg(lewa: Node, prawa: Node, krok_lewa: int, krok_prawa: int) -> Markup
 def kroki_gates(node: Node) -> list[dict]   # [{"opis": "…", "bramka": 1}, …]
 def kroki_sets(node: Node) -> list[dict]    # [{"operacja", "wzor", "opis", "strona"}, …]
+def krok_punktu_wyjscia(node: Node) -> dict # jeden krok dla strony bez operacji
 def strony(node: Node) -> tuple[Node, Node]        # lewa i prawa strona prawa
 def operacje_zbiorow(node: Node) -> list[Node]     # podformuły bez samych zmiennych
 
 MAX_ZBIOROW = 3          # tyle zbiorów mieści diagram
-KOLUMNY_SIATKI = 44      # siatka próbek obszaru: 44 × 36
-WIERSZE_SIATKI = 36
+KOLUMNY_SIATKI = 200     # siatka próbek obszaru: 200 × 160 (karta PRZ-182)
+WIERSZE_SIATKI = 160
+TOLERANCJA_KONTURU = 0.6 # ile jednostek viewBox wolno odchylić kontur
 LEWA, PRAWA = "lewa", "prawa"   # strony prawa na diagramie zbiorów
 ```
 
@@ -327,24 +328,44 @@ liczy `formula.evaluate` dla `wartosci`; bramki policzone po bieżącym kroku po
 Brak wartości którejś zmiennej to `FormulaError`. **Każdy** prostokąt i **każdy** przewód
 niesie `<title>` z wartością słowami.
 
-**Krok bramek (karta PRZ-141).** Krok `i` zapala **dokładnie jedną** bramkę: prostokąt
-podformuły `subformulas[i]` ma klasę `bramka-aktywna`, a przewody wchodzące do niej —
+**Układ bramek (karta PRZ-182).** Kluczem układu jest **wystąpienie** węzła (ścieżka
+w drzewie), a nie sam węzeł: gdy ten sam wzór stoi w drzewie dwa razy („p ∨ p”), każde
+wystąpienie ma własny wiersz, prostokąt i napis. Wszystkie prostokąty mają ten sam
+rozmiar, a przewód idzie prosto i skręca w **przejazd między kolumnami** bramek
+(`do[0] - ODSTEP_X / 2`), więc długi przewód — od liścia do bramki o dwie kolumny dalej
+— nie przecina bramek po drodze, a napis wartości nie ląduje w prostokącie bramki.
+`viewBox` ma marginesy na wszystkie kształty i napisy.
+
+**Krok bramek (karta PRZ-141).** Krok `i` zapala bramki swojego wzoru: prostokąty
+podformuły `subformulas[i]` mają klasę `bramka-aktywna`, a przewody wchodzące do niej —
 `przewod-aktywny`; na tych przewodach wartość stoi słowem (PRAWDA/FAŁSZ), nie cyfrą.
 Bramki policzone wcześniej mają `bramka-policzona`, więc liczba tych klas rośnie z krokiem.
+Gdy wzór stoi w drzewie dwa razy („p ∨ p”), zapalają się oba jego prostokąty — to jeden
+krok liczenia (karta PRZ-182).
 
 **Zbiory.** Prostokąt to cała przestrzeń, koła to zbiory zmiennych. Obszar liczymy na
-siatce 44 × 36 próbek: próbka należy do koła zmiennej, więc `evaluate` mówi, czy formuła
-jest w niej prawdziwa. Prawdziwe próbki sklejamy w wierszu w prostokąty. Bez kroku rysujemy
-obszar całej formuły jako `obszar-1`. Ponad `MAX_ZBIOROW` zmiennych moduł oddaje komunikat
-po polsku, a nie rysunek.
+gęstej siatce próbek (200 × 160, karta PRZ-182): próbka należy do koła zmiennej, więc
+`evaluate` mówi, czy formuła jest w niej prawdziwa. Bez kroku rysujemy obszar całej formuły
+jako `obszar-1`. Ponad `MAX_ZBIOROW` zmiennych moduł oddaje komunikat po polsku, a nie
+rysunek.
 
-**Dwie strony prawa (karta PRZ-172).** `sets_strony_svg` stawia obok siebie **dwa**
-diagramy: lewą i prawą stronę prawa (`strony`) — każdy z własnym wzorem w nagłówku
-(„Lewa strona: ∼(p ∨ q)”) i własnym numerem kroku. Oba leżą w jednym kontenerze
-`[data-wiz-rysunek]`, bo `wizualizacje.js` podmienia całą jego zawartość przy przejściu
-do następnego kroku. Kolejność kroków i to, co pokazuje każdy diagram, układa
-`laws._kroki_zbiorow`: lewa strona rośnie krok po kroku, a prawa stoi na swojej
-ostatniej operacji (czyli pokazuje całą prawą stronę), dopóki nie przyjdzie jej kolej.
+**Kontur obszaru (karta PRZ-182).** Zamiast sklejać próbki w prostokąty moduł wyznacza
+**granicę** obszaru: maska próbek idzie przez marching squares (`KONTUR_KOMORKI`,
+`KONTUR_SIODLO`), miejsce przecięcia na każdej krawędzi siatki liczy bisekcja
+(`_przejscie` — dzięki temu kontur trafia w prawdziwą granicę, a nie w schodek siatki),
+punkty upraszcza Douglas–Peucker (`TOLERANCJA_KONTURU`), a wygładza Catmull–Rom
+przerobiony na krzywe Béziera. Obszar to więc **jedna ścieżka** `<path class="wiz-obszar">`
+na kontur (z `shape-rendering="geometricPrecision"`), a nie dziesiątki prostokątów.
+Koła zbiorów stoją **nad** obszarem, żeby ich obrys był widoczny. Siatkę przynależności
+próbek do kół liczymy raz na formułę (`_przynaleznosc`, `_obszar` — oba z `lru_cache`),
+więc wszystkie kroki jednego żądania korzystają z tej samej maski.
+
+**Dwie strony prawa (karty PRZ-172 i PRZ-182).** Diagram zbiorów to **dwie figury**:
+lewą i prawą stronę prawa (`strony`), a od PRZ-182 każda jest **osobnym panelem kroków**
+z własną parą strzałek `‹`/`›`. Kolejność kroków każdej strony układa `laws._kroki_zbiorow`:
+lewa strona ma swoje operacje, prawa swoje, a razem dają dotychczasową kolejność nauki.
+Strona bez operacji (sama zmienna, np. `p` w prawie „∼∼p ≡ p”) dostaje jeden krok
+z całym wzorem (`krok_punktu_wyjscia`), żeby żaden diagram nie został bez strzałek.
 
 **Krok zbiorów (karta PRZ-141).** Obszar kroku `i` jest dzielony na dwie **rozłączne**
 warstwy, których suma to cały obszar tego kroku: `obszar-nowy` (mocny akcent) niesie to,
@@ -358,19 +379,22 @@ drugiego bloku kolorów.
 
 **Widok i partiale.** `app/blueprints/laws.py` woła oba rysunki dla wzoru prawa, biorąc
 wartościowanie z pierwszego wiersza tablicy prawdy (wszystkie zmienne prawdziwe), i podaje
-szablonowi `bramki` i `zbiory` — słowniki z listą kroków. Krok bramek to jak dotąd
-`{"opis", "wzor", "svg"}`. Krok zbiorów (karta PRZ-172) to `{"opis", "svg"}`: `svg` niesie
-**cały fragment rysunku** — oba diagramy razem z nagłówkami stron — a `opis` gotowy napis
-punktu listy („Dopełnienie — ∼(p ∨ q) — obszar poza zbiorem p ∨ q.”). Pole `wzor` zostaje
-w nim puste: wzór jest już częścią napisu, a makro `figura` wypisuje w punkcie listy sam
-`opis`.
+szablonowi `bramki` i `zbiory`. Krok bramek to jak dotąd `{"opis", "wzor", "svg"}`.
+`zbiory` (karta PRZ-182) to słownik dwóch **stron** — `{"lewa": …, "prawa": …}` — a każda
+strona niesie `tytul` („Lewa strona: ∼(p ∨ q)”) i własną listę `kroki` z polami
+`{"opis", "svg"}`. `svg` to rysunek **jednej** strony, a `opis` gotowy napis punktu listy
+(„Dopełnienie — ∼(p ∨ q) — obszar poza zbiorem p ∨ q.”). Pole `wzor` zostaje w kroku puste:
+wzór jest już częścią napisu, a makro `figura` wypisuje w punkcie listy sam `opis`.
 Partiale `_gates.html` i `_sets.html` składają sekcję rysunków z makr
-w `_diagramy.html` (`figura`, `zasoby`, `stopka`). Każdy z nich pokazuje **oba** diagramy;
-różni je tylko kolejność figur. Od PRZ-171 rysunki wybiera wyłącznie para diagramów:
+w `_diagramy.html` (`figura`, `zasoby`, `stopka`). Każdy z nich pokazuje **trzy** panele
+kroków — schemat bramek, zbiory lewej strony i zbiory prawej strony; różni je tylko
+kolejność figur. Od PRZ-171 rysunki wybiera wyłącznie para diagramów:
 `chain` — podobnie jak `sets` — prowadzi do `_sets.html`, a `RYSUNEK_ZAPASOWY` też jest
 diagramem zbiorów (dawniej oba wskazywały `_steps.html`, który dociągał z API pełny ślad
 upraszczania). Krok przełącza `wizualizacje.js`: gotowe kroki czekają
 w `<template data-wiz-krok>`, a bez JavaScriptu widać pierwszy krok i listę opisów.
+Każdy panel trzyma **własny numer kroku** w domknięciu swojej funkcji, więc kliknięcie
+strzałki w jednym diagramie nie rusza pozostałych (karta PRZ-182).
 
 **Numer kroku w adresie (karta PRZ-141).** `GET /prawa/<slug>?krok=N` otwiera stronę na
 kroku `N`, także bez JavaScriptu. `strona_prawa` czyta numer przez `_krok_z_adresu`
@@ -378,9 +402,9 @@ kroku `N`, także bez JavaScriptu. `strona_prawa` czyta numer przez `_krok_z_adr
 funkcja **przestawia** listę kroków (`_od_kroku`) tak, żeby krok `N` stał pierwszy —
 makro `figura` pokazuje pierwszy krok, a `wizualizacje.js` startuje od pierwszego
 szablonu, więc inaczej wybór kroku nie działałby bez zmiany skryptu. Numer poza zakresem
-jest przycinany do ostatniego kroku. Dla diagramu zbiorów przestawiamy całą listę operacji
-obu stron prawa (karta PRZ-172), razem z gotowymi rysunkami kroków, więc oba diagramy
-zostają w tym samym kroku.
+jest przycinany do ostatniego kroku. Dla diagramu zbiorów przestawiamy listę **każdej
+strony osobno** (karty PRZ-172 i PRZ-182), przycinając numer do jej długości — diagramy
+są niezależne, więc jeden może stać na ostatniej operacji, gdy drugi dopiero zaczyna.
 
 ### Sekcja „Krok po kroku” — kroki prawa (karta PRZ-143)
 

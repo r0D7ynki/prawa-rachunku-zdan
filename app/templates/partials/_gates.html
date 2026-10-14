@@ -4,11 +4,23 @@
    schemat bramek i diagram zbiorów. Ten partial stawia pierwszy schemat bramek;
    ``_sets.html`` robi to samo, tylko od diagramu zbiorów — różni je kolejność figur.
 
+   Od PRZ-182 diagram zbiorów to dwa **osobne panele kroków** — lewa i prawa strona
+   prawa — a każdy ma własne strzałki ``‹`` i ``›`` (patrz ``_sets.html``).
+
    Wejście: ``formula`` (wzór prawa) oraz ``bramki`` i ``zbiory`` ze ``strona_prawa``
    w ``app/blueprints/laws.py``. #}
 {% from "partials/_diagramy.html" import figura, stopka, zasoby %}
 
 {{ zasoby() }}
 {{ figura(formula, bramki, "gates-mount", "bramki-logiczne", "Schemat bramek", "rysunek-bramek") }}
-{{ figura(formula, zbiory, "sets-mount", "diagramy-zbiorow", "Diagram zbiorów", "rysunek-zbiorow") }}
+{% if zbiory %}
+  <div class="wiz-strony">
+    {{ figura(formula, zbiory.lewa, "sets-mount", "diagramy-zbiorow", zbiory.lewa.tytul, "rysunek-zbiorow") }}
+    {{ figura(formula, zbiory.prawa, "sets-mount", "diagramy-zbiorow-prawa", zbiory.prawa.tytul, "rysunek-zbiorow-prawa") }}
+  </div>
+{% else %}
+  {# Partial renderuje się także bez danych rysunków (testy, strona w budowie) —
+     wtedy pokazujemy komunikat zamiast się wywracać. #}
+  {{ figura(formula, zbiory, "sets-mount", "diagramy-zbiorow", "Diagram zbiorów", "rysunek-zbiorow") }}
+{% endif %}
 {{ stopka() }}
