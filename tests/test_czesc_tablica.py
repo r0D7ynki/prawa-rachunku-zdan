@@ -1,5 +1,5 @@
 """Testy komponentu interaktywnej tablicy prawdy (karty PRZ-011, PRZ-073, PRZ-121,
-PRZ-142 i PRZ-158).
+PRZ-142, PRZ-158 i PRZ-173).
 
 Tablica powstaje w przeglądarce z danych API, więc testy nie mogą jej narysować.
 Sprawdzają to, co da się sprawdzić bez przeglądarki (patrz ``AGENTS.md``, zasada 6):
@@ -22,7 +22,10 @@ Sprawdzają to, co da się sprawdzić bez przeglądarki (patrz ``AGENTS.md``, za
 * czy filtry zmiennych dają się odklikać (karta PRZ-158): ponowne kliknięcie tej
   samej wartości zdejmuje filtr, „Wyczyść filtry” pojawia się tylko przy aktywnym
   filtrze, a stan widoku idzie słowami przez ``aria-live``,
-* czy z widoku zniknęły guziki kroków („Odtwórz”, „Pauza”, „Od nowa”) i kropki kroków.
+* czy z widoku zniknęły guziki kroków („Odtwórz”, „Pauza”, „Od nowa”) i kropki kroków,
+* czy długi wzór w nagłówku kolumny nie rozjeżdża tabeli (karta PRZ-173): zawijanie
+  w kolumnie o ograniczonej szerokości, przewijanie samej tabeli i wąskie kolumny
+  zmiennych oraz wyników.
 
 Wzorzec testu źródłowego jest ten sam, co w ``tests/test_czesc_kroki.py``.
 """
@@ -30,6 +33,7 @@ Wzorzec testu źródłowego jest ten sam, co w ``tests/test_czesc_kroki.py``.
 from __future__ import annotations
 
 import re
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
@@ -106,6 +110,49 @@ def _sekcja_tablicy_prawdy(html: str) -> str:
     return html[start : html.index("</section>", start)]
 
 
+#: Znaczniki bez elementu zamykającego — nie odkładamy ich na stos parsera.
+ZNACZNIKI_PUSTE = frozenset({"link", "meta", "br", "img", "input", "hr", "source"})
+
+
+def _przodek_o_klasie(html: str, klasa_dziecka: str, klasa_przodka: str) -> bool:
+    """Czy element o klasie ``klasa_dziecka`` stoi w środku elementu ``klasa_przodka``.
+
+    Sam napis nie wystarcza: klasa przewijania mogłaby stać gdziekolwiek na
+    stronie, a nie wokół montażu tablicy. Dlatego idziemy po znacznikach
+    ze stosem otwartych elementów — rodzeństwo nie liczy się jako rodzic.
+    """
+    znaleziono = False
+    stos: list[list[str]] = []
+
+    class Parser(HTMLParser):
+        def handle_starttag(self, znacznik, atrybuty):
+            nonlocal znaleziono
+            klasy = dict(atrybuty).get("class", "").split()
+            if klasa_dziecka in klasy and any(klasa_przodka in poziom for poziom in stos):
+                znaleziono = True
+            if znacznik not in ZNACZNIKI_PUSTE:
+                stos.append(klasy)
+
+        def handle_endtag(self, znacznik):
+            if znacznik not in ZNACZNIKI_PUSTE and stos:
+                stos.pop()
+
+    Parser().feed(html)
+    return znaleziono
+
+
+def _reguła(styl: str, selektor: str) -> str:
+    """Zwraca ciało reguły CSS o podanym selektorze.
+
+    Selektor musi stać sam na początku wiersza i być jedynym w swojej regule —
+    inaczej trafilibyśmy na pierwszą regułę z listy selektorów, w której ten sam
+    napis występuje jako drugi element.
+    """
+    dopasowanie = re.search(rf"^{re.escape(selektor)} \{{", styl, re.MULTILINE)
+    assert dopasowanie, f"brak reguły CSS o selektorze: {selektor}"
+    return _blok(styl[dopasowanie.start() :], selektor)
+
+
 # ---------------------------------------------------------------------------
 # API — kształt danych, na którym opiera się skrypt
 # ---------------------------------------------------------------------------
@@ -154,6 +201,20 @@ def test_partial_renderuje_montaz_z_formula(aplikacja):
     assert 'class="truth-table-mount"' in html
     assert f'data-formula="{FORMULA}"' in html
     assert 'data-rola="tablica-prawdy"' in html
+
+
+def test_partial_opakowuje_montaz_w_kontener_przewijania(aplikacja):
+    """Kryterium karty: kontener przewijania stoi już w znaczniku partialu.
+
+    Tabelę rysuje dopiero `truth-table.js`, a szerokość wylicza przeglądarka.
+    Kontener z `overflow-x` musi więc czekać w znaczniku — on zwęża komponent
+    w kolumnie grid lub flex, zanim skrypt wczyta dane (karta PRZ-173).
+    """
+    html = _renderuj(aplikacja, formula=FORMULA)
+
+    assert _przodek_o_klasie(html, "truth-table-mount", "tt-przewijanie"), (
+        "montaż tablicy musi stać w kontenerze `tt-przewijanie`"
+    )
 
 
 def test_partial_domyslnie_pokazuje_ocene(aplikacja):
@@ -886,3 +947,80 @@ def test_styl_gasi_przycisk_wyczysc_filtry(styl):
     assert ".tt-przyciski-oceny [hidden] {" in styl
     blok = _blok(styl, ".tt-przyciski-oceny [hidden] {")
     assert "display: none;" in blok
+
+
+# ---------------------------------------------------------------------------
+# Długie wzory w nagłówkach kolumn (karta PRZ-173)
+# ---------------------------------------------------------------------------
+#: Formuła z karty — najdłuższa w tabelach praw: nagłówek kolumny to cała
+#: podformuła, więc bez zawijania tabela rozjeżdża się na całą stronę.
+FORMULA_ROZDZIELNOSCI = "((p ∨ q) ∧ r) ≡ ((p ∧ r) ∨ (q ∧ r))"
+
+
+def test_dlugi_wzor_w_tabeli_nie_wysadza_strony_prawa(klient):
+    """Kryterium karty: strona z najdłuższym wzorem renderuje się bez błędu."""
+    odpowiedz = klient.get("/prawa/rozdzielnosc-1")
+    html = odpowiedz.get_data(as_text=True)
+
+    assert odpowiedz.status_code == 200
+    sekcja = _sekcja_tablicy_prawdy(html)
+    assert f'data-formula="{FORMULA_ROZDZIELNOSCI}"' in sekcja
+    assert _przodek_o_klasie(sekcja, "truth-table-mount", "tt-przewijanie")
+
+
+def test_dlugi_wzor_w_tabeli_prawa_de_morgana(klient):
+    """Ta sama ścieżka na drugiej stronie z karty (``/prawa/de-morgan-1``)."""
+    odpowiedz = klient.get("/prawa/de-morgan-1")
+    html = odpowiedz.get_data(as_text=True)
+
+    assert odpowiedz.status_code == 200
+    sekcja = _sekcja_tablicy_prawdy(html)
+    assert 'data-formula="∼(p ∨ q) ≡ (∼p ∧ ∼q)"' in sekcja
+    assert _przodek_o_klasie(sekcja, "truth-table-mount", "tt-przewijanie")
+
+
+def test_styl_zawija_naglowek_kolumny_wynikowej(styl):
+    """Kryterium karty: nagłówek podformuły zawija się w kolumnie do 18 znaków.
+
+    Selektor jest tu mocniejszy od ogólnej reguły ``.tt-tabela th`` — tamta
+    ustawia ``white-space: nowrap`` i bez klasy dopisanej do ``th`` wygrałaby
+    z zawijaniem. Dlatego test pinuje selektor razem z elementem.
+    """
+    reguła = _reguła(styl, ".tt-tabela th.tt-naglowek-podformuly")
+
+    assert "max-width: 18ch;" in reguła
+    assert "white-space: normal;" in reguła
+    assert "overflow-wrap: anywhere;" in reguła
+    assert "font-size: 0.85em;" in reguła
+    assert "vertical-align: bottom;" in reguła
+    assert "hyphens: auto;" in reguła
+
+
+def test_styl_przewija_sama_tabele(styl):
+    """Kryterium karty: w bok przewija się tabela, a nie cała strona."""
+    kontener = _reguła(styl, ".tt-przewijanie")
+    assert "overflow-x: auto;" in kontener
+
+    tabela = _reguła(styl, ".tt-tabela")
+    assert "table-layout: auto;" in tabela
+    assert "width: max-content;" in tabela
+    assert "max-width: 100%;" in tabela
+
+
+def test_styl_zwęża_rodzica_tabeli(styl):
+    """Kryterium karty: rodzic musi mieć ``min-width: 0``, inaczej rozpycha kolumnę."""
+    assert "min-width: 0;" in _reguła(styl, ".tt-przewijanie")
+    assert "min-width: 0;" in _reguła(styl, ".truth-table-mount")
+
+
+def test_styl_zwęża_kolumny_zmiennych_i_wynikow(styl):
+    """Kryterium karty: kolumny zmiennych i wyników zostają wąskie (``width: 1%``)."""
+    zmienne = _reguła(
+        styl, ".tt-tabela th.tt-naglowek-zmiennej,\n.tt-tabela td.tt-komorka-zmiennej"
+    )
+    assert "width: 1%;" in zmienne
+    assert "white-space: nowrap;" in zmienne
+
+    wyniki = _reguła(styl, ".tt-tabela td.tt-komorka-wyniku")
+    assert "width: 1%;" in wyniki
+    assert "white-space: nowrap;" in wyniki

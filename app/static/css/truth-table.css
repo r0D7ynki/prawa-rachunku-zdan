@@ -1,4 +1,5 @@
-/* Style komponentu tablicy prawdy (karty PRZ-011, PRZ-073, PRZ-121 i PRZ-158).
+/* Style komponentu tablicy prawdy (karty PRZ-011, PRZ-073, PRZ-121, PRZ-158
+   i PRZ-173).
    Kolor nigdy nie jest jedynym nośnikiem informacji: każda wartość ma obok znaku
    `1`/`0` także słowo PRAWDA/FAŁSZ, wpis studenta dostaje znaczek „✓” albo „✕”,
    a wybrany wiersz dodatkowo grubszą krawędź. Komórka zakryta pokazuje pole na jeden
@@ -10,28 +11,79 @@
   --tt-prawda: var(--prawda-tlo);
   --tt-falsz: var(--falsz-tlo);
   --tt-wybrany: var(--formula-tlo);
+  /* Montaż jest rodzicem tabeli, więc musi umieć się zwęzić. Domyślne
+     `min-width: auto` elementu grid lub flex nie pozwala zejść poniżej
+     szerokości treści — przez to szeroka tabela rozpychała całą stronę
+     (karta PRZ-173). */
+  min-width: 0;
 }
 
+/* Kontener tabeli przewija ją w bok, gdy wzór nie mieści się na ekranie.
+   Bez `overflow-x` szeroka tabela rozpychałaby całą stronę, a nie samą siebie. */
+.tt-przewijanie {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+/* Tabela rośnie tylko tyle, ile potrzebuje treść, i nigdy nie wychodzi poza
+   swój kontener. `table-layout: auto` pozwala przeglądarce wyliczyć kolumny
+   z zawartości, więc `max-width` nagłówków podformuł naprawdę je zawija. */
 .tt-tabela {
   min-width: 22rem;
+  width: max-content;
+  max-width: 100%;
+  table-layout: auto;
   font-variant-numeric: tabular-nums;
 }
 
+/* Środek i brak zawijania to domyślny wygląd komórki. Ta reguła jest umyślnie
+   słabsza od reguły nagłówków podformuł niżej — inaczej `white-space: nowrap`
+   unieważniłoby ich zawijanie. */
 .tt-tabela th,
 .tt-tabela td {
   text-align: center;
   white-space: nowrap;
 }
 
-/* Nagłówki: zmienne i podformuły. Podformuły są dłuższe, więc mogą się łamać. */
-.tt-naglowek-zmiennej,
-.tt-naglowek-podformuly {
-  font-weight: 600;
+/* Kolumny zmiennych („p”, „q”, „r”) zostają wąskie: `width: 1%` mówi
+   przeglądarce „nie szersza niż treść”. Rosnąć mają tylko nagłówki podformuł. */
+.tt-tabela th.tt-naglowek-zmiennej,
+.tt-tabela td.tt-komorka-zmiennej {
+  width: 1%;
+  white-space: nowrap;
 }
 
-.tt-naglowek-podformuly {
+/* Tak samo kolumna numerów wierszy — w niej stoją tylko „1”, „2”, „3”… */
+.tt-tabela th.tt-numer-kolumny,
+.tt-tabela th.tt-numer {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* Komórka wyniku pokazuje jeden znak, więc także zostaje wąska. */
+.tt-tabela td.tt-komorka-wyniku {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* Nagłówek podformuły to najdłuższy napis w tabeli. Przy złożonym wzorze zawija
+   się w kolumnie o ograniczonej szerokości, zamiast rozpychać tabelę i całą
+   stronę (karta PRZ-173). Selektor jest mocniejszy od reguły `th`/`td` wyżej:
+   klasa dopisana do `th` przeważa nad samym `th`. */
+.tt-tabela th.tt-naglowek-podformuly {
+  font-weight: 600;
+  width: auto;
+  max-width: 18ch;
   white-space: normal;
-  max-width: 14rem;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  font-size: 0.85em;
+  vertical-align: bottom;
+}
+
+/* Nagłówek zmiennej też jest pogrubiony — tu nie ma czego zawijać. */
+.tt-tabela th.tt-naglowek-zmiennej {
+  font-weight: 600;
 }
 
 .tt-numer-kolumny,
