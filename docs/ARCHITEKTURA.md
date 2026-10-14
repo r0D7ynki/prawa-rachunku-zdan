@@ -292,21 +292,32 @@ a `tests/test_diagrams.py` sprawdza go bez przeglądarki.
 
 ```python
 def gates_svg(node: Node, wartosci: dict[str, bool], krok: int | None = None) -> Markup
-def sets_svg(node: Node, krok: int | None = None) -> Markup
+def sets_svg(node: Node, krok: int | None = None) -> Markup   # diagram jednej strony
+def sets_strony_svg(lewa: Node, prawa: Node, krok_lewa: int, krok_prawa: int) -> Markup
 def kroki_gates(node: Node) -> list[dict]   # [{"opis": "…", "bramka": 1}, …]
-def kroki_sets(node: Node) -> list[dict]    # [{"opis": "…", "operacja": "suma"}, …]
+def kroki_sets(node: Node) -> list[dict]    # [{"operacja", "wzor", "opis", "strona"}, …]
+def strony(node: Node) -> tuple[Node, Node]        # lewa i prawa strona prawa
+def operacje_zbiorow(node: Node) -> list[Node]     # podformuły bez samych zmiennych
 
 MAX_ZBIOROW = 3          # tyle zbiorów mieści diagram
 KOLUMNY_SIATKI = 44      # siatka próbek obszaru: 44 × 36
 WIERSZE_SIATKI = 36
+LEWA, PRAWA = "lewa", "prawa"   # strony prawa na diagramie zbiorów
 ```
 
-**Kroki.** `kroki_gates` i `kroki_sets` opisują po jednym kroku na podformułę
-(`formula.subformulas`, od najmniejszej), oba w tej samej kolejności. Krok `i` (liczony
-**od zera**) rysuje stan po `i`-tej operacji; `krok=None` znaczy „cała formuła”. Numer
-spoza listy jest przycinany, tak samo jak w pasku kroków. W `kroki_gates` pole `bramka`
-to numer kroku liczony od jednego, w `kroki_sets` pole `operacja` to nazwa operacji
-(`"zbiór"`, `"suma"`, `"część wspólna"`, `"dopełnienie"`, `"implikacja"`, `"równoważność"`).
+**Kroki.** `kroki_gates` i `kroki_sets` opisują po jednym kroku na operację, oba
+w kolejności liczenia. Krok `i` (liczony **od zera**) rysuje stan po `i`-tej operacji;
+`krok=None` znaczy „cała formuła”. Numer spoza listy jest przycinany, tak samo jak
+w pasku kroków. W `kroki_gates` pole `bramka` to numer kroku liczony od jednego.
+
+**Kroki zbiorów (karta PRZ-172).** `kroki_sets` liczy kroki po **operacjach na
+zbiorach** (`operacje_zbiorow`): sama zmienna nie jest operacją, więc nie ma jej ani
+na liście, ani w numeracji kroków. Kroki idą najpierw po lewej stronie prawa, potem po
+prawej (`strony`), a pole `strona` (`"lewa"`/`"prawa"`) mówi, na którym diagramie krok
+się dzieje. Pozostałe pola to `operacja` (`"suma"`, `"część wspólna"`, `"dopełnienie"`,
+`"implikacja"`, `"równoważność"`), `wzor` (tekst formuły po kroku) i `opis` (co obejmuje
+obszar). Wzór, który nie jest równoważnością, stoi po obu stronach i ma jedną listę
+kroków.
 
 **Bramki.** Kolumna to głębokość w drzewie, wiersz — kolejność liści (bramka stoi
 w środku swoich dzieci). Każda bramka to prostokąt z symbolem operatora, każdy przewód
@@ -326,17 +337,32 @@ jest w niej prawdziwa. Prawdziwe próbki sklejamy w wierszu w prostokąty. Bez k
 obszar całej formuły jako `obszar-1`. Ponad `MAX_ZBIOROW` zmiennych moduł oddaje komunikat
 po polsku, a nie rysunek.
 
+**Dwie strony prawa (karta PRZ-172).** `sets_strony_svg` stawia obok siebie **dwa**
+diagramy: lewą i prawą stronę prawa (`strony`) — każdy z własnym wzorem w nagłówku
+(„Lewa strona: ∼(p ∨ q)”) i własnym numerem kroku. Oba leżą w jednym kontenerze
+`[data-wiz-rysunek]`, bo `wizualizacje.js` podmienia całą jego zawartość przy przejściu
+do następnego kroku. Kolejność kroków i to, co pokazuje każdy diagram, układa
+`laws._kroki_zbiorow`: lewa strona rośnie krok po kroku, a prawa stoi na swojej
+ostatniej operacji (czyli pokazuje całą prawą stronę), dopóki nie przyjdzie jej kolej.
+
 **Krok zbiorów (karta PRZ-141).** Obszar kroku `i` jest dzielony na dwie **rozłączne**
 warstwy, których suma to cały obszar tego kroku: `obszar-nowy` (mocny akcent) niesie to,
 co dokłada bieżąca operacja, a `obszar-poprzedni` (słaby akcent) — część wspólną z krokiem
 `i - 1`. Dzięki temu kolejne kroki różnią się widocznie. Nad rysunkiem stoi etykieta
 operacji z jej nazwą („Suma — obszar, który pokrywa p albo q.”); numer kroku zostaje
-w `aria-label` rysunku, nie w widocznej treści. Tryb ciemny obsługują tokeny motywu —
-arkusz nie ma drugiego bloku kolorów.
+w `aria-label` rysunku, nie w widocznej treści. Rysunek bez wybranego kroku
+(`krok=None`, np. strona prawa bez operacji) też ma obie warstwy: obszar całej formuły
+i **pustą** warstwę poprzednią. Tryb ciemny obsługują tokeny motywu — arkusz nie ma
+drugiego bloku kolorów.
 
 **Widok i partiale.** `app/blueprints/laws.py` woła oba rysunki dla wzoru prawa, biorąc
 wartościowanie z pierwszego wiersza tablicy prawdy (wszystkie zmienne prawdziwe), i podaje
-szablonowi `bramki` i `zbiory` — słowniki z listą kroków `{"opis", "wzor", "svg"}`.
+szablonowi `bramki` i `zbiory` — słowniki z listą kroków. Krok bramek to jak dotąd
+`{"opis", "wzor", "svg"}`. Krok zbiorów (karta PRZ-172) to `{"opis", "svg"}`: `svg` niesie
+**cały fragment rysunku** — oba diagramy razem z nagłówkami stron — a `opis` gotowy napis
+punktu listy („Dopełnienie — ∼(p ∨ q) — obszar poza zbiorem p ∨ q.”). Pole `wzor` zostaje
+w nim puste: wzór jest już częścią napisu, a makro `figura` wypisuje w punkcie listy sam
+`opis`.
 Partiale `_gates.html` i `_sets.html` składają sekcję rysunków z makr
 w `_diagramy.html` (`figura`, `zasoby`, `stopka`). Każdy z nich pokazuje **oba** diagramy;
 różni je tylko kolejność figur. Od PRZ-171 rysunki wybiera wyłącznie para diagramów:
@@ -351,7 +377,9 @@ kroku `N`, także bez JavaScriptu. `strona_prawa` czyta numer przez `_krok_z_adr
 funkcja **przestawia** listę kroków (`_od_kroku`) tak, żeby krok `N` stał pierwszy —
 makro `figura` pokazuje pierwszy krok, a `wizualizacje.js` startuje od pierwszego
 szablonu, więc inaczej wybór kroku nie działałby bez zmiany skryptu. Numer poza zakresem
-jest przycinany do ostatniego kroku.
+jest przycinany do ostatniego kroku. Dla diagramu zbiorów przestawiamy całą listę operacji
+obu stron prawa (karta PRZ-172), razem z gotowymi rysunkami kroków, więc oba diagramy
+zostają w tym samym kroku.
 
 ### Sekcja „Krok po kroku” — kroki prawa (karta PRZ-143)
 

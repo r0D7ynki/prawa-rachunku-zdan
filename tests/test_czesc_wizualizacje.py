@@ -26,7 +26,7 @@ from markupsafe import Markup, escape
 from app import create_app
 from app.blueprints import laws as widoki
 from app.logic.diagrams import kroki_sets
-from app.logic.formula import parse
+from app.logic.formula import parse, to_text
 from app.logic.laws import all_laws
 
 KATALOG_STATYCZNY = Path(__file__).resolve().parents[1] / "app" / "static"
@@ -141,22 +141,22 @@ def test_partial_nie_rysuje_juz_w_przegladarce(aplikacja):
 def test_partial_ma_dwie_strzalki_i_tyle_szablonow_co_krokow(aplikacja, partial, prawo, zbior):
     """Bez numerków kroków: dwie strzałki na rysunek i gotowe kroki w ``<template>``.
 
-    Partial pokazuje oba rysunki (kryterium PRZ-123), więc kroków i strzałek jest
-    dwa razy tyle, ile ma jeden rysunek.
+    Partial pokazuje oba rysunki (kryterium PRZ-123), więc strzałek jest dwa razy
+    tyle, ile ma jeden rysunek. Od PRZ-172 diagram zbiorów ma własną listę kroków
+    (operacje obu stron prawa), a schemat bramek nadal idzie po podformułach —
+    dlatego szablony i punkty listy liczymy osobno dla każdej figury.
     """
     kroki = widoki.diagramy(prawo)[zbior]["kroki"]
-    drugi = "bramki" if zbior == "bramki" else "zbiory"
-    assert len(widoki.diagramy(prawo)[drugi]["kroki"]) == len(kroki), (
-        "oba rysunki mają te same kroki"
-    )
+    drugi = "zbiory" if zbior == "bramki" else "bramki"
+    wszystkie = len(kroki) + len(widoki.diagramy(prawo)[drugi]["kroki"])
 
     html = _renderuj(aplikacja, partial, **_rysunki(prawo))
 
     assert html.count("<button") == 4, "dwie strzałki na każdy z dwóch rysunków"
     assert 'aria-label="Poprzedni krok"' in html
     assert 'aria-label="Następny krok"' in html
-    assert html.count("<template") == 2 * len(kroki)
-    assert html.count("</li>") == 2 * len(kroki), "lista opisów ma po jednym punkcie na krok"
+    assert html.count("<template") == wszystkie
+    assert html.count("</li>") == wszystkie, "lista opisów ma po jednym punkcie na krok"
     assert kroki[0]["opis"] in html
 
 
@@ -505,14 +505,22 @@ def test_zbiory_biora_kroki_z_formuly_prawa(aplikacja, slug):
 
 
 @pytest.mark.parametrize("slug", PRAWA_ZBIOROW)
-def test_zbiory_kroki_pokrywaja_podformuly_prawa(slug):
-    """Kryterium PRZ-123: każdy krok rysunku to jedna podformuła, ostatni — całe prawo."""
+def test_zbiory_kroki_pokrywaja_operacje_obu_stron(slug):
+    """Kryterium PRZ-172: krok to jedna operacja, a ostatni domyka prawą stronę.
+
+    Karta PRZ-172 zastąpiła dla diagramu zbiorów kryterium PRZ-123 „każdy krok to
+    jedna podformuła”: kroki liczą się teraz po operacjach na zbiorach i idą
+    najpierw po lewej stronie prawa, potem po prawej.
+    """
     prawo = next(law for law in all_laws() if law.slug == slug)
     kroki = widoki.diagramy(prawo)["zbiory"]["kroki"]
-    wzory = [krok["wzor"] for krok in kroki]
+    zrodlo = kroki_sets(parse(prawo.formula))
+    pary = [(krok["strona"], krok["wzor"]) for krok in zrodlo]
 
-    assert wzory[-1] == widoki.formula_to_html(prawo.formula), "ostatni krok to cały wzór prawa"
-    assert len(wzory) == len(set(wzory)), "ten sam krok nie może wystąpić dwa razy"
+    assert len(kroki) == len(zrodlo), "kroki rysunku pochodzą z wzoru prawa"
+    assert len(pary) == len(set(pary)), "operacja nie może powtórzyć się na tej samej stronie"
+    assert zrodlo[0]["strona"] == "lewa", "lista zaczyna się od lewej strony prawa"
+    assert zrodlo[-1]["wzor"] == to_text(parse(prawo.prawa)), "ostatni krok domyka prawą stronę"
 
 
 def test_zbiory_rysuja_strzalke_rownowaznosci(skrypt_zbiorow):

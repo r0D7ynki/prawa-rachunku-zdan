@@ -5,7 +5,10 @@
    obszar nowy niesie mocny akcent, a obszar z poprzedniego kroku — słaby; w schemacie
    bramek zapala się bramka bieżącego kroku i jej przewody wejściowe. Kolor nigdy nie
    jest jedynym nośnikiem informacji: każdy kształt ma napis, każde pole ma `<title>`
-   i `aria-label`, a opis kroku stoi tekstem pod rysunkiem. */
+   i `aria-label`, a opis kroku stoi tekstem pod rysunkiem.
+
+   Od PRZ-172 diagram zbiorów to dwie figury obok siebie (lewa i prawa strona prawa),
+   a punkt listy kroków nazywa operację tego kroku. */
 
 /* Kolory rysunku pochodzą wyłącznie z tokenów motywu (`app.css`), więc oba
    motywy obsługuje jeden zestaw reguł — nie ma tu drugiego bloku trybu ciemnego. */
@@ -256,6 +259,31 @@
 .obszar-poprzedni {
   fill: var(--akcent-slabo);
   opacity: 0.85;
+}
+
+/* --- dwie strony prawa na diagramie zbiorów (karta PRZ-172) ------------- */
+
+/* Diagramy stoją obok siebie, a na wąskim ekranie przechodzą jeden pod drugim. */
+.wiz-strony {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.wiz-strona {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+/* Nad każdym diagramem stoi wzór jego strony: „Lewa strona: ∼(p ∨ q)”. */
+.wiz-strona-tytul {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+/* Nazwa operacji w punkcie listy kroków: „Dopełnienie — ∼(p ∨ q) — …”. */
+.wiz-operacja {
+  font-weight: 600;
 }
 
 .wiz-blad {
