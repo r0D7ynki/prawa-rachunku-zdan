@@ -6,6 +6,14 @@ i prowadzenie krok po kroku przez wspólny `stepper.js`).
 Projekt nie ma runnera JavaScriptu (AGENTS.md, zasada 6), więc zachowanie `steps.js`
 sprawdzamy statycznie: czytamy treść pliku i pilnujemy obecności identyfikatorów, klas
 i wywołań oraz braku `innerHTML` z danymi z API.
+
+Od karty PRZ-171 żaden widok nie montuje tego komponentu: ``RYSUNKI["chain"]``
+i ``RYSUNEK_ZAPASOWY`` w ``app/blueprints/laws.py`` prowadzą do diagramu zbiorów,
+a ``steps-mount`` występuje wyłącznie w ``partials/_steps.html``. Partial i skrypt
+**zostają** — ich usunięcie sięga plików spoza zakresu tamtej karty
+(``docs/ARCHITEKTURA.md``, ``tests/test_czesc_wizualizacje.py``, komentarze
+w ``prawo.html`` i ``_diagramy.html``). Te testy pilnują, że komponent działa,
+dopóki istnieje; sprzątanie po nim opisano w karcie PRZ-171 („Do zgłoszenia”).
 """
 
 from __future__ import annotations

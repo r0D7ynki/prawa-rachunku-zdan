@@ -31,22 +31,23 @@ KATALOG_APP = Path(__file__).resolve().parents[1] / "app"
 SZABLON_PRAWA = KATALOG_APP / "templates" / "prawo.html"
 SZABLON_LISTY = KATALOG_APP / "templates" / "prawa_lista.html"
 
-#: Cztery partiale, których wymaga karta PRZ-010: tablica prawdy w sekcji „Tablica
-#: prawdy”, a rysunek wybrany polem ``Law.wizualizacja`` (patrz ``widoki.RYSUNKI``).
+#: Partial tablicy prawdy i partiale diagramów, których wymaga karta PRZ-010 w sekcji
+#: „Tablica prawdy”. Od PRZ-171 rysunek każdego prawa to diagram zbiorów albo schemat
+#: bramek — komponent kroków (``partials/_steps.html``) nie ma już tu zastosowania.
 PARTIAL_TABLICY = "partials/_truth_table.html"
 PARTIALE_RYSUNKOW = {
     "partials/_gates.html",
     "partials/_sets.html",
-    "partials/_steps.html",
 }
 
 #: Rysunek oczekiwany dla każdej wartości ``Law.wizualizacja``:
-#: (klasa elementu-montażu, ``data-rola``).
+#: (klasa elementu-montażu, ``data-rola``). ``chain`` prowadzi dziś do diagramów,
+#: tak samo jak ``sets`` — różni je tylko kolejność figur (karta PRZ-171).
 OCZEKIWANY_RYSUNEK = {
     "gates": ("gates-mount", "bramki-logiczne"),
     "switch": ("gates-mount", "bramki-logiczne"),
     "sets": ("sets-mount", "diagramy-zbiorow"),
-    "chain": ("steps-mount", "kroki-przeksztalcen"),
+    "chain": ("sets-mount", "diagramy-zbiorow"),
 }
 
 #: Kolejność sekcji strony prawa (identyfikatory ``<h2 id="…">``).
@@ -105,6 +106,24 @@ NAPISY_KOMPONENTU = (
     "Pauza",
     "Od nowa",
 )
+
+#: Napisy śladu upraszczania, których **cała** strona prawa nie może już pokazać
+#: (karta PRZ-171). ``steps-mount`` montuje ``steps.js``, który pobiera z
+#: ``/api/formula/simplify`` pełny ślad przekształceń wzoru prawa.
+NAPISY_SLADU = (
+    "steps-mount",
+    "kroki-przeksztalcen",
+    "/static/js/steps.js",
+    "Prowadzenie krok po kroku",
+)
+
+#: Prawa z karty PRZ-171: oczywiste ``identycznosci`` (bez sekcji kroków) oraz
+#: ``podstawianie`` i ``de-morgan-1`` — po jednym z każdej pary wizualizacji.
+PRAWA_BEZ_SLADU = ("identycznosci", "podstawianie", "de-morgan-1")
+
+#: Górna granica liczby kroków sekcji „Krok po kroku” (karta PRZ-171). Prawa mają
+#: 3–6 kroków, więc osiem zostawia zapas na treść, a ucina ślad silnika.
+LIMIT_KROKOW = 8
 
 
 def _slug(law: Law) -> str:
@@ -277,6 +296,12 @@ def test_rysunki_pokrywaja_wszystkie_dozwolone_wizualizacje():
 def test_kazdy_rysunek_wskazuje_istniejacy_partial():
     for partial in widoki.RYSUNKI.values():
         assert (KATALOG_APP / "templates" / partial).is_file(), f"brak {partial}"
+
+
+def test_chain_i_zapasowy_rysunek_to_diagram_zbiorow():
+    """Kryterium 1: ``chain`` i zapas prowadzą do diagramu, a nie do śladu kroków."""
+    assert widoki.RYSUNKI["chain"] == "partials/_sets.html"
+    assert widoki.RYSUNEK_ZAPASOWY == "partials/_sets.html"
 
 
 def test_neighbours_pierwsze_prawo_nie_ma_poprzedniego():
@@ -717,14 +742,69 @@ def test_wszystkie_kroki_maja_ta_sama_klase_i_ten_sam_numer(strony):
     assert sekcja.count('<span class="krok-numer">') == len(law.kroki), "numer w każdym kroku"
 
 
+# --- koniec ze śladem upraszczania na stronie prawa (karta PRZ-171) ----------
+
+
+@pytest.mark.parametrize("slug", PRAWA_BEZ_SLADU)
+def test_strona_prawa_nie_montuje_sladu_upraszczania(strony, slug):
+    """Kryterium 2: trzy prawa z karty nie pokazują komponentu śladu upraszczania.
+
+    ``steps.js`` dorysowywał tu pełny ślad z ``/api/formula/simplify`` — dla wzoru
+    prawa potrafi to być kilkadziesiąt kroków, przez co proste prawo zamieniało się
+    w „potwora”. Kroki prawa pokazuje osobna sekcja „Krok po kroku” (PRZ-157).
+    """
+    html = strony[slug]
+
+    for napis in NAPISY_SLADU:
+        assert napis not in html, f"strona {slug} wciąż montuje ślad upraszczania: {napis!r}"
+
+
+@pytest.mark.parametrize("law", PRAWA, ids=_slug)
+def test_zadne_prawo_nie_montuje_sladu_upraszczania(strony, law):
+    """Kryterium 2 po wszystkich prawach: żadna strona nie montuje komponentu kroków."""
+    html = strony[law.slug]
+
+    assert "steps-mount" not in html, f"{law.slug} montuje komponent kroków"
+    assert 'data-rola="kroki-przeksztalcen"' not in html, f"{law.slug} montuje ślad silnika"
+
+
+def test_de_morgan_1_ma_tyle_krokow_co_rejestr(strony):
+    """Kryterium 3: sekcja „Krok po kroku” nie gubi i nie dokłada kroków prawa."""
+    law = laws.get("de-morgan-1")
+    pozycje = _kroki_sekcji(_lista_krokow(_sekcja_krokow(strony[law.slug])))
+
+    assert len(pozycje) == len(law.kroki)
+
+
+@pytest.mark.parametrize("law", PRAWA, ids=_slug)
+def test_zadne_prawo_nie_ma_wiecej_niz_osiem_krokow(strony, law):
+    """Kryterium 4: lista kroków żadnego prawa nie przekracza ``LIMIT_KROKOW``.
+
+    Liczymy pozycje listy, a nie kroki rejestru: na stronę trafia lista, więc test
+    pilnuje, że żadne inne źródło kroków nie dopisuje ich po cichu.
+    """
+    html = strony[law.slug]
+
+    # Prawo oczywiste nie ma sekcji kroków, więc nie ma czego liczyć (karta PRZ-167).
+    if not law.kroki_warte:
+        assert 'class="lista-krokow"' not in html, f"{law.slug} nie może mieć listy kroków"
+        return
+
+    pozycje = _kroki_sekcji(_lista_krokow(_sekcja_krokow(html)))
+
+    assert pozycje, f"{law.slug} ma sekcję kroków bez ani jednej pozycji"
+    assert len(pozycje) == len(law.kroki), f"{law.slug} nie pokazuje wszystkich kroków"
+    assert len(pozycje) <= LIMIT_KROKOW, f"{law.slug} pokazuje aż {len(pozycje)} kroków"
+
+
 # --- szablony ----------------------------------------------------------------
 
 
 def test_szablon_prawa_wstawia_tablice_prawdy_i_wybiera_rysunek():
     """Tablica prawdy stoi w szablonie, rysunek wybiera ``RYSUNKI`` w Pythonie.
 
-    Dzięki temu regułę „``gates`` i ``switch`` → bramki, ``sets`` → zbiory,
-    ``chain`` → kroki” sprawdza test funkcji, a nie porównywanie napisów w HTML.
+    Dzięki temu regułę „``gates`` i ``switch`` → bramki, ``sets`` i ``chain`` →
+    zbiory” sprawdza test funkcji, a nie porównywanie napisów w HTML.
     """
     tresc = SZABLON_PRAWA.read_text("utf-8")
 
@@ -732,8 +812,10 @@ def test_szablon_prawa_wstawia_tablice_prawdy_i_wybiera_rysunek():
     assert "{% include rysunek %}" in tresc, "rysunek musi zależeć od pola wizualizacja"
 
 
-def test_rysunki_uzywaja_wszystkich_trzech_partiali():
+def test_rysunki_uzywaja_obu_partiali_diagramow():
+    """Od PRZ-171 strona prawa nie ma komponentu kroków — zostają dwa diagramy."""
     assert set(widoki.RYSUNKI.values()) == PARTIALE_RYSUNKOW
+    assert widoki.RYSUNEK_ZAPASOWY in PARTIALE_RYSUNKOW
 
 
 def test_szablon_prawa_ma_sekcje_w_kolejnosci_z_karty():

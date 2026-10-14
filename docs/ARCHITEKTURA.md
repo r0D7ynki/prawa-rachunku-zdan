@@ -71,7 +71,7 @@ Trzy workery pracują równolegle. Dlatego:
 | `app/templates/partials/_truth_table.html` | komponent tablicy prawdy | PRZ-011 |
 | `app/templates/partials/_gates.html` | komponent bramek | PRZ-012, PRZ-123 |
 | `app/templates/partials/_sets.html` | komponent diagramów zbiorów | PRZ-012, PRZ-123 |
-| `app/templates/partials/_steps.html` | komponent kroków | PRZ-013, PRZ-123 |
+| `app/templates/partials/_steps.html` | komponent kroków (od PRZ-171 nieużywany na stronach praw) | PRZ-013, PRZ-123 |
 | `app/templates/partials/_diagramy.html` | wspólne makra rysunków strony prawa | PRZ-123 |
 | `app/static/js/wizualizacje.js` | dwie strzałki kroków rysunku | PRZ-123 |
 | `app/static/css/wizualizacje.css` | style rysunków | PRZ-012, PRZ-123 |
@@ -337,9 +337,12 @@ arkusz nie ma drugiego bloku kolorów.
 **Widok i partiale.** `app/blueprints/laws.py` woła oba rysunki dla wzoru prawa, biorąc
 wartościowanie z pierwszego wiersza tablicy prawdy (wszystkie zmienne prawdziwe), i podaje
 szablonowi `bramki` i `zbiory` — słowniki z listą kroków `{"opis", "wzor", "svg"}`.
-Partiale `_gates.html`, `_sets.html` i `_steps.html` składają sekcję rysunków z makr
+Partiale `_gates.html` i `_sets.html` składają sekcję rysunków z makr
 w `_diagramy.html` (`figura`, `zasoby`, `stopka`). Każdy z nich pokazuje **oba** diagramy;
-różni je tylko kolejność figur. Krok przełącza `wizualizacje.js`: gotowe kroki czekają
+różni je tylko kolejność figur. Od PRZ-171 rysunki wybiera wyłącznie para diagramów:
+`chain` — podobnie jak `sets` — prowadzi do `_sets.html`, a `RYSUNEK_ZAPASOWY` też jest
+diagramem zbiorów (dawniej oba wskazywały `_steps.html`, który dociągał z API pełny ślad
+upraszczania). Krok przełącza `wizualizacje.js`: gotowe kroki czekają
 w `<template data-wiz-krok>`, a bez JavaScriptu widać pierwszy krok i listę opisów.
 
 **Numer kroku w adresie (karta PRZ-141).** `GET /prawa/<slug>?krok=N` otwiera stronę na
