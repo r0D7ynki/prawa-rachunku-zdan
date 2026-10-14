@@ -61,6 +61,10 @@ uv run flask --app app run --debug
 # http://127.0.0.1:5000/
 ```
 
+**Pierwszy raz na MacBooku?** Instrukcja krok po kroku dla osoby, która nie zna terminala:
+`docs/URUCHOMIENIE-MACBOOK.md`. Wszystkie komendy wklejasz do Terminala. Instrukcja używa
+portu 5001, bo macOS trzyma port 5000 dla AirPlay.
+
 ## Bramka jakości
 
 ```bash

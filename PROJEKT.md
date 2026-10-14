@@ -40,6 +40,7 @@ w tablicy prawdy i wiedzieć, kiedy go użyć w przekształceniach.
 | 2026-10-13 | Wykład 1 zamknięty: 14 praw T1–T14 z pełną treścią, ścieżka kursu `/wstep`…`/kpn`, plac zabaw, quiz, CI na GitHubie. Wszystkie 12 adresów działa. |
 | 2026-10-13 | Uwagi właściciela w kartach: nawigacja wykładami (PRZ-069 … PRZ-071) i interaktywne wizualizacje krok po kroku (PRZ-072 … PRZ-077). |
 | 2026-10-13 | **Wersja gotowa do użytku, scalona do `main`.** Wykład 1 (14 praw, tablice prawdy, przekształcenia, bramki, zbiory, plac zabaw, quiz, słowniczek) i wykład 2 (wynikanie logiczne, reguły wnioskowania, dowody założeniowe, rezolucja). Nawigacja wykładami: rejestr lekcji, `/spis-tresci`, `/wyklad/<nr>`, okruszki, poprzednia/następna lekcja. Wizualizacje krok po kroku ze strzałkami. Bramka zielona, wszystkie testy przechodzą. |
+| 2026-10-14 | Instrukcja uruchomienia na MacBooku: `docs/URUCHOMIENIE-MACBOOK.md`. Krok po kroku dla osoby, która nie zna terminala — instalacja `uv`, pobranie projektu, start na porcie 5001. |
 
 ## Rejestr długu
 
