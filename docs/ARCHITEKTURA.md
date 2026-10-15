@@ -204,7 +204,7 @@ class Step:
 class Law:
     slug: str
     nazwa: str
-    kategoria: str        # "podstawowe" | "implikacja" | "algebra" | "de Morgan" | "zastępowanie"
+    kategoria: str        # dowolny niepusty napis (rejestr nie narzuca zamkniętej listy)
     formula: str          # np. "p ∨ ¬p"
     formula_ascii: str    # np. "p | ~p"
     lewa: str
@@ -231,8 +231,11 @@ def validate() -> list[str]              # lista problemów; pusta = treść pop
 Dla reguły spoza słownika zwraca `DLACZEGO_WOLNO_OGOLNE` — nowa treść nigdy nie zostawia
 pustego miejsca na stronie (karta PRZ-143).
 
-Moduły w `laws_data/` wystawiają `LAWS: list[Law]`. `laws.py` znajduje je sam
-(`pkgutil.iter_modules`) i sortuje po polu `kolejnosc` z `LAWS` — brak pola = 100.
+Każdy moduł w `laws_data/` wystawia listę `LAWS: list[Law]` oraz opcjonalny
+atrybut modułu `kolejnosc: int` (brak atrybutu oznacza 100). Rejestr `laws.py`
+odnajduje moduły automatycznie przez `pkgutil.iter_modules`. Sortuje moduły według
+atrybutu `kolejnosc`, a przy remisie według nazwy modułu. W obrębie każdego
+modułu zachowuje kolejność praw z listy `LAWS`.
 
 ## `app/logic/simplify.py`
 
