@@ -392,6 +392,22 @@ def test_bramki_nie_wstawiaja_danych_z_api_przez_innerhtml(skrypt_bramek):
     assert ".textContent = TEKSTY.znakNieznany;" in skrypt_bramek
 
 
+def test_bramki_grot_ukryty_dla_czytnikow_a_przewod_ma_etykiete(skrypt_bramek):
+    """Kryterium PRZ-096: marker grotu ma aria-hidden bez title, polyline ma role i aria-label."""
+    assert 'nowyElement("marker")' in skrypt_bramek
+    assert 'marker.setAttribute("aria-hidden", "true")' in skrypt_bramek
+    assert 'linia.setAttribute("role", "img")' in skrypt_bramek
+    assert 'linia.setAttribute("aria-label", TEKSTY.przewod)' in skrypt_bramek
+
+
+def test_bramki_obsluguja_formuly_bez_zmiennych_bez_zmyslania_wartosci(skrypt_bramek):
+    """Kryterium PRZ-096: brak zmiennych nie wymusza braku tabeli ani nie zmyśla wartości."""
+    assert "zmienne.length === 0" in skrypt_bramek
+    assert "map(() => 1)" not in skrypt_bramek
+    assert "wiersze.length === 0 || kolumny.length !== kolejnosc.length" in skrypt_bramek
+    assert "if (zmienne.length === 0 || wiersze.length === 0" not in skrypt_bramek
+
+
 # ---------------------------------------------------------------------------
 # sets.js — obszary liczone z drzewa
 # ---------------------------------------------------------------------------
