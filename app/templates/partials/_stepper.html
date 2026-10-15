@@ -3,7 +3,10 @@
    Pasek rysuje `stepper.js` przez `createStepper` na kontenerze `[data-stepper]`.
    Strona, która używa partialu, podaje kroki i wywołanie `onStep` z siebie.
    Bez JavaScriptu zostaje lista wszystkich kroków. #}
+{% if not g.get('_stepper_css_dolaczony') %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/stepper.css') }}" />
+{% set _ = g.setdefault('_stepper_css_dolaczony', true) %}
+{% endif %}
 <div class="stepper-mount" data-stepper data-rola="kroki">
   <noscript>
     {% if steps %}
@@ -28,4 +31,8 @@
     Kroki pojawią się tutaj po wczytaniu skryptu.
   </p>
 </div>
+{% if not g.get('_stepper_js_dolaczony') %}
 <script type="module" src="{{ url_for('static', filename='js/stepper.js') }}"></script>
+{% set _ = g.setdefault('_stepper_js_dolaczony', true) %}
+{% endif %}
+
