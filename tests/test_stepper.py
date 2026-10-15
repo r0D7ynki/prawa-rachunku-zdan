@@ -296,6 +296,13 @@ def test_konsument_steps_nie_odsyla_do_przycisku_od_nowa(konsumenci):
     assert "odśwież stronę" in konsumenci["steps.js"]
 
 
+def test_konsument_steps_nie_pokazuje_etykiety_krok_numer(konsumenci):
+    """Karta PRZ-128: lista kroków w steps.js nie ma etykiety „krok-numer”."""
+    kod = _bez_komentarzy(konsumenci["steps.js"])
+
+    assert "krok-numer" not in kod
+
+
 # ---------------------------------------------------------------------------
 # Arkusz stylów
 # ---------------------------------------------------------------------------

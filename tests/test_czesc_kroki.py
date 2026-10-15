@@ -379,6 +379,13 @@ def test_skrypt_pokazuje_na_stronie_prawa_jeden_krok_naraz(skrypt):
     assert "textContent.trim()" in kod
 
 
+def test_skrypt_nie_pokazuje_etykiety_krok_numer(skrypt):
+    """Karta PRZ-128: lista kroków nie pokazuje etykiety „Krok N” (krok-numer)."""
+    kod = _bez_komentarzy(skrypt)
+
+    assert "krok-numer" not in kod
+
+
 def test_arkusz_styluje_wyrozniony_fragment(arkusz):
     """Wyróżnienie fragmentu to tło **i** podkreślenie — kolor nie jest jedynym nośnikiem."""
     assert ".krok-fragment" in arkusz
