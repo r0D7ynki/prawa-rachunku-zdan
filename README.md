@@ -23,9 +23,13 @@ Numeracja i wzory z wykładu (T1–T14). Główny zapis to `∼` (negacja) i `�
 | 11 | Przemienności koniunkcji | `(p ∧ q) ≡ (q ∧ p)` |
 | 12 | I de Morgana | `∼(p ∨ q) ≡ (∼p ∧ ∼q)` |
 | 13 | II de Morgana | `∼(p ∧ q) ≡ (∼p ∨ ∼q)` |
-| 14 | Zastępowania równ. | `(p ≡ q) ≡ ((p → q) ∧ (q → p))` |
+| 14 | Zastępowania równ. (definiowanie równoważności) | `(p ≡ q) ≡ ((p → q) ∧ (q → p))` |
 
 W innych książkach spotkasz `¬p` i `p ↔ q` — to ten sam spójnik.
+
+Prawo 14 w podręcznikach występuje jako definiowanie równoważności. Nazwa „zastępowania równ.”
+pochodzi wprost z wykładu. Wzór zastępuje równoważność dwiema implikacjami połączonymi koniunkcją.
+Klasyczną regułę podstawiania formuł wyjaśnia lekcja `/przeksztalcanie`.
 
 ## Ścieżka kursu
 
