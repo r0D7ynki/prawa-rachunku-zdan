@@ -204,9 +204,11 @@ def test_skrypt_zachowuje_sterowanie_krokami(skrypt):
 
 
 def test_skrypt_ma_wszystkie_akcje_w_zwracanym_obiekcie(skrypt):
-    zwrot = skrypt.split("return {", 1)[1]
+    """Karty PRZ-072 i PRZ-080: sprawdzenie ograniczone do obiektu buildStepper."""
+    fragment_build = skrypt.split("function buildStepper", 1)[1]
+    zwrot = fragment_build.split("return {", 1)[1].split("};", 1)[0]
     for metoda in ("go,", "next,", "prev,", "destroy,"):
-        assert metoda in zwrot, f"brak {metoda} w zwracanym obiekcie"
+        assert metoda in zwrot, f"brak {metoda} w zwracanym obiekcie buildStepper"
     for usunieta in ("play,", "pause,", "reset,", "playing,"):
         assert usunieta not in zwrot, f"w zwracanym obiekcie zostało {usunieta}"
 
