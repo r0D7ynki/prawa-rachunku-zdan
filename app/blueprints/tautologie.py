@@ -40,9 +40,14 @@ from typing import Any
 from flask import Blueprint, render_template
 from markupsafe import Markup, escape
 
+from app.blueprints.formuly import (
+    Kolumna as BaseKolumna,
+)
+from app.blueprints.formuly import (
+    formula_to_html,
+)
 from app.logic.formula import (
     And,
-    FormulaError,
     Iff,
     Imp,
     Node,
@@ -98,20 +103,14 @@ JEDNOSTKA_WIERSZA = "wiersz"
 
 
 @dataclass(frozen=True)
-class Kolumna:
+class Kolumna(BaseKolumna):
     """Kolumna tablicy prawdy.
 
-    ``wzor`` to wzór, którego wartości liczymy. ``nazwa`` to nazwa pomocnicza
-    z wykładu (α, β, γ, δ) — nagłówek pokaże ją przed wzorem, np. ``α = p → q``.
-    ``naglowek`` podstawia drzewo rysowane zamiast ``wzor``; potrzebne tam, gdzie
-    wykład pisze nagłówek skrótem (``α → ∼p``), bo wtedy sam wzór nie wystarcza.
-    ``zrodla`` to numery kolumn, z których liczy się ta kolumna (w pełnej tablicy,
-    razem z kolumnami zmiennych), a ``operacja`` — jej nazwa po polsku. Z tego
-    powstają strzałki i opisy kroków (karta PRZ-076).
+    Rozszerza :class:`app.blueprints.formuly.Kolumna` o pola potrzebne dla dowodów
+    i metody skróconej: ``naglowek`` zastępczy oraz ``zrodla`` i ``operacja``
+    dla strzałek i opisów kroków (karta PRZ-076).
     """
 
-    wzor: str
-    nazwa: str = ""
     naglowek: Node | None = None
     zrodla: tuple[int, ...] = ()
     operacja: str = ""
@@ -181,19 +180,6 @@ KROKI_METODY: list[dict[str, str]] = [
         "opis": "Zostają więc dwa przypadki: q = 1 oraz q = 0. Liczymy je w tabeli niżej.",
     },
 ]
-
-
-def formula_to_html(text: str, styl: str = "wyklad") -> Markup:
-    """Zwraca wzór jako bezpieczny HTML z ``formula.to_html``.
-
-    Gdy napis nie jest poprawną formułą, oddajemy go jako zwykły tekst — treść
-    lekcji nigdy nie kończy się błędem 500. Wynik wstawiamy w szablonie przez
-    ``|safe``, tak samo jak ``app/blueprints/formuly.py`` i ``wstep.py``.
-    """
-    try:
-        return Markup(to_html(parse(text), styl))
-    except FormulaError:
-        return escape(text)
 
 
 def naglowek_to_html(kolumna: Mapping[str, Any]) -> Markup:
