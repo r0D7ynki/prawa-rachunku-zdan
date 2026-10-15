@@ -8,12 +8,6 @@
 
 {% block tresc %}
   {#
-    Znaki panelu w kolejności od negacji do nawiasów. Najpierw znaki z wykładu
-    (∼, ≡), zaraz za nimi popularne odpowiedniki (¬, ↔) — tak jak w decyzji D15.
-  #}
-  {% set znaki_panelu = ["∼", "¬", "∧", "∨", "→", "≡", "↔", "(", ")"] %}
-
-  {#
     Panel znaków stoi przy każdym polu formuły. Atrybut `data-pole` mówi skryptowi,
     do którego pola panel wstawia znaki, a `aria-label` mówi czytnikowi ekranu,
     przy którym polu stoi.
@@ -75,7 +69,7 @@
         Przyjmujemy też zapis z innych książek: ¬ zamiast ∼ albo ↔ zamiast ≡.
       </p>
 
-      {{ klawiatura("pole-formula", "pierwszej formuły", znaki_panelu) }}
+      {{ klawiatura("pole-formula", "pierwszej formuły", symbole) }}
 
       <p class="mb-1 mt-3">Przykłady na start:</p>
       <ul class="lista-przykladow list-inline mb-3">
@@ -151,7 +145,7 @@
         spellcheck="false"
       />
 
-      {{ klawiatura("pole-druga", "drugiej formuły", znaki_panelu) }}
+      {{ klawiatura("pole-druga", "drugiej formuły", symbole) }}
 
       <button type="submit" id="przycisk-porownaj" class="btn btn-primary mt-3">
         Porównaj

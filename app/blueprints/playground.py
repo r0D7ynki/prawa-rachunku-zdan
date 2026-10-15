@@ -22,16 +22,16 @@ from flask import Blueprint, render_template, request
 bp = Blueprint("playground", __name__)
 
 #: Formuła w polu, gdy adres nie podaje własnej.
-DEFAULT_FORMULA = "p → (q ∧ ¬r)"
+DEFAULT_FORMULA = "p → (q ∧ ∼r)"
 
 #: Druga formuła do porównania, gdy adres nie podaje własnej.
-DEFAULT_SECOND = "¬p ∨ q"
+DEFAULT_SECOND = "∼p ∨ q"
 
 #: Symbole wstawiane przyciskami klawiatury — w kolejności z zapisu formuły.
-SYMBOLS = ("¬", "∧", "∨", "→", "↔", "(", ")")
+SYMBOLS = ("∼", "¬", "∧", "∨", "→", "≡", "↔", "(", ")")
 
 #: Przykłady na start. Kliknięcie wstawia formułę do pola.
-EXAMPLES = ("p → q", "¬(p ∧ q)", "p ∨ ¬p", "(p → q) ∧ p")
+EXAMPLES = ("p → q", "∼(p ∧ q)", "p ∨ ∼p", "(p → q) ∧ p")
 
 #: Cele przekształcania dla przełącznika kroków (umowa z ``docs/ARCHITEKTURA.md``).
 GOALS = ("auto", "nnf", "dnf", "cnf")
