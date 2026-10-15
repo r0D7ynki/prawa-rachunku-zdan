@@ -635,6 +635,12 @@ Wszystkie endpointy to `POST` z JSON-em, o ile tabela nie mówi inaczej. Odpowie
 Odpowiedź `/api/formula/table` zawiera pole `columns_html` (oraz `tabela.columns_html`). Zwraca ono
 nagłówki kolumn w notacji wykładu z klasami HTML (`to_html`).
 
+Struktura słownika `tabela` w odpowiedzi `/api/formula/table`:
+- `variables`: lista nazw zmiennych w formule (`list[str]`),
+- `columns`: lista etykiet wszystkich kolumn tabeli (`list[str]`),
+- `rows`: lista słowników wierszy; każdy wiersz zawiera wartości zmiennych oraz pole `values` z listą wartości logicznych kolumn (`list[bool]`),
+- `classification`: klasyfikacja formuły (`"tautologia" | "kontrtautologia" | "spełnialna"`).
+
 `ast` to drzewo JSON: `{"typ": "Var", "nazwa": "p"}`, `{"typ": "Not", "dziecko": {...}}`,
 `{"typ": "And"|"Or"|"Imp"|"Iff", "lewy": {...}, "prawy": {...}}`. Rysunki robi JavaScript
 z tego drzewa, więc nie zgaduje struktury z tekstu.

@@ -334,6 +334,43 @@ def test_skrypt_nie_wstawia_tresci_przez_innerhtml():
     assert ".innerHTML" not in zrodlo, "treść z API ma trafiać przez textContent"
 
 
+def test_skrypt_waliduje_strukture_tabeli_z_api():
+    """Skrypt weryfikuje poprawność pól tabeli i wierszy przed wyrenderowaniem."""
+    zrodlo = _zrodlo(JS)
+
+    assert 'const POLE_WARTOSCI = "values";' in zrodlo
+    assert "Array.isArray(tabela.variables)" in zrodlo
+    assert "Array.isArray(tabela.columns)" in zrodlo
+    assert "Array.isArray(tabela.rows)" in zrodlo
+    assert "Array.isArray(wiersz[POLE_WARTOSCI])" in zrodlo
+    assert "Niepoprawna struktura tablicy prawdy z API." in zrodlo
+    assert "wiersz[POLE_WARTOSCI] ?? wiersz.values" not in zrodlo, "martwy podwójny odczyt"
+
+
+def test_kontrakt_api_tabeli_pokrywa_wymagania_playground(klient):
+    """Odpowiedź POST /api/formula/table dostarcza strukturę wymaganą przez playground.js."""
+    odp = klient.post("/api/formula/table", json={"formula": "p -> (q & ~r)", "podformuly": True})
+    assert odp.status_code == 200
+    dane = odp.get_json()
+    assert dane["ok"] is True
+    tabela = dane["tabela"]
+
+    # Sprawdzenie obecności kluczy walidowanych w playground.js
+    assert isinstance(tabela.get("variables"), list) and len(tabela["variables"]) == 3
+    assert isinstance(tabela.get("columns"), list) and len(tabela["columns"]) > 3
+    assert isinstance(tabela.get("rows"), list) and len(tabela["rows"]) == 8
+
+    # Sprawdzenie kontraktu wierszy
+    for wiersz in tabela["rows"]:
+        for var in tabela["variables"]:
+            assert var in wiersz and isinstance(wiersz[var], bool)
+        assert "values" in wiersz
+        assert isinstance(wiersz["values"], list)
+        assert len(wiersz["values"]) == len(tabela["columns"])
+        for v in wiersz["values"]:
+            assert isinstance(v, bool)
+
+
 # --- rejestracja widoku ------------------------------------------------------
 
 
