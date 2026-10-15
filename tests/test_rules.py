@@ -376,3 +376,17 @@ def test_metazmienne_to_html_oddaje_bledny_napis_bez_znacznikow():
 
 def test_formula_to_html_oddaje_bledny_napis_bez_znacznikow():
     assert _tekst(widok.formula_to_html("p i q")) == "p i q"
+
+
+def test_szablon_reguly_uzywa_url_for_dla_odnosnika_do_tautologii(klient):
+    """Odnośnik do tautologii w szablonie reguł używa url_for i wskazuje istniejący endpoint."""
+    szablon = Path(__file__).resolve().parents[1] / "app" / "templates" / "reguly.html"
+    zrodlo = szablon.read_text(encoding="utf-8")
+
+    assert '<a href="/tautologie">' not in zrodlo, "odnośnik do tautologii jest na sztywno"
+    assert "url_for('tautologie.tautologie')" in zrodlo, "brak url_for do tautologii"
+
+    odpowiedz = klient.get(ADRES)
+    assert odpowiedz.status_code == 200
+    html = odpowiedz.get_data(as_text=True)
+    assert '<a href="/tautologie">tautologii</a>' in html
