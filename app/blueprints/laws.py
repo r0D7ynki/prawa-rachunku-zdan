@@ -115,8 +115,9 @@ def _kroki_rysunku(
 ) -> list[dict]:
     """Zamienia kroki z ``diagrams`` na dane dla szablonu: wzór i gotowy SVG.
 
-    Krok ``i`` odpowiada podformule ``czesci[i]`` — obie listy powstają w tej samej
-    kolejności (``formula.subformulas``), więc wzór i rysunek opisują ten sam stan.
+    Krok ``numer`` (indeks liczony od zera: 0, 1, ...) odpowiada podformule ``czesci[numer]``
+    — obie listy powstają w tej samej kolejności (``formula.subformulas``), więc wzór i rysunek
+    opisują ten sam stan.
     """
     return [
         {
@@ -215,13 +216,18 @@ def _zbiory_dla_szablonu(node: Node, krok: int | None) -> dict[str, dict]:
 
 
 def _od_kroku(kroki: list[dict], krok: int | None) -> list[dict]:
-    """Przestawia kroki rysunku tak, żeby krok ``krok`` stał pierwszy.
+    """Przestawia kroki rysunku tak, żeby krok o indeksie ``krok`` stał pierwszy.
+
+    Numeracja kroków zaczyna się od zera (indeks 0 to krok początkowy/pierwszy,
+    indeks 1 to krok drugi itd., zgodnie z konwencją modułu ``app.logic.diagrams``
+    oraz komponentu ``stepper.js``).
 
     Strona pokazuje pierwszy krok z listy, a ``wizualizacje.js`` zawsze startuje
     od pierwszego szablonu — dlatego wybór kroku z adresu to przestawienie listy,
     a nie osobny rysunek. Lista jest zamknięta w kółko: kroki po wybranym idą
     dalej w swojej kolejności, a te przed nim na koniec, więc wszystkie zostają
-    na stronie (karta PRZ-141). Numer spoza listy przycinamy do jej końców.
+    na stronie (karta PRZ-141). Numer spoza listy przycinamy do jej końców
+    (wartości ujemne do 0, wartości zbyt duże do ostatniego indeksu).
     """
     if krok is None or not kroki:
         return kroki
@@ -230,7 +236,11 @@ def _od_kroku(kroki: list[dict], krok: int | None) -> list[dict]:
 
 
 def _krok_z_adresu(wartosc: str | None) -> int | None:
-    """Numer kroku z adresu (``?krok=2``); brak wartości albo śmieć to „od początku”."""
+    """Numer kroku z adresu (``?krok=2`` to trzeci krok; indeks liczony od zera).
+
+    Brak wartości, pusty ciąg albo nieprawidłowy tekst oznacza rozpoczęcie
+    od początku (indeks 0).
+    """
     if wartosc is None:
         return None
     try:
@@ -249,8 +259,9 @@ def diagramy(law: Law, krok: int | None = None) -> dict[str, dict]:
     Gdy wzór prawa się nie parsuje, zwracamy puste listy kroków — strona pokaże wzór
     i komunikat, a nie błąd 500 (tak samo zachowuje się ``formula_to_html``).
 
-    ``krok`` to numer z adresu (``?krok=N``) — otwiera stronę na wskazanym kroku
-    rysunku, bez JavaScriptu. Listę kroków przesuwa :func:`_od_kroku`.
+    ``krok`` to indeks kroku z adresu (``?krok=N``, liczony od zera: 0 to pierwszy
+    krok) — otwiera stronę na wskazanym kroku rysunku, bez JavaScriptu. Listę kroków
+    przesuwa :func:`_od_kroku`.
     """
     try:
         node = parse(law.formula)
@@ -636,8 +647,10 @@ def lista_praw():
 def strona_prawa(slug: str):
     """Strona jednego prawa albo komunikat 404, gdy nie ma prawa o tym adresie.
 
-    ``?krok=N`` otwiera oba rysunki na kroku N — numer spoza zakresu pokazuje
-    ostatni krok. Działa bez JavaScriptu, bo kroki rysuje serwer (karta PRZ-141).
+    ``?krok=N`` otwiera oba rysunki na kroku o indeksie N (liczony od zera: 0 to
+    pierwszy krok, 1 to drugi krok) — numer ujemny zaczyna od początku, a numer
+    przekraczający liczbę kroków pokazuje ostatni krok. Działa bez JavaScriptu,
+    bo kroki rysuje serwer (karta PRZ-141).
     """
     law = get(slug)
     if law is None:
