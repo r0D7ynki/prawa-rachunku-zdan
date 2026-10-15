@@ -121,11 +121,14 @@ function elementHtml(znacznik, klasa, tekst) {
   return element;
 }
 
-/** Podmienia opis `<title>` elementu SVG (pierwsze dziecko tworzy `nowyElement`). */
+/** Podmienia opis `<title>` i `aria-label` elementu SVG (pierwsze dziecko tworzy `nowyElement`). */
 function ustawTytul(element, opis) {
   const tytul = element.firstElementChild;
   if (tytul && tytul.tagName.toLowerCase() === "title") {
     tytul.textContent = opis;
+  }
+  if (element.hasAttribute("aria-label")) {
+    element.setAttribute("aria-label", opis);
   }
 }
 
@@ -342,8 +345,8 @@ function wezelZmiennej(nazwa, srodek) {
 
 /** Grot strzałki dokładany na końcu każdego przewodu (`marker-end`). */
 function grotStrzalki() {
-  const defs = nowyElement("defs", "Definicja grotu strzałki dla przewodów.");
-  const marker = nowyElement("marker", TEKSTY.strzalka);
+  const defs = nowyElement("defs");
+  const marker = nowyElement("marker");
   marker.setAttribute("id", ID_GROTU);
   marker.setAttribute("viewBox", "0 0 10 10");
   marker.setAttribute("refX", "9");
@@ -352,7 +355,8 @@ function grotStrzalki() {
   marker.setAttribute("markerHeight", "6");
   marker.setAttribute("markerUnits", "strokeWidth");
   marker.setAttribute("orient", "auto");
-  const grot = nowyElement("path", TEKSTY.strzalka);
+  marker.setAttribute("aria-hidden", "true");
+  const grot = nowyElement("path");
   grot.setAttribute("class", "wiz-grot");
   grot.setAttribute("d", "M 0 0 L 10 5 L 0 10 Z");
   marker.append(grot);
@@ -364,6 +368,7 @@ function grotStrzalki() {
 function przewod(od, do_) {
   const linia = nowyElement("polyline", TEKSTY.przewod);
   linia.setAttribute("class", "wiz-przewod wiz-nieznane");
+  linia.setAttribute("aria-label", TEKSTY.przewod);
   const srodek = (od.x + do_.x) / 2;
   linia.setAttribute(
     "points",
@@ -535,6 +540,10 @@ function zbudujKroki(ast, wartosci, kolejnosc, wezly) {
 /** Przełączniki `0`/`1` nad rysunkiem — po jednej parze na każde wejście układu. */
 function zbudujWejscia(zmienne, zmienWartosc) {
   const sekcja = elementHtml("div", "wiz-wejscia");
+  if (zmienne.length === 0) {
+    sekcja.classList.add("d-none");
+    return { element: sekcja, ustaw: () => {} };
+  }
   sekcja.setAttribute("role", "group");
   sekcja.setAttribute("aria-label", TEKSTY.wejscia);
 
@@ -709,9 +718,22 @@ async function wypelnij(montaz) {
       : [];
   const { kolejnosc, wezly } = zbierzPodformuly(dane.ast);
 
+  // Dla formuły bez zmiennych (stała logiczna) nie wyświetlamy przełączników wejść,
+  // lecz pojedynczy krok z wartością. Brak zmiennych nie jest błędem braku tabeli.
+  const wierszeDanych =
+    zmienne.length === 0 && wiersze.length === 0
+      ? [{ [POLE_WARTOSCI]: kolejnosc.map(() => 1) }]
+      : wiersze;
+
   // Kolumny tablicy i nasza kolejność podformuł muszą się zgadzać co do jednej.
   // Gdyby serwer zmienił kolejność, wolelibyśmy komunikat niż wartość z cudzej kolumny.
-  if (zmienne.length === 0 || wiersze.length === 0 || kolumny.length !== kolejnosc.length) {
+  const brakZgodnosci = kolumny.length !== kolejnosc.length;
+  if (zmienne.length > 0) {
+    if (wierszeDanych.length === 0 || brakZgodnosci) {
+      pokazKomunikat(montaz, TEKSTY.brakTabeli, status);
+      return;
+    }
+  } else if (wiersze.length > 0 && brakZgodnosci) {
     pokazKomunikat(montaz, TEKSTY.brakTabeli, status);
     return;
   }
@@ -734,7 +756,10 @@ async function wypelnij(montaz) {
   montazKrokow.setAttribute("data-stepper", "");
 
   const sekcja = elementHtml("div", "wiz-rysunek d-flex flex-column gap-3");
-  sekcja.append(wejscia.element, figura, montazKrokow, zbudujLegende(zbierzTypy(dane.ast)));
+  if (zmienne.length > 0) {
+    sekcja.append(wejscia.element);
+  }
+  sekcja.append(figura, montazKrokow, zbudujLegende(zbierzTypy(dane.ast)));
   montaz.replaceChildren(sekcja, status);
 
   let stepper = null;
@@ -749,7 +774,7 @@ async function wypelnij(montaz) {
       stepper = null;
     }
 
-    const wiersz = znajdzWiersz(wiersze, zmienne, env);
+    const wiersz = znajdzWiersz(wierszeDanych, zmienne, env);
     if (!wiersz || !Array.isArray(wiersz[POLE_WARTOSCI])) {
       pokazKomunikat(montaz, TEKSTY.brakTabeli, status);
       return;
