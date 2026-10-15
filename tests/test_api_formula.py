@@ -136,6 +136,37 @@ def test_tabela_bez_podformul_ma_jedna_kolumne(klient):
     assert dane["tabela"]["rows"][0]["values"] == [True]
 
 
+def test_tablica_zwraca_naglowki_podformul_w_html(klient):
+    dane = _post_json(klient, TABLE, {"formula": "p ∧ q"})
+
+    assert dane["columns_html"] == ["p", "q", 'p <span class="op-and">∧</span> q']
+    assert dane["tabela"]["columns_html"] == ["p", "q", 'p <span class="op-and">∧</span> q']
+
+
+def test_tablica_zwraca_naglowki_podformul_w_html_dla_negacji_i_rownowaznosci(klient):
+    dane = _post_json(klient, TABLE, {"formula": "¬p ↔ q"})
+
+    assert dane["columns_html"] == [
+        "p",
+        '<span class="op-neg">∼</span>p',
+        "q",
+        '<span class="op-neg">∼</span>p <span class="op-iff">≡</span> q',
+    ]
+    assert dane["tabela"]["columns_html"] == [
+        "p",
+        '<span class="op-neg">∼</span>p',
+        "q",
+        '<span class="op-neg">∼</span>p <span class="op-iff">≡</span> q',
+    ]
+
+
+def test_tablica_bez_podformul_zwraca_jeden_naglowek_html(klient):
+    dane = _post_json(klient, TABLE, {"formula": "p ∧ q", "podformuly": False})
+
+    assert dane["columns_html"] == ['p <span class="op-and">∧</span> q']
+    assert dane["tabela"]["columns_html"] == ['p <span class="op-and">∧</span> q']
+
+
 def test_tabela_odrzuca_za_duzo_zmiennych(klient):
     formula = " ∧ ".join(f"a{indeks}" for indeks in range(7))
 
