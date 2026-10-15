@@ -85,8 +85,40 @@ function opisKontrprzykladu(kontrprzyklad) {
     .join(", ");
 }
 
-/** Rysuje tabelę prawdy: kolumny zmiennych, potem kolumny podformuł. */
+/**
+ * Pole z wynikami kolumn w wierszu tablicy prawdy (kontrakt z docs/ARCHITEKTURA.md).
+ * Wiersze tablicy z POST /api/formula/table zawierają wartościowania zmiennych
+ * oraz listę booleanów pod kluczem POLE_WARTOSCI ("values").
+ */
+const POLE_WARTOSCI = "values";
+
+/**
+ * Struktura danych tabeli prawdy z POST /api/formula/table:
+ * @typedef {Object} TabelaPrawdy
+ * @property {string[]} variables - nazwy zmiennych (np. ["p", "q"])
+ * @property {string[]} columns - etykiety kolumn (zmienne i podformuły)
+ * @property {Array<Record<string, boolean> & { values: boolean[] }>} rows - wiersze wartościowań
+ * @property {string} classification - "tautologia" | "kontrtautologia" | "spełnialna"
+ */
+
+/**
+ * Rysuje tabelę prawdy: kolumny zmiennych, potem kolumny podformuł.
+ * @param {HTMLElement} kontener - element docelowy tabeli
+ * @param {TabelaPrawdy} tabela - dane tablicy z API
+ * @param {string} formula - zapis formuły w nagłówku
+ */
 function rysujTablice(kontener, tabela, formula) {
+  if (
+    !tabela ||
+    !Array.isArray(tabela.variables) ||
+    !Array.isArray(tabela.columns) ||
+    !Array.isArray(tabela.rows)
+  ) {
+    kontener.replaceChildren(
+      element("p", "alert alert-warning mb-0", "Niepoprawna struktura tablicy prawdy z API."),
+    );
+    return;
+  }
   const tabelaEl = element("table", "table table-sm table-bordered tablica-prawdy align-middle");
   tabelaEl.append(element("caption", "tablica-podpis", `Tablica prawdy dla formuły: ${formula}`));
 
@@ -116,8 +148,9 @@ function rysujTablice(kontener, tabela, formula) {
     for (const nazwa of tabela.variables) {
       tr.append(komorkaWartosci(wiersz[nazwa]));
     }
+    const wartosci = wiersz[POLE_WARTOSCI] ?? wiersz.values ?? [];
     for (const kolumna of podformuly) {
-      tr.append(komorkaWartosci(wiersz.values[kolumna.indeks]));
+      tr.append(komorkaWartosci(wartosci[kolumna.indeks]));
     }
     tbody.append(tr);
   }
