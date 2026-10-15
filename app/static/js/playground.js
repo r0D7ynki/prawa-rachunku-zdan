@@ -112,7 +112,8 @@ function rysujTablice(kontener, tabela, formula) {
     !tabela ||
     !Array.isArray(tabela.variables) ||
     !Array.isArray(tabela.columns) ||
-    !Array.isArray(tabela.rows)
+    !Array.isArray(tabela.rows) ||
+    tabela.rows.some((wiersz) => !wiersz || !Array.isArray(wiersz[POLE_WARTOSCI]))
   ) {
     kontener.replaceChildren(
       element("p", "alert alert-warning mb-0", "Niepoprawna struktura tablicy prawdy z API."),
@@ -148,7 +149,7 @@ function rysujTablice(kontener, tabela, formula) {
     for (const nazwa of tabela.variables) {
       tr.append(komorkaWartosci(wiersz[nazwa]));
     }
-    const wartosci = wiersz[POLE_WARTOSCI] ?? wiersz.values ?? [];
+    const wartosci = wiersz[POLE_WARTOSCI];
     for (const kolumna of podformuly) {
       tr.append(komorkaWartosci(wartosci[kolumna.indeks]));
     }
