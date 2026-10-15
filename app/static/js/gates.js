@@ -368,6 +368,7 @@ function grotStrzalki() {
 function przewod(od, do_) {
   const linia = nowyElement("polyline", TEKSTY.przewod);
   linia.setAttribute("class", "wiz-przewod wiz-nieznane");
+  linia.setAttribute("role", "img");
   linia.setAttribute("aria-label", TEKSTY.przewod);
   const srodek = (od.x + do_.x) / 2;
   linia.setAttribute(
@@ -718,22 +719,11 @@ async function wypelnij(montaz) {
       : [];
   const { kolejnosc, wezly } = zbierzPodformuly(dane.ast);
 
-  // Dla formuły bez zmiennych (stała logiczna) nie wyświetlamy przełączników wejść,
-  // lecz pojedynczy krok z wartością. Brak zmiennych nie jest błędem braku tabeli.
-  const wierszeDanych =
-    zmienne.length === 0 && wiersze.length === 0
-      ? [{ [POLE_WARTOSCI]: kolejnosc.map(() => 1) }]
-      : wiersze;
-
   // Kolumny tablicy i nasza kolejność podformuł muszą się zgadzać co do jednej.
-  // Gdyby serwer zmienił kolejność, wolelibyśmy komunikat niż wartość z cudzej kolumny.
-  const brakZgodnosci = kolumny.length !== kolejnosc.length;
-  if (zmienne.length > 0) {
-    if (wierszeDanych.length === 0 || brakZgodnosci) {
-      pokazKomunikat(montaz, TEKSTY.brakTabeli, status);
-      return;
-    }
-  } else if (wiersze.length > 0 && brakZgodnosci) {
+  // Gdyby serwer zmienił kolejność albo nie przysłał wierszy, pokazujemy komunikat
+  // zamiast zgadywać wartości. Formuła bez zmiennych nie potrzebuje zmiennych w tabeli,
+  // ale nadal wymaga policzonych wartości podformuł z serwera.
+  if (wiersze.length === 0 || kolumny.length !== kolejnosc.length) {
     pokazKomunikat(montaz, TEKSTY.brakTabeli, status);
     return;
   }
@@ -774,7 +764,7 @@ async function wypelnij(montaz) {
       stepper = null;
     }
 
-    const wiersz = znajdzWiersz(wierszeDanych, zmienne, env);
+    const wiersz = znajdzWiersz(wiersze, zmienne, env);
     if (!wiersz || !Array.isArray(wiersz[POLE_WARTOSCI])) {
       pokazKomunikat(montaz, TEKSTY.brakTabeli, status);
       return;
