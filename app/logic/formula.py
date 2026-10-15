@@ -140,14 +140,6 @@ _SINGLE = {
     ")": "RPAREN",
 }
 
-#: Operatory wieloliterowe; dłuższe wzorce sprawdzamy pierwsze.
-_PAIRS = (
-    ("<->", "IFF"),
-    ("<=>", "IFF"),
-    ("->", "IMP"),
-    ("=>", "IMP"),
-)
-
 _OPERATOR_KINDS = ("AND", "OR", "IMP", "IFF", "NOT")
 
 
@@ -471,11 +463,18 @@ def evaluate(node: Node, env: Mapping[str, bool]) -> bool:
     """Liczy wartość formuły dla pełnego przypisania zmiennych.
 
     Brak wartości zmiennej w ``env`` to ``FormulaError``.
+    Wartość zmiennej niebędąca typu ``bool`` to ``FormulaError``.
     """
     if isinstance(node, Var):
         if node.name not in env:
             raise FormulaError(f"Brakuje wartości zmiennej '{node.name}'.")
-        return bool(env[node.name])
+        val = env[node.name]
+        if not isinstance(val, bool):
+            raise FormulaError(
+                f"Wartość zmiennej '{node.name}' musi być typu bool, "
+                f"otrzymano {type(val).__name__}."
+            )
+        return val
     if isinstance(node, Not):
         return not evaluate(node.child, env)
     if isinstance(node, And):
