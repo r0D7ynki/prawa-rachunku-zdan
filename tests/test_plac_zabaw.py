@@ -36,7 +36,7 @@ ETYKIETY_PANELI = ["Znaki do pierwszej formuły", "Znaki do drugiej formuły"]
 POLA_PANELI = ["pole-formula", "pole-druga"]
 
 #: Cztery przykłady na start — klikane formuły z karty.
-PRZYKLADY = ["p → q", "¬(p ∧ q)", "p ∨ ¬p", "(p → q) ∧ p"]
+PRZYKLADY = ["p → q", "∼(p ∧ q)", "p ∨ ∼p", "(p → q) ∧ p"]
 
 #: Adresy czterech endpointów, które woła ``playground.js``.
 ENDPOINTY = [
@@ -139,7 +139,21 @@ def test_strona_nie_zostawia_nieuzupelnionych_szablonow(html):
 
 
 def test_jest_pole_formuly_z_wartoscia_domyslna(html):
-    assert "p → (q ∧ ¬r)" in _wartosc_pola(html)
+    assert "p → (q ∧ ∼r)" in _wartosc_pola(html)
+
+
+def test_druga_formula_uzywa_notacji_wykladowej(html):
+    dopasowanie = re.search(r'<input[^>]*id="pole-druga"[^>]*value="(?P<wartosc>[^"]*)"', html)
+    assert dopasowanie, "brak atrybutu value w drugim polu"
+    assert "∼p ∨ q" in dopasowanie["wartosc"]
+
+
+def test_widok_przekazuje_symbole_jako_jedno_zrodlo_prawdy():
+    from app.blueprints.playground import EXAMPLES, SYMBOLS
+
+    assert SYMBOLS == ("∼", "¬", "∧", "∨", "→", "≡", "↔", "(", ")")
+    assert "znaki_panelu" not in _zrodlo(SZABLON), "szablon ma brać symbole z widoku"
+    assert "¬" not in "".join(EXAMPLES), "przykłady powinny używać notacji wykładowej ∼"
 
 
 def test_panel_znakow_jest_przy_kazdym_polu_formuly(html):
