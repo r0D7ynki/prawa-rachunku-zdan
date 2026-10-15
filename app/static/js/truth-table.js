@@ -161,14 +161,19 @@ function naglowekKolumny(tekst, klasa) {
 }
 
 /** Buduje nagłówek tabeli: numer wiersza, zmienne, potem kolumny podformuł. */
-function zbudujNaglowek(zmienne, kolumny) {
+function zbudujNaglowek(zmienne, kolumny, kolumnyKrokow) {
   const naglowek = element("tr");
   naglowek.append(naglowekKolumny("Wiersz", "tt-numer-kolumny"));
   for (const nazwa of zmienne) {
     naglowek.append(naglowekKolumny(nazwa, "tt-naglowek-zmiennej"));
   }
-  for (const etykieta of kolumny) {
-    naglowek.append(naglowekKolumny(etykieta, "tt-naglowek-podformuly"));
+  const indeksy =
+    kolumnyKrokow ||
+    kolumny
+      .map((etykieta, indeks) => (zmienne.includes(etykieta) ? null : indeks))
+      .filter((indeks) => indeks !== null);
+  for (const kolumna of indeksy) {
+    naglowek.append(naglowekKolumny(kolumny[kolumna], "tt-naglowek-podformuly"));
   }
   return naglowek;
 }
@@ -244,7 +249,7 @@ function rysuj(montaz, formula, dane, status) {
   const komorkiWyniku = [];
   /* Te same komórki w kolejności dokumentu — po nich chodzą Enter i Backspace. */
   const polaWynikow = [];
-  const naglowkiWynikow = [];
+  const naglowkiWynikow = new Map();
 
   /* Stan widoku odpowiedzi (karta PRZ-158). `pokazaneOdpowiedzi` odsłania całą tabelę
      niezależnie od kroku, a `ocenyAktywne` wyłącza ocenianie wpisów po tym, jak student
@@ -410,10 +415,11 @@ function rysuj(montaz, formula, dane, status) {
   const podpis = element("caption", "tt-podpis visually-hidden", `Tablica prawdy formuły ${formula}.`);
   const thead = element("thead", null);
   const tbody = element("tbody", null);
-  thead.append(zbudujNaglowek(zmienne, kolumny));
-  for (const naglowek of thead.querySelectorAll(".tt-naglowek-podformuly")) {
-    naglowkiWynikow.push(naglowek);
-  }
+  thead.append(zbudujNaglowek(zmienne, kolumny, kolumnyKrokow));
+  const naglowki = thead.querySelectorAll(".tt-naglowek-podformuly");
+  kolumnyKrokow.forEach((kolumna, pozycja) => {
+    naglowkiWynikow.set(kolumna, naglowki[pozycja]);
+  });
 
   for (const [indeksWiersza, wiersz] of wiersze.entries()) {
     const tr = element("tr", "tt-wiersz");
@@ -465,12 +471,13 @@ function rysuj(montaz, formula, dane, status) {
       tr.append(komorka);
     }
 
-    /* Kolumny zmiennych są odkryte od początku. Wyniki czekają na swoją kolej:
-       zakryta komórka pokazuje pole, w które student sam wpisuje `0` albo `1`,
-       a odkryta — gotową wartość z tabeli. Pole zostaje w komórce także po
-       odkryciu (tyle że ukryte), żeby cofnięcie kroku nie gubiło odpowiedzi. */
+    /* Kolumny zmiennych pokazujemy po lewej stronie tabeli. Wyniki podformuł
+       czekają na swoją kolej w krokach: zakryta komórka pokazuje pole wpisywania,
+       a odkryta gotową wartość z tabeli. Pole zostaje w komórce także po odkryciu,
+       żeby cofnięcie kroku nie gubiło odpowiedzi studenta. */
     const rzad = [];
-    for (const [kolumna, znak] of (wiersz[POLE_WARTOSCI] || []).entries()) {
+    for (const kolumna of kolumnyKrokow) {
+      const znak = (wiersz[POLE_WARTOSCI] || [])[kolumna];
       const komorka = element("td", `tt-komorka-wyniku tt-wynik-${znak}`);
       const pole = {
         element: komorka,
