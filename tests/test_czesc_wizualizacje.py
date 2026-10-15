@@ -135,6 +135,18 @@ def test_partial_nie_rysuje_juz_w_przegladarce(aplikacja):
     assert "/api/formula" not in html, "rysunek nie potrzebuje API"
 
 
+def test_partial_sets_nie_czyta_prawo_lewa_ani_prawa(aplikacja):
+    """Karta PRZ-054: partial _sets.html nie czyta prawo.lewa ani prawo.prawa."""
+    zrodlo = (Path(aplikacja.root_path) / "templates" / "partials" / "_sets.html").read_text(
+        encoding="utf-8"
+    )
+    assert "prawo.lewa" not in zrodlo
+    assert "prawo.prawa" not in zrodlo
+    html = _renderuj(aplikacja, "partials/_sets.html", formula="p ∧ q")
+    assert 'class="sets-mount"' in html
+    assert "Diagram zbiorów" in html
+
+
 @pytest.mark.parametrize(
     ("partial", "prawo", "zbior"), PARTIALE_Z_KROKAMI, ids=["bramki", "zbiory"]
 )
