@@ -63,7 +63,7 @@ Pythona poza Flasketem — frontend to Bootstrap z CDN i czysty JavaScript.
 ```bash
 ./scripts/gate.sh                                   # PEŁNA BRAMKA — oceniaj po kodzie wyjścia
 python3 scripts/kanban/kanban.py board              # tablica Kanban (z swarmboard: `sb board`)
-python3 scripts/kanban/kanban.py next deepseek --start   # weź kartę (bramka DoR + WIP)
+python3 scripts/kanban/kanban.py next gemini --start     # weź kartę (bramka DoR + WIP)
 python3 scripts/kanban/kanban.py submit PRZ-001     # oddaj: kryteria + Evidence + bramka → review
 python3 scripts/kanban/kanban.py check              # walidacja wszystkich kart
 # --json przy board/check/next/submit; kody wyjścia: 0 ok, 1 bramka/walidacja, 2 użycie, 3 brak karty
@@ -75,7 +75,7 @@ Karty: `kanban/tasks/PRZ-XXX.md`. Kolumny: `backlog → ready → in-progress �
 Przesuwaj **tylko** przez `scripts/kanban/kanban.py` — skrypt pilnuje bramek
 (DoR, WIP, kryteria + Evidence, DoD + bramka).
 
-1. Weź kartę: `python3 scripts/kanban/kanban.py next deepseek --start` — tworzy gałąź
+1. Weź kartę: `python3 scripts/kanban/kanban.py next gemini --start` — tworzy gałąź
    `<id>-<tytuł>` i przesuwa kartę do `in-progress` przez bramkę. Pracuj tylko nad kartami
    ze swoim `model:`.
 2. Drzewo robocze musi być czyste przed startem.
@@ -100,5 +100,6 @@ Oszczędne tokeny: jedna karta = jedna sesja; bez cronów i cyklicznych raportó
 z sekcji `## Files` i to, czego bezpośrednio potrzebują; po komunikacie o limicie nie ponawiaj
 zapytań — watcher wstrzyma przydział dla modelu.
 
-Identyfikatory modeli w kartach (`models` w `kanban/config.json`): `deepseek` (wykonawca,
-DeepSeek V4.1 Flash), `claude` (reviewer, Antigravity `claude-sonnet-4-6`), `human`.
+Identyfikatory modeli w kartach (`models` w `kanban/config.json`): `gemini` (wykonawca,
+Antigravity `agy`, model `gemini-3.8-flash-high`), `deepseek` (reviewer i nadzór,
+DeepSeek V4.1 Flash z rozumowaniem `high`), `human`.

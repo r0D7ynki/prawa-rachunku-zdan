@@ -1,4 +1,10 @@
 {
+  "bridge.recovery_hold": "Recovery of {task_id} held: {reason}",
+  "bridge.active_process": "the previous worker process is still active",
+  "bridge.unknown_process": "absence of the previous worker process could not be confirmed",
+  "bridge.unknown_worktree": "worker worktree or Git state could not be verified",
+  "bridge.dirty_worktree": "worker worktree contains uncommitted changes",
+  "bridge.unmerged_work": "worker has commits not merged into the integration branch",
   "agents.blocked": "⚠️ {worker} blocked on {task_id} for {minutes} min (permission prompt?) — answer it in the Herdr pane",
   "agents.model_paused": "⏸ Dispatch for model {model} paused until {until}: {reason}",
   "agents.reason.message": "{worker}: limit message — {message}",
@@ -772,5 +778,7 @@
   "efficiency.prompt": "Work economically: the card is the only specification. Do not reread rules already supplied in context. Limit preparation to Git state, the card, symbol searches within Files and necessary excerpts. Do not dump directories, documents or test files. Set max_output_tokens to at most 2000 for each tool result; save longer output to a local log and read only the error-related excerpt. Start with a minimal regression, then implement, test and record evidence. Do not probe CLI variants by trial: use documented commands or one --help. Preserve all criteria, quality gates, Files scope and independent review. When information is missing, record a concrete blocker instead of widening exploration.",
   "efficiency.preflight": "Facts checked by the dispatcher (without model queries): {facts}. This is a command map, not another specification. Preserve required state checks before Git operations; do not probe variants of these commands again. Redirect long gate output to a log and check its actual exit code.",
   "cli.main.help.guard": "durable attempt costs and preparation budget (start/status)",
-  "efficiency.task_brief": "Task index prepared by Python (bounded size): {facts}\nRead the card and listed functions/tests in narrow ranges. Tool count and output bytes are limited before the first code change. The default tool output limit is not a hard cost guarantee."
+  "efficiency.task_brief": "Task index prepared by Python (bounded size): {facts}\nRead the card and listed functions/tests in narrow ranges. Tool count and output bytes are limited before the first code change. The default tool output limit is not a hard cost guarantee.",
+  "efficiency.task_brief_guarded": "Task index prepared by Python (bounded size): {facts}\npreparation_limits gives actual guard thresholds; before the first AST change the guard stops as soon as prepare_tool_calls or prepare_output_bytes is reached. All command_execution calls and full UTF-8 aggregated_output bytes count together, even if the CLI truncates the result shown to the model. Read the card and rules at most once; then use at most one command with narrow ranges of the indexed functions/tests, with stdout capped at 6000 B (for example, a final head -c 6000). Do not cat whole modules or test files. Next add a minimal real regression/AST change using the native editing tool, before further commands. After the first change the total budget, acceptance criteria, gate, mutation and independent review still apply. The default CLI output limit does not guarantee raw log size.",
+  "bridge.unknown_history": "unverified recovery history"
 }

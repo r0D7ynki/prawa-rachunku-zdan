@@ -1,4 +1,10 @@
 {
+  "bridge.recovery_hold": "Odzyskanie {task_id} wstrzymane: {reason}",
+  "bridge.active_process": "proces poprzedniego workera nadal jest aktywny",
+  "bridge.unknown_process": "nie potwierdzono braku procesu poprzedniego workera",
+  "bridge.unknown_worktree": "nie udało się zweryfikować worktree workera lub stanu Git",
+  "bridge.dirty_worktree": "worktree workera zawiera niezacommitowane zmiany",
+  "bridge.unmerged_work": "worker ma commity niescalone do gałęzi integracyjnej",
   "agents.blocked": "⚠️ {worker} zablokowany na {task_id} od {minutes} min (pytanie o zgodę?) — odpowiedz w panelu Herdr",
   "agents.model_paused": "⏸ Przydział dla modelu {model} wstrzymany do {until}: {reason}",
   "agents.reason.message": "{worker}: komunikat o limicie — {message}",
@@ -772,5 +778,7 @@
   "efficiency.prompt": "Pracuj oszczędnie: karta jest jedyną specyfikacją. Nie czytaj ponownie reguł już przekazanych w kontekście. Przygotowanie ogranicz do stanu Git, karty, wyszukania symboli w Files i potrzebnych fragmentów. Nie odczytuj całych katalogów, dokumentów i plików testów. Dla pojedynczego wyniku narzędzia ustaw max_output_tokens najwyżej 2000; dłuższy wynik zapisz do lokalnego logu i czytaj tylko fragment związany z błędem. Najpierw minimalna regresja, potem zmiana, testy i dowód. Nie sprawdzaj wariantów CLI metodą prób: korzystaj z dokumentacji lub jednego --help. Zachowaj pełne kryteria, bramki, zakres Files i niezależny review. Przy braku informacji zapisz konkretny bloker zamiast rozszerzać eksplorację.",
   "efficiency.preflight": "Fakty sprawdzone przez dispatcher (bez odpytywania modelu): {facts}. To mapa poleceń, nie dodatkowa specyfikacja. Zachowaj wymaganą weryfikację stanu przed operacją Git; nie ponawiaj wyszukiwania wariantów tych poleceń. Długi wynik bramki przekieruj do logu i sprawdź jej rzeczywisty kod wyjścia.",
   "cli.main.help.guard": "trwały pomiar prób i budżet przygotowania (start/status)",
-  "efficiency.task_brief": "Indeks zadania przygotowany przez Python (ograniczony rozmiar): {facts}\nCzytaj kartę i wskazane funkcje/testy w wąskich zakresach. Przed pierwszą zmianą obowiązuje limit liczby narzędzi i bajtów ich wyników. Domyślny limit wyników narzędzia nie jest twardą gwarancją kosztu."
+  "efficiency.task_brief": "Indeks zadania przygotowany przez Python (ograniczony rozmiar): {facts}\nCzytaj kartę i wskazane funkcje/testy w wąskich zakresach. Przed pierwszą zmianą obowiązuje limit liczby narzędzi i bajtów ich wyników. Domyślny limit wyników narzędzia nie jest twardą gwarancją kosztu.",
+  "efficiency.task_brief_guarded": "Indeks zadania przygotowany przez Python (ograniczony rozmiar): {facts}\npreparation_limits podaje rzeczywiste progi guarda; przed pierwszą zmianą AST zatrzymanie następuje już przy osiągnięciu prepare_tool_calls lub prepare_output_bytes. Liczą się łącznie wszystkie command_execution i pełne bajty UTF-8 aggregated_output, także gdy CLI skraca wynik dla modelu. Odczytaj kartę i reguły najwyżej raz; potem najwyżej jedno polecenie z wąskimi fragmentami wskazanych funkcji/testów, z stdout ograniczonym do 6000 B (np. końcowe head -c 6000). Nie używaj cat dla całych modułów lub plików testów. Następnie wprowadź minimalną rzeczywistą regresję/zmianę AST natywnym narzędziem edycji, przed dalszymi poleceniami. Po pierwszej zmianie nadal obowiązują pełny budżet, kryteria, bramka, mutacja i niezależny review. Domyślny limit wyniku CLI nie gwarantuje rozmiaru surowego logu.",
+  "bridge.unknown_history": "niepotwierdzona historia odzyskania"
 }
