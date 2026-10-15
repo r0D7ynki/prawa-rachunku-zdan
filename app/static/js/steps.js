@@ -79,7 +79,7 @@ function zPodswietleniem(formula, fragment) {
  * Jeden krok listy: linia przejścia (przed ⇒ plakietka z nazwą prawa ⇒ po)
  * oraz opis, pokazywany tylko w bieżącym kroku.
  */
-function zbudujKrok(numer, krok) {
+function zbudujKrok(krok) {
   const pozycja = element("li", "krok");
   const linia = element("p", "krok-linia mb-1");
 
@@ -87,7 +87,6 @@ function zbudujKrok(numer, krok) {
   strzalka.setAttribute("aria-hidden", "true");
 
   linia.append(
-    element("span", "krok-numer", `Krok ${numer}`),
     zPodswietleniem(krok.przed, krok.fragment),
     element("span", "visually-hidden", TEKSTY.strzalka),
     strzalka,
@@ -163,7 +162,7 @@ function rysujSklad(montaz, slad, status) {
     return;
   }
 
-  const pozycje = kroki.map((krok, indeks) => zbudujKrok(indeks + 1, krok));
+  const pozycje = kroki.map((krok) => zbudujKrok(krok));
   for (const { pozycja } of pozycje) {
     lista.append(pozycja);
   }
