@@ -10,6 +10,12 @@
 
 {% block tytul %}{{ prawo.nazwa }} — prawa rachunku zdań{% endblock %}
 
+{% block head %}
+  {% if prawo.kroki_warte %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/steps.css') }}" />
+  {% endif %}
+{% endblock %}
+
 {% block tresc %}
   {% set formula = prawo.formula %}
 
@@ -51,7 +57,6 @@
         Zamieniamy lewą stronę prawa na prawą. Każdy krok korzysta z jednego prawa
         i zachowuje sens formuły.
       </p>
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/steps.css') }}" />
       {# Wszystkie kroki rysuje serwer i stoją naraz, jeden pod drugim (karta PRZ-157).
          Zmieniony fragment wzoru przychodzi z `app/blueprints/laws.py` jako `<mark>`.
          Komponentu kroków (`_steps.html` i `steps.js`) tu nie ma — pokazuje kroki
