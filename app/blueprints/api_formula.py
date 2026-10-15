@@ -23,7 +23,17 @@ from collections.abc import Callable
 from flask import Blueprint, Response, jsonify, request
 
 from app.logic import truth
-from app.logic.formula import FormulaError, Node, Not, Var, parse, to_html, to_text, variables
+from app.logic.formula import (
+    FormulaError,
+    Node,
+    Not,
+    Var,
+    parse,
+    subformulas,
+    to_html,
+    to_text,
+    variables,
+)
 
 bp = Blueprint("api_formula", __name__, url_prefix="/api")
 
@@ -174,12 +184,19 @@ def formula_table() -> Response:
 
     ``podformuly`` (domyślnie ``True``) dodaje kolumnę na każdą podformułę.
     Pole ``znaki`` powtarza wiersze tablicy, ale z wartościami ``1``/``0``.
+    Pole ``columns_html`` zwraca etykiety kolumn w notacji wykładu z klasami HTML.
     """
     payload = _json_body()
     node = parse(_text_field(payload, "formula"))
-    table = truth.build(node, with_subformulas=_bool_field(payload, "podformuly", True))
+    with_subformulas = _bool_field(payload, "podformuly", True)
+    table = truth.build(node, with_subformulas=with_subformulas)
+    parts = subformulas(node) if with_subformulas else [node]
+    columns_html = [to_html(part) for part in parts]
+    table_dict = table.to_dict()
+    table_dict["columns_html"] = columns_html
     return _ok(
-        tabela=table.to_dict(),
+        tabela=table_dict,
+        columns_html=columns_html,
         klasyfikacja=table.classification,
         znaki=_symbol_rows(table),
     )
